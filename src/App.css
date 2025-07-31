@@ -1,0 +1,23 @@
+.app {
+  min-height: 100vh;
+}
+
+/* Reset some default styles */
+* {
+  box-sizing: border-box;
+}
+
+body {
+  font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+  margin: 0;
+  padding: 0;
+  background-color: #f8fafc;
+}
+
+/* Remove the old styles that are no longer needed */
+#root {
+  margin: 0;
+  padding: 0;
+  text-align: left;
+  max-width: none;
+}

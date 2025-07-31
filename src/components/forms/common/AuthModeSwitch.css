@@ -1,0 +1,26 @@
+.switch-mode {
+  text-align: center;
+  margin-top: 24px;
+  padding-top: 20px;
+  border-top: 1px solid #e1e5e9;
+}
+
+.switch-mode p {
+  margin: 0;
+  color: #666;
+}
+
+.switch-button {
+  background: none;
+  border: none;
+  color: #667eea;
+  font-weight: 600;
+  cursor: pointer;
+  text-decoration: underline;
+  padding: 0;
+  font-size: inherit;
+}
+
+.switch-button:hover {
+  color: #5a67d8;
+}
