@@ -1,4 +1,4 @@
-import './AuthCard.css'
+import "./AuthCard.css";
 
 function AuthCard({ title, subtitle, children }) {
   return (
@@ -9,7 +9,7 @@ function AuthCard({ title, subtitle, children }) {
         {children}
       </div>
     </div>
-  )
+  );
 }
 
-export default AuthCard
+export default AuthCard;

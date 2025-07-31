@@ -1,4 +1,4 @@
-import './AuthModeSwitch.css'
+import "./AuthModeSwitch.css";
 
 function AuthModeSwitch({ isLoginMode, onSwitch }) {
   return (
@@ -6,11 +6,11 @@ function AuthModeSwitch({ isLoginMode, onSwitch }) {
       <p>
         {isLoginMode ? "Don't have an account? " : "Already have an account? "}
         <button type="button" onClick={onSwitch} className="switch-button">
-          {isLoginMode ? 'Sign Up' : 'Sign In'}
+          {isLoginMode ? "Sign Up" : "Sign In"}
         </button>
       </p>
     </div>
-  )
+  );
 }
 
-export default AuthModeSwitch
+export default AuthModeSwitch;

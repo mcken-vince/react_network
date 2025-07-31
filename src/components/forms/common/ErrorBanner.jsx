@@ -1,13 +1,9 @@
-import './ErrorBanner.css'
+import "./ErrorBanner.css";
 
 function ErrorBanner({ message }) {
-  if (!message) return null
-  
-  return (
-    <div className="error-banner">
-      {message}
-    </div>
-  )
+  if (!message) return null;
+
+  return <div className="error-banner">{message}</div>;
 }
 
-export default ErrorBanner
+export default ErrorBanner;

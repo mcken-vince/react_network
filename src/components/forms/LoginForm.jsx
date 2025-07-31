@@ -1,18 +1,20 @@
-import AuthCard from './common/AuthCard'
-import FormField from './common/FormField'
-import ErrorBanner from './common/ErrorBanner'
-import SubmitButton from './common/SubmitButton'
-import AuthModeSwitch from './common/AuthModeSwitch'
-import { useFormState } from '../../hooks/useFormState'
-import { validateLoginForm } from '../../utils/validation'
-import './common/FormLayout.css'
+import AuthCard from "./common/AuthCard";
+import FormField from "./common/FormField";
+import ErrorBanner from "./common/ErrorBanner";
+import SubmitButton from "./common/SubmitButton";
+import AuthModeSwitch from "./common/AuthModeSwitch";
+import { useFormState } from "../../hooks/useFormState";
+import { validateLoginForm } from "../../utils/validation";
+import "./common/FormLayout.css";
+import { useNavigate } from "@tanstack/react-router";
 
 const initialFormData = {
-  username: '',
-  password: ''
-}
+  username: "",
+  password: "",
+};
 
-function LoginForm({ onLogin, onSwitchToSignup }) {
+function LoginForm({ onLogin }) {
+  const navigate = useNavigate();
   const {
     formData,
     errors,
@@ -20,39 +22,36 @@ function LoginForm({ onLogin, onSwitchToSignup }) {
     setIsSubmitting,
     handleChange,
     setErrors,
-    resetForm
-  } = useFormState(initialFormData)
+    resetForm,
+  } = useFormState(initialFormData);
 
   const handleSubmit = async (e) => {
-    e.preventDefault()
-    setIsSubmitting(true)
+    e.preventDefault();
+    setIsSubmitting(true);
 
-    const validationErrors = validateLoginForm(formData)
+    const validationErrors = validateLoginForm(formData);
     if (Object.keys(validationErrors).length > 0) {
-      setErrors(validationErrors)
-      setIsSubmitting(false)
-      return
+      setErrors(validationErrors);
+      setIsSubmitting(false);
+      return;
     }
 
-    const result = onLogin(formData)
+    const result = onLogin(formData);
     if (!result.success) {
-      setErrors({ general: result.message })
+      setErrors({ general: result.message });
     }
-    setIsSubmitting(false)
-  }
+    setIsSubmitting(false);
+  };
 
   const handleSwitchMode = () => {
-    resetForm()
-    onSwitchToSignup()
-  }
+    resetForm();
+    navigate({ to: "/signup" });
+  };
 
   return (
-    <AuthCard 
-      title="Welcome Back" 
-      subtitle="Sign in to your account"
-    >
+    <AuthCard title="Welcome Back" subtitle="Sign in to your account">
       <ErrorBanner message={errors.general} />
-      
+
       <form onSubmit={handleSubmit} className="signup-form">
         <FormField
           label="Username"
@@ -80,12 +79,9 @@ function LoginForm({ onLogin, onSwitchToSignup }) {
         />
       </form>
 
-      <AuthModeSwitch 
-        isLoginMode={true} 
-        onSwitch={handleSwitchMode} 
-      />
+      <AuthModeSwitch isLoginMode={true} onSwitch={handleSwitchMode} />
     </AuthCard>
-  )
+  );
 }
 
-export default LoginForm
+export default LoginForm;

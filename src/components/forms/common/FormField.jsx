@@ -1,8 +1,8 @@
-import './FormField.css'
+import "./FormField.css";
 
 function FormField({
   label,
-  type = 'text',
+  type = "text",
   name,
   value,
   onChange,
@@ -10,7 +10,7 @@ function FormField({
   error,
   min,
   max,
-  className = ''
+  className = "",
 }) {
   return (
     <div className="form-group">
@@ -21,14 +21,14 @@ function FormField({
         name={name}
         value={value}
         onChange={onChange}
-        className={`${error ? 'error' : ''} ${className}`}
+        className={`${error ? "error" : ""} ${className}`}
         placeholder={placeholder}
         min={min}
         max={max}
       />
       {error && <span className="error-text">{error}</span>}
     </div>
-  )
+  );
 }
 
-export default FormField
+export default FormField;

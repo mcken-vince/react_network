@@ -1,23 +1,25 @@
-import AuthCard from './common/AuthCard'
-import FormField from './common/FormField'
-import ErrorBanner from './common/ErrorBanner'
-import SubmitButton from './common/SubmitButton'
-import AuthModeSwitch from './common/AuthModeSwitch'
-import { useFormState } from '../../hooks/useFormState'
-import { validateSignupForm } from '../../utils/validation'
-import './common/FormLayout.css'
+import AuthCard from "./common/AuthCard";
+import FormField from "./common/FormField";
+import ErrorBanner from "./common/ErrorBanner";
+import SubmitButton from "./common/SubmitButton";
+import AuthModeSwitch from "./common/AuthModeSwitch";
+import { useFormState } from "../../hooks/useFormState";
+import { validateSignupForm } from "../../utils/validation";
+import "./common/FormLayout.css";
+import { useNavigate } from "@tanstack/react-router";
 
 const initialFormData = {
-  firstName: '',
-  lastName: '',
-  age: '',
-  location: '',
-  username: '',
-  password: '',
-  confirmPassword: ''
-}
+  firstName: "",
+  lastName: "",
+  age: "",
+  location: "",
+  username: "",
+  password: "",
+  confirmPassword: "",
+};
 
-function SignupForm({ onSignup, onSwitchToLogin }) {
+function SignupForm({ onSignup }) {
+  const navigate = useNavigate();
   const {
     formData,
     errors,
@@ -25,39 +27,39 @@ function SignupForm({ onSignup, onSwitchToLogin }) {
     setIsSubmitting,
     handleChange,
     setErrors,
-    resetForm
-  } = useFormState(initialFormData)
+    resetForm,
+  } = useFormState(initialFormData);
 
   const handleSubmit = async (e) => {
-    e.preventDefault()
-    setIsSubmitting(true)
+    e.preventDefault();
+    setIsSubmitting(true);
 
-    const validationErrors = validateSignupForm(formData)
+    const validationErrors = validateSignupForm(formData);
     if (Object.keys(validationErrors).length > 0) {
-      setErrors(validationErrors)
-      setIsSubmitting(false)
-      return
+      setErrors(validationErrors);
+      setIsSubmitting(false);
+      return;
     }
 
-    const result = onSignup(formData)
+    const result = onSignup(formData);
     if (!result.success) {
-      setErrors({ general: result.message })
+      setErrors({ general: result.message });
     }
-    setIsSubmitting(false)
-  }
+    setIsSubmitting(false);
+  };
 
   const handleSwitchMode = () => {
-    resetForm()
-    onSwitchToLogin()
-  }
+    resetForm();
+    navigate({ to: "/login" });
+  };
 
   return (
-    <AuthCard 
-      title="Join SocialConnect" 
+    <AuthCard
+      title="Join SocialConnect"
       subtitle="Create your account to get started"
     >
       <ErrorBanner message={errors.general} />
-      
+
       <form onSubmit={handleSubmit} className="signup-form">
         <div className="form-row">
           <FormField
@@ -138,12 +140,9 @@ function SignupForm({ onSignup, onSwitchToLogin }) {
         />
       </form>
 
-      <AuthModeSwitch 
-        isLoginMode={false} 
-        onSwitch={handleSwitchMode} 
-      />
+      <AuthModeSwitch isLoginMode={false} onSwitch={handleSwitchMode} />
     </AuthCard>
-  )
+  );
 }
 
-export default SignupForm
+export default SignupForm;
