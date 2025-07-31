@@ -19,9 +19,5 @@ function SignupRoute() {
     return <Navigate to="/dashboard" />;
   }
 
-  return (
-    <div className="app">
-      <SignupForm onSignup={handleSignup} />
-    </div>
-  );
+  return <SignupForm onSignup={handleSignup} />;
 }

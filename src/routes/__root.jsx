@@ -8,7 +8,9 @@ export const Route = createRootRoute({
 function RootComponent() {
   return (
     <AuthProvider>
-      <Outlet />
+      <div className="app">
+        <Outlet />
+      </div>
     </AuthProvider>
   );
 }

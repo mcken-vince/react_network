@@ -19,9 +19,5 @@ function DashboardRoute() {
     return <Navigate to="/login" />;
   }
 
-  return (
-    <div className="app">
-      <Dashboard user={user} onLogout={handleLogout} allUsers={users} />
-    </div>
-  );
+  return <Dashboard user={user} onLogout={handleLogout} allUsers={users} />;
 }

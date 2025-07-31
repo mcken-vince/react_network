@@ -19,9 +19,5 @@ function LoginRoute() {
     return <Navigate to="/dashboard" />;
   }
 
-  return (
-    <div className="app">
-      <LoginForm onLogin={handleLogin} />
-    </div>
-  );
+  return <LoginForm onLogin={handleLogin} />;
 }
