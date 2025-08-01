@@ -1,63 +1,38 @@
+import { useMemo } from "react";
+import {
+  DashboardHeader,
+  ProfileSection,
+  UsersSection,
+} from "./dashboard/index";
 import "./Dashboard.css";
 
+/**
+ * Refactored Dashboard component using reusable components
+ * @param {object} user - Current logged-in user
+ * @param {function} onLogout - Logout handler
+ * @param {array} allUsers - Array of all users
+ */
 function Dashboard({ user, onLogout, allUsers }) {
-  const otherUsers = allUsers.filter((u) => u.id !== user.id);
+  // Memoize the filtered users list to avoid unnecessary recalculations
+  const otherUsers = useMemo(() => {
+    return allUsers.filter((u) => u.id !== user.id);
+  }, [allUsers, user.id]);
 
   return (
     <div className="dashboard">
-      <header className="dashboard-header">
-        <h1>SocialConnect</h1>
-        <div className="user-info">
-          <span>Welcome, {user.firstName}!</span>
-          <button onClick={onLogout} className="logout-button">
-            Logout
-          </button>
-        </div>
-      </header>
+      <DashboardHeader
+        user={user}
+        onLogout={onLogout}
+        appTitle="SocialConnect"
+      />
 
       <main className="dashboard-content">
-        <div className="profile-section">
-          <h2>Your Profile</h2>
-          <div className="profile-card">
-            <div className="profile-avatar">
-              {user.firstName[0]}
-              {user.lastName[0]}
-            </div>
-            <div className="profile-details">
-              <h3>
-                {user.firstName} {user.lastName}
-              </h3>
-              <p>@{user.username}</p>
-              <p>📍 {user.location}</p>
-              <p>🎂 {user.age} years old</p>
-            </div>
-          </div>
-        </div>
+        <ProfileSection user={user} />
 
-        <div className="users-section">
-          <h2>Other Users ({otherUsers.length})</h2>
-          {otherUsers.length === 0 ? (
-            <p className="no-users">No other users yet. Invite your friends!</p>
-          ) : (
-            <div className="users-grid">
-              {otherUsers.map((u) => (
-                <div key={u.id} className="user-card">
-                  <div className="user-avatar">
-                    {u.firstName[0]}
-                    {u.lastName[0]}
-                  </div>
-                  <div className="user-details">
-                    <h4>
-                      {u.firstName} {u.lastName}
-                    </h4>
-                    <p>@{u.username}</p>
-                    <p>📍 {u.location}</p>
-                  </div>
-                </div>
-              ))}
-            </div>
-          )}
-        </div>
+        <UsersSection
+          users={otherUsers}
+          emptyMessage="No other users yet. Invite your friends!"
+        />
       </main>
     </div>
   );
