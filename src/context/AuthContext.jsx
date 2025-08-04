@@ -62,6 +62,35 @@ export function AuthProvider({ children }) {
     navigate({ to: "/login" });
   };
 
+  const updateUserProfile = (userId, updateData) => {
+    // Check if username is unique (if it's being changed)
+    const existingUser = users.find((u) => u.id === userId);
+    if (!existingUser) {
+      return { success: false, message: "User not found" };
+    }
+
+    if (updateData.username !== existingUser.username) {
+      const usernameExists = users.some(
+        (u) => u.id !== userId && u.username === updateData.username
+      );
+      if (usernameExists) {
+        return { success: false, message: "Username already exists" };
+      }
+    }
+
+    // Update user in users array
+    setUsers((prev) =>
+      prev.map((u) => (u.id === userId ? { ...u, ...updateData } : u))
+    );
+
+    // If updating current user, update user state
+    if (user && user.id === userId) {
+      setUser((prev) => ({ ...prev, ...updateData }));
+    }
+
+    return { success: true };
+  };
+
   const value = {
     user,
     users,
@@ -69,6 +98,7 @@ export function AuthProvider({ children }) {
     handleSignup,
     handleLogin,
     handleLogout,
+    updateUserProfile,
   };
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;

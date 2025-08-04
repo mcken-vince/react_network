@@ -1,0 +1,85 @@
+.profile-edit {
+  display: flex;
+  flex-direction: column;
+  gap: 24px;
+}
+
+.profile-edit-card {
+  padding: 24px;
+}
+
+.profile-edit-card h2 {
+  margin: 0 0 24px 0;
+  color: #333;
+  font-size: 1.5rem;
+}
+
+.profile-edit-form {
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+}
+
+.form-row {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 16px;
+}
+
+.password-section {
+  margin-top: 24px;
+  padding-top: 24px;
+  border-top: 2px solid #e1e5e9;
+}
+
+.password-section h3 {
+  margin: 0 0 8px 0;
+  color: #333;
+  font-size: 1.1rem;
+}
+
+.password-note {
+  margin: 0 0 16px 0;
+  color: #666;
+  font-size: 14px;
+  font-style: italic;
+}
+
+.profile-edit-actions {
+  display: flex;
+  gap: 12px;
+  justify-content: flex-end;
+  margin-top: 24px;
+  padding-top: 20px;
+  border-top: 1px solid #e1e5e9;
+}
+
+.cancel-btn {
+  background: #6c757d;
+  color: white;
+  border: none;
+  padding: 12px 24px;
+  border-radius: 8px;
+  cursor: pointer;
+  font-weight: 600;
+  transition: background-color 0.2s ease;
+}
+
+.cancel-btn:hover:not(:disabled) {
+  background: #5a6268;
+}
+
+.cancel-btn:disabled {
+  opacity: 0.7;
+  cursor: not-allowed;
+}
+
+@media (max-width: 600px) {
+  .form-row {
+    grid-template-columns: 1fr;
+  }
+
+  .profile-edit-actions {
+    flex-direction: column;
+  }
+}

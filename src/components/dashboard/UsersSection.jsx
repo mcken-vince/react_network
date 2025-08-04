@@ -1,5 +1,6 @@
 import UserCard from "./UserCard";
 import EmptyState from "./EmptyState";
+import { useNavigate } from "@tanstack/react-router";
 import "./UsersSection.css";
 
 /**
@@ -13,6 +14,7 @@ function UsersSection({
   title,
   emptyMessage = "No other users yet. Invite your friends!",
 }) {
+  const navigate = useNavigate();
   const userCount = users.length;
   const sectionTitle = title || `Other Users (${userCount})`;
 
@@ -24,7 +26,11 @@ function UsersSection({
       ) : (
         <div className="users-grid">
           {users.map((user) => (
-            <UserCard key={user.id} user={user} />
+            <UserCard
+              key={user.id}
+              user={user}
+              onClick={() => navigate({ to: `/profile/${user.id}` })}
+            />
           ))}
         </div>
       )}

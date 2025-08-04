@@ -15,15 +15,11 @@ function UserCard({ user, onClick, hoverable = true }) {
   };
 
   return (
-    <Card 
-      className="user-card" 
-      hoverable={hoverable}
-      onClick={handleClick}
-    >
-      <Avatar 
-        firstName={user.firstName} 
-        lastName={user.lastName} 
-        size="medium" 
+    <Card className="user-card" hoverable={hoverable} onClick={handleClick}>
+      <Avatar
+        firstName={user.firstName}
+        lastName={user.lastName}
+        size="medium"
       />
       <UserInfo user={user} variant="compact" />
     </Card>

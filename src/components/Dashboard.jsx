@@ -1,4 +1,5 @@
 import { useMemo } from "react";
+import { Link } from "@tanstack/react-router";
 import {
   DashboardHeader,
   ProfileSection,
@@ -27,7 +28,14 @@ function Dashboard({ user, onLogout, allUsers }) {
       />
 
       <main className="dashboard-content">
-        <ProfileSection user={user} />
+        <div className="profile-section-wrapper">
+          <ProfileSection user={user} />
+          <div className="profile-actions">
+            <Link to={`/profile/${user.id}`} className="view-profile-link">
+              View Full Profile
+            </Link>
+          </div>
+        </div>
 
         <UsersSection
           users={otherUsers}
