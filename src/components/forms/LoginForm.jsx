@@ -5,7 +5,6 @@ import SubmitButton from "./common/SubmitButton";
 import AuthModeSwitch from "./common/AuthModeSwitch";
 import { useFormState } from "../../hooks/useFormState";
 import { validateLoginForm } from "../../utils/validation";
-import "./common/FormLayout.css";
 import { useNavigate } from "@tanstack/react-router";
 
 const initialFormData = {
@@ -52,7 +51,7 @@ function LoginForm({ onLogin }) {
     <AuthCard title="Welcome Back" subtitle="Sign in to your account">
       <ErrorBanner message={errors.general} />
 
-      <form onSubmit={handleSubmit} className="signup-form">
+      <form onSubmit={handleSubmit} className="flex flex-col gap-5 w-full">
         <FormField
           label="Username"
           name="username"

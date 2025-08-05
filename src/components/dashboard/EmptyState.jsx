@@ -1,5 +1,4 @@
 import { Card } from "../common";
-import "./EmptyState.css";
 
 /**
  * Empty state component for when no data is available
@@ -9,10 +8,10 @@ import "./EmptyState.css";
  */
 function EmptyState({ message, icon = "👥", action = null }) {
   return (
-    <Card className="empty-state">
-      {icon && <span className="empty-state-icon">{icon}</span>}
-      <p className="empty-state-message">{message}</p>
-      {action && <div className="empty-state-action">{action}</div>}
+    <Card className="flex flex-col items-center justify-center p-10 text-center min-h-[200px]">
+      {icon && <span className="text-5xl mb-4">{icon}</span>}
+      <p className="text-gray-600 text-base m-0 mb-4">{message}</p>
+      {action && <div className="mt-4">{action}</div>}
     </Card>
   );
 }

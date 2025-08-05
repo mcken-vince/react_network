@@ -5,7 +5,6 @@ import ErrorBanner from "../forms/common/ErrorBanner";
 import { useFormState } from "../../hooks/useFormState";
 import { validateSignupForm } from "../../utils/validation";
 import { useAuth } from "../../context/AuthContext";
-import "./ProfileEdit.css";
 
 /**
  * Profile edit component for editing user information
@@ -39,17 +38,16 @@ function ProfileEdit({ user, onSave, onCancel }) {
     e.preventDefault();
     setIsSubmitting(true);
 
-    // Create validation data (password is optional for profile updates)
-    const validationData = {
+    // Validate form data
+    const validationErrors = validateSignupForm({
       ...formData,
-      password: formData.password || "dummy-password", // Use dummy password for validation if empty
-      confirmPassword: formData.confirmPassword || "dummy-password",
-    };
+      // Skip password validation if not changing password
+      password: formData.password || "dummypassword",
+      confirmPassword: formData.password || "dummypassword",
+    });
 
-    const validationErrors = validateSignupForm(validationData);
-
-    // Remove password errors if password fields are empty (optional update)
-    if (!formData.password && !formData.confirmPassword) {
+    // Remove password errors if not changing password
+    if (!formData.password) {
       delete validationErrors.password;
       delete validationErrors.confirmPassword;
     }
@@ -60,105 +58,87 @@ function ProfileEdit({ user, onSave, onCancel }) {
       return;
     }
 
-    // Prepare update data
-    const updateData = {
-      firstName: formData.firstName,
-      lastName: formData.lastName,
+    // Update the profile
+    const success = updateUserProfile(user.id, {
+      ...formData,
       age: parseInt(formData.age),
-      location: formData.location,
-      username: formData.username,
-    };
+    });
 
-    // Only include password if it was provided
-    if (formData.password) {
-      updateData.password = formData.password;
-    }
-
-    const result = updateUserProfile(user.id, updateData);
-    if (result.success) {
+    if (success) {
       onSave();
     } else {
-      setErrors({ general: result.message });
+      setErrors({ general: "Failed to update profile" });
     }
+
     setIsSubmitting(false);
   };
 
   return (
-    <div className="profile-edit">
-      <Card className="profile-edit-card">
-        <h2>Edit Profile</h2>
+    <Card className="p-6">
+      <h2 className="text-xl font-semibold text-gray-800 mb-6">Edit Profile</h2>
 
-        <ErrorBanner message={errors.general} />
+      <ErrorBanner message={errors.general} />
 
-        <form onSubmit={handleSubmit} className="profile-edit-form">
-          <div className="form-row">
-            <FormField
-              label="First Name"
-              name="firstName"
-              value={formData.firstName}
-              onChange={handleChange}
-              placeholder="Enter your first name"
-              error={errors.firstName}
-            />
-
-            <FormField
-              label="Last Name"
-              name="lastName"
-              value={formData.lastName}
-              onChange={handleChange}
-              placeholder="Enter your last name"
-              error={errors.lastName}
-            />
-          </div>
-
-          <div className="form-row">
-            <FormField
-              label="Age"
-              type="number"
-              name="age"
-              value={formData.age}
-              onChange={handleChange}
-              placeholder="Your age"
-              min="13"
-              max="120"
-              error={errors.age}
-            />
-
-            <FormField
-              label="Location"
-              name="location"
-              value={formData.location}
-              onChange={handleChange}
-              placeholder="City, Country"
-              error={errors.location}
-            />
-          </div>
-
+      <form onSubmit={handleSubmit} className="space-y-5">
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
           <FormField
-            label="Username"
-            name="username"
-            value={formData.username}
+            label="First Name"
+            name="firstName"
+            value={formData.firstName}
             onChange={handleChange}
-            placeholder="Choose a unique username"
-            error={errors.username}
+            error={errors.firstName}
           />
+          <FormField
+            label="Last Name"
+            name="lastName"
+            value={formData.lastName}
+            onChange={handleChange}
+            error={errors.lastName}
+          />
+        </div>
 
-          <div className="password-section">
-            <h3>Change Password (Optional)</h3>
-            <p className="password-note">
-              Leave blank to keep current password
-            </p>
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+          <FormField
+            label="Age"
+            type="number"
+            name="age"
+            value={formData.age}
+            onChange={handleChange}
+            min="13"
+            max="120"
+            error={errors.age}
+          />
+          <FormField
+            label="Location"
+            name="location"
+            value={formData.location}
+            onChange={handleChange}
+            error={errors.location}
+          />
+        </div>
 
+        <FormField
+          label="Username"
+          name="username"
+          value={formData.username}
+          onChange={handleChange}
+          error={errors.username}
+        />
+
+        <div className="pt-4 border-t border-gray-200">
+          <p className="text-sm text-gray-600 mb-4">
+            Leave password fields empty to keep your current password
+          </p>
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             <FormField
               label="New Password"
               type="password"
               name="password"
               value={formData.password}
               onChange={handleChange}
-              placeholder="Enter new password (optional)"
+              placeholder="Enter new password"
               error={errors.password}
             />
-
             <FormField
               label="Confirm New Password"
               type="password"
@@ -169,25 +149,24 @@ function ProfileEdit({ user, onSave, onCancel }) {
               error={errors.confirmPassword}
             />
           </div>
+        </div>
 
-          <div className="profile-edit-actions">
-            <button
-              type="button"
-              onClick={onCancel}
-              className="cancel-btn"
-              disabled={isSubmitting}
-            >
-              Cancel
-            </button>
-            <SubmitButton
-              isSubmitting={isSubmitting}
-              submitText="Save Changes"
-              submittingText="Saving..."
-            />
-          </div>
-        </form>
-      </Card>
-    </div>
+        <div className="flex gap-4 pt-4">
+          <SubmitButton
+            isSubmitting={isSubmitting}
+            submitText="Save Changes"
+            submittingText="Saving..."
+          />
+          <button
+            type="button"
+            onClick={onCancel}
+            className="flex-1 py-3 px-4 bg-gray-200 text-gray-700 font-semibold rounded-lg hover:bg-gray-300 transition-colors duration-200 focus:outline-none focus:ring-2 focus:ring-gray-500 focus:ring-offset-2"
+          >
+            Cancel
+          </button>
+        </div>
+      </form>
+    </Card>
   );
 }
 

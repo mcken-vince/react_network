@@ -1,5 +1,3 @@
-import "./Card.css";
-
 /**
  * Reusable Card component for consistent card styling
  * @param {ReactNode} children - Content to be displayed in the card
@@ -8,9 +6,14 @@ import "./Card.css";
  * @param {function} onClick - Optional click handler
  */
 function Card({ children, className = "", hoverable = false, onClick = null }) {
+  const baseClasses = "bg-white rounded-xl p-5 shadow-card transition-all duration-200";
+  const hoverableClasses = hoverable 
+    ? "cursor-pointer hover:-translate-y-0.5 hover:shadow-card-hover focus:outline-none focus:ring-2 focus:ring-primary-600 focus:ring-offset-2" 
+    : "";
+  
   return (
     <div 
-      className={`card ${hoverable ? "card-hoverable" : ""} ${className}`}
+      className={`${baseClasses} ${hoverableClasses} ${className}`}
       onClick={onClick}
       role={onClick ? "button" : undefined}
       tabIndex={onClick ? 0 : undefined}

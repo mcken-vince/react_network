@@ -1,5 +1,4 @@
 import { Avatar } from "../common";
-import "./ProfileHeader.css";
 
 /**
  * Profile header component with user's basic info and edit button
@@ -13,22 +12,28 @@ function ProfileHeader({ profileUser, isOwnProfile, isEditing, onEditToggle }) {
   const fullName = `${firstName} ${lastName}`;
 
   return (
-    <header className="profile-header">
-      <div className="profile-header-content">
-        <div className="profile-header-info">
+    <header className="bg-white shadow-sm">
+      <div className="max-w-6xl mx-auto p-6 flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
+        <div className="flex items-center gap-5">
           <Avatar firstName={firstName} lastName={lastName} size="large" />
-          <div className="profile-header-details">
-            <h1 className="profile-name">{fullName}</h1>
-            <p className="profile-username">@{username}</p>
-            <p className="profile-location">📍 {location}</p>
+          <div>
+            <h1 className="text-2xl font-bold text-gray-900 mb-1">{fullName}</h1>
+            <p className="text-gray-600 text-sm">@{username}</p>
+            <p className="text-gray-600 text-sm">📍 {location}</p>
           </div>
         </div>
 
         {isOwnProfile && (
-          <div className="profile-header-actions">
+          <div>
             <button
               onClick={onEditToggle}
-              className={`edit-profile-btn ${isEditing ? "editing" : ""}`}
+              className={`px-6 py-2 rounded-lg font-medium transition-all duration-200 ${
+                isEditing
+                  ? "bg-gray-200 text-gray-700 hover:bg-gray-300"
+                  : "bg-primary-600 text-white hover:bg-primary-700"
+              } focus:outline-none focus:ring-2 focus:ring-offset-2 ${
+                isEditing ? "focus:ring-gray-500" : "focus:ring-primary-500"
+              }`}
             >
               {isEditing ? "Cancel Edit" : "Edit Profile"}
             </button>

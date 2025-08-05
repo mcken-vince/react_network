@@ -1,7 +1,6 @@
 import UserCard from "./UserCard";
 import EmptyState from "./EmptyState";
 import { useNavigate } from "@tanstack/react-router";
-import "./UsersSection.css";
 
 /**
  * Users section component for displaying a grid of users
@@ -19,12 +18,12 @@ function UsersSection({
   const sectionTitle = title || `Other Users (${userCount})`;
 
   return (
-    <section className="users-section">
-      <h2 className="section-title">{sectionTitle}</h2>
+    <section className="flex flex-col">
+      <h2 className="text-gray-800 mb-4 text-2xl font-semibold">{sectionTitle}</h2>
       {userCount === 0 ? (
         <EmptyState message={emptyMessage} />
       ) : (
-        <div className="users-grid">
+        <div className="grid gap-4 grid-cols-1 sm:grid-cols-2 lg:grid-cols-3">
           {users.map((user) => (
             <UserCard
               key={user.id}

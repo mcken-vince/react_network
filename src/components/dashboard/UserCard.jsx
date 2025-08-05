@@ -1,5 +1,4 @@
 import { Avatar, Card, UserInfo } from "../common";
-import "./UserCard.css";
 
 /**
  * UserCard component for displaying individual user information
@@ -15,7 +14,7 @@ function UserCard({ user, onClick, hoverable = true }) {
   };
 
   return (
-    <Card className="user-card" hoverable={hoverable} onClick={handleClick}>
+    <Card className="flex items-center gap-4" hoverable={hoverable} onClick={handleClick}>
       <Avatar
         firstName={user.firstName}
         lastName={user.lastName}

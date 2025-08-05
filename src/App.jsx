@@ -1,9 +1,12 @@
-import "./App.css";
 import { RouterProvider } from "@tanstack/react-router";
 import { router } from "./router";
 
 function App() {
-  return <RouterProvider router={router} />;
+  return (
+    <div className="min-h-screen bg-slate-50">
+      <RouterProvider router={router} />
+    </div>
+  );
 }
 
 export default App;

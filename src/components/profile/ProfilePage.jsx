@@ -3,7 +3,6 @@ import { Link } from "@tanstack/react-router";
 import ProfileHeader from "./ProfileHeader";
 import ProfileView from "./ProfileView";
 import ProfileEdit from "./ProfileEdit";
-import "./ProfilePage.css";
 
 /**
  * Main profile page component that handles both viewing and editing profiles
@@ -27,7 +26,7 @@ function ProfilePage({ profileUser, currentUser, isOwnProfile }) {
   };
 
   return (
-    <div className="profile-page">
+    <div className="min-h-screen bg-slate-50">
       <ProfileHeader
         profileUser={profileUser}
         isOwnProfile={isOwnProfile}
@@ -35,10 +34,13 @@ function ProfilePage({ profileUser, currentUser, isOwnProfile }) {
         onEditToggle={handleEditToggle}
       />
 
-      <main className="profile-content">
-        <div className="profile-container">
-          <nav className="profile-nav">
-            <Link to="/dashboard" className="back-link">
+      <main className="p-6">
+        <div className="max-w-3xl mx-auto">
+          <nav className="mb-6">
+            <Link 
+              to="/dashboard" 
+              className="inline-flex items-center text-primary-600 no-underline font-semibold px-4 py-2 rounded-md transition-colors duration-200 hover:bg-primary-50"
+            >
               ← Back to Dashboard
             </Link>
           </nav>

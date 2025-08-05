@@ -1,5 +1,4 @@
 import { Avatar, Card, UserInfo } from "../common";
-import "./ProfileSection.css";
 
 /**
  * Profile section component displaying current user's profile
@@ -8,10 +7,10 @@ import "./ProfileSection.css";
  */
 function ProfileSection({ user, title = "Your Profile" }) {
   return (
-    <section className="profile-section">
-      <h2 className="section-title">{title}</h2>
-      <Card className="card-profile">
-        <div className="profile-content">
+    <section className="flex flex-col">
+      <h2 className="text-gray-800 mb-4 text-2xl font-semibold">{title}</h2>
+      <Card className="p-6">
+        <div className="flex items-center gap-5 md:flex-row flex-col md:text-left text-center">
           <Avatar 
             firstName={user.firstName} 
             lastName={user.lastName} 

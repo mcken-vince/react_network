@@ -5,7 +5,6 @@ import SubmitButton from "./common/SubmitButton";
 import AuthModeSwitch from "./common/AuthModeSwitch";
 import { useFormState } from "../../hooks/useFormState";
 import { validateSignupForm } from "../../utils/validation";
-import "./common/FormLayout.css";
 import { useNavigate } from "@tanstack/react-router";
 
 const initialFormData = {
@@ -60,8 +59,8 @@ function SignupForm({ onSignup }) {
     >
       <ErrorBanner message={errors.general} />
 
-      <form onSubmit={handleSubmit} className="signup-form">
-        <div className="form-row">
+      <form onSubmit={handleSubmit} className="flex flex-col gap-5 w-full">
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
           <FormField
             label="First Name"
             name="firstName"
@@ -81,7 +80,7 @@ function SignupForm({ onSignup }) {
           />
         </div>
 
-        <div className="form-row">
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
           <FormField
             label="Age"
             type="number"
