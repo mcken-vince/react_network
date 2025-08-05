@@ -2,6 +2,9 @@ import express from 'express';
 import jwt from 'jsonwebtoken';
 import { findUserByUsername, createUser } from '../models/User.js';
 import { validateSignup, validateLogin } from '../utils/validation.js';
+import dotenv from 'dotenv';
+
+dotenv.config();
 
 const router = express.Router();
 const JWT_SECRET = process.env.JWT_SECRET || 'your-secret-key-change-in-production';
@@ -15,7 +18,7 @@ router.post('/signup', async (req, res) => {
     }
 
     // Check if username already exists
-    const existingUser = findUserByUsername(data.username);
+    const existingUser = await findUserByUsername(data.username);
     if (existingUser) {
       return res.status(400).json({ error: 'Username already exists' });
     }
@@ -46,7 +49,7 @@ router.post('/signin', async (req, res) => {
     }
 
     // Find user
-    const user = findUserByUsername(data.username);
+    const user = await findUserByUsername(data.username);
     if (!user) {
       return res.status(401).json({ error: 'Invalid credentials' });
     }

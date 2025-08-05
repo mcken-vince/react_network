@@ -5,9 +5,9 @@ import { authenticateToken } from '../middleware/auth.js';
 const router = express.Router();
 
 // Get all users (protected route)
-router.get('/', authenticateToken, (req, res) => {
+router.get('/', authenticateToken, async (req, res) => {
   try {
-    const users = getAllUsers();
+    const users = await getAllUsers();
     res.json(users);
   } catch (error) {
     console.error('Get users error:', error);
@@ -16,9 +16,9 @@ router.get('/', authenticateToken, (req, res) => {
 });
 
 // Get current user (protected route)
-router.get('/me', authenticateToken, (req, res) => {
+router.get('/me', authenticateToken, async (req, res) => {
   try {
-    const user = findUserById(req.userId);
+    const user = await findUserById(req.userId);
     if (!user) {
       return res.status(404).json({ error: 'User not found' });
     }
