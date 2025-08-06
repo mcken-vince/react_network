@@ -113,3 +113,47 @@ export const userAPI = {
     return apiRequest(`/users/${userId}`);
   },
 };
+
+// Connection API functions
+export const connectionAPI = {
+  async sendConnectionRequest(recipientId) {
+    return apiRequest('/connections/request', {
+      method: 'POST',
+      body: JSON.stringify({ recipientId })
+    });
+  },
+
+  async acceptConnectionRequest(connectionId) {
+    return apiRequest(`/connections/${connectionId}/accept`, {
+      method: 'PUT'
+    });
+  },
+
+  async rejectConnectionRequest(connectionId) {
+    return apiRequest(`/connections/${connectionId}/reject`, {
+      method: 'PUT'
+    });
+  },
+
+  async getPendingRequests() {
+    return apiRequest('/connections/pending');
+  },
+
+  async getSentRequests() {
+    return apiRequest('/connections/sent');
+  },
+
+  async getUserConnections() {
+    return apiRequest('/connections/connections');
+  },
+
+  async getConnectionStatus(userId) {
+    return apiRequest(`/connections/status/${userId}`);
+  },
+
+  async removeConnection(connectionId) {
+    return apiRequest(`/connections/${connectionId}`, {
+      method: 'DELETE'
+    });
+  },
+};

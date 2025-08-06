@@ -32,18 +32,28 @@ function Dashboard({ user, onLogout, allUsers }) {
           <div className="md:col-span-1">
             <Stack spacing="medium">
               <ProfileSection user={user} />
-              <Link 
-                to={`/profile/${user.id}`}
-                className="block text-center py-2 px-4 bg-primary-600 text-white rounded-lg hover:bg-primary-700 transition-colors duration-200"
-              >
-                View Full Profile
-              </Link>
+              <Stack spacing="sm">
+                <Link
+                  to={`/profile/${user.id}`}
+                  className="block text-center py-2 px-4 bg-primary-600 text-white rounded-lg hover:bg-primary-700 transition-colors duration-200"
+                >
+                  View Full Profile
+                </Link>
+                <Link
+                  to="/connections"
+                  className="block text-center py-2 px-4 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors duration-200"
+                >
+                  🤝 Connections
+                </Link>
+              </Stack>
             </Stack>
           </div>
 
           <div className="md:col-span-2">
             <UsersSection
               users={otherUsers}
+              currentUser={user}
+              showConnectionStatus={true}
               emptyMessage="No other users yet. Invite your friends!"
             />
           </div>

@@ -6,13 +6,17 @@ import { Heading, Grid, Stack } from "../atoms";
 /**
  * Users section component for displaying a grid of users
  * @param {array} users - Array of user objects to display
+ * @param {object} currentUser - Current logged-in user (optional)
  * @param {string} title - Section title
  * @param {string} emptyMessage - Message to show when no users are available
+ * @param {boolean} showConnectionStatus - Whether to show connection status buttons
  */
 function UsersSection({
   users,
+  currentUser,
   title,
   emptyMessage = "No other users yet. Invite your friends!",
+  showConnectionStatus = false,
 }) {
   const navigate = useNavigate();
   const userCount = users.length;
@@ -31,6 +35,8 @@ function UsersSection({
             <UserCard
               key={user.id}
               user={user}
+              currentUser={currentUser}
+              showConnectionStatus={showConnectionStatus}
               onClick={() => navigate({ to: `/profile/${user.id}` })}
             />
           ))}
