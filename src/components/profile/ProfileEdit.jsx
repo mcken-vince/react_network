@@ -1,7 +1,7 @@
 import { Card } from "../common";
 import FormField from "../forms/common/FormField";
-import SubmitButton from "../forms/common/SubmitButton";
 import ErrorBanner from "../forms/common/ErrorBanner";
+import { Button, Grid, Stack, Text, Heading } from "../atoms";
 import { useFormState } from "../../hooks/useFormState";
 import { validateSignupForm } from "../../utils/validation";
 import { useAuth } from "../../context/AuthContext";
@@ -59,15 +59,15 @@ function ProfileEdit({ user, onSave, onCancel }) {
     }
 
     // Update the profile
-    const success = updateUserProfile(user.id, {
+    const result = await updateUserProfile(user.id, {
       ...formData,
       age: parseInt(formData.age),
     });
 
-    if (success) {
+    if (result.success) {
       onSave();
     } else {
-      setErrors({ general: "Failed to update profile" });
+      setErrors({ general: result.message || "Failed to update profile" });
     }
 
     setIsSubmitting(false);
@@ -75,96 +75,103 @@ function ProfileEdit({ user, onSave, onCancel }) {
 
   return (
     <Card className="p-6">
-      <h2 className="text-xl font-semibold text-gray-800 mb-6">Edit Profile</h2>
+      <Heading level={3} className="mb-6">Edit Profile</Heading>
 
       <ErrorBanner message={errors.general} />
 
-      <form onSubmit={handleSubmit} className="space-y-5">
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-          <FormField
-            label="First Name"
-            name="firstName"
-            value={formData.firstName}
-            onChange={handleChange}
-            error={errors.firstName}
-          />
-          <FormField
-            label="Last Name"
-            name="lastName"
-            value={formData.lastName}
-            onChange={handleChange}
-            error={errors.lastName}
-          />
-        </div>
-
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-          <FormField
-            label="Age"
-            type="number"
-            name="age"
-            value={formData.age}
-            onChange={handleChange}
-            min="13"
-            max="120"
-            error={errors.age}
-          />
-          <FormField
-            label="Location"
-            name="location"
-            value={formData.location}
-            onChange={handleChange}
-            error={errors.location}
-          />
-        </div>
-
-        <FormField
-          label="Username"
-          name="username"
-          value={formData.username}
-          onChange={handleChange}
-          error={errors.username}
-        />
-
-        <div className="pt-4 border-t border-gray-200">
-          <p className="text-sm text-gray-600 mb-4">
-            Leave password fields empty to keep your current password
-          </p>
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+      <form onSubmit={handleSubmit}>
+        <Stack spacing="medium">
+          <Grid cols={1} mdCols={2}>
             <FormField
-              label="New Password"
-              type="password"
-              name="password"
-              value={formData.password}
+              label="First Name"
+              name="firstName"
+              value={formData.firstName}
               onChange={handleChange}
-              placeholder="Enter new password"
-              error={errors.password}
+              error={errors.firstName}
             />
             <FormField
-              label="Confirm New Password"
-              type="password"
-              name="confirmPassword"
-              value={formData.confirmPassword}
+              label="Last Name"
+              name="lastName"
+              value={formData.lastName}
               onChange={handleChange}
-              placeholder="Confirm new password"
-              error={errors.confirmPassword}
+              error={errors.lastName}
             />
+          </Grid>
+
+          <Grid cols={1} mdCols={2}>
+            <FormField
+              label="Age"
+              type="number"
+              name="age"
+              value={formData.age}
+              onChange={handleChange}
+              min="13"
+              max="120"
+              error={errors.age}
+            />
+            <FormField
+              label="Location"
+              name="location"
+              value={formData.location}
+              onChange={handleChange}
+              error={errors.location}
+            />
+          </Grid>
+
+          <FormField
+            label="Username"
+            name="username"
+            value={formData.username}
+            onChange={handleChange}
+            error={errors.username}
+          />
+
+          <div className="pt-4 border-t border-gray-200">
+            <Text size="sm" color="gray-600" className="mb-4">
+              Leave password fields empty to keep your current password
+            </Text>
+            <Grid cols={1} mdCols={2}>
+              <FormField
+                label="New Password"
+                type="password"
+                name="password"
+                value={formData.password}
+                onChange={handleChange}
+                placeholder="Enter new password"
+                error={errors.password}
+              />
+              <FormField
+                label="Confirm New Password"
+                type="password"
+                name="confirmPassword"
+                value={formData.confirmPassword}
+                onChange={handleChange}
+                placeholder="Confirm new password"
+                error={errors.confirmPassword}
+              />
+            </Grid>
           </div>
-        </div>
 
-        <div className="flex gap-4 pt-4">
-          <SubmitButton
-            isSubmitting={isSubmitting}
-            submitText="Save Changes"
-            submittingText="Saving..."
-          />
-          <button
-            type="button"
-            onClick={onCancel}
-            className="flex-1 py-3 px-4 bg-gray-200 text-gray-700 font-semibold rounded-lg hover:bg-gray-300 transition-colors duration-200 focus:outline-none focus:ring-2 focus:ring-gray-500 focus:ring-offset-2"
-          >
-            Cancel
-          </button>
-        </div>
+          <Grid cols={2} gap="medium" className="pt-4">
+            <Button
+              type="submit"
+              variant="primary"
+              fullWidth
+              isLoading={isSubmitting}
+              loadingText="Saving..."
+            >
+              Save Changes
+            </Button>
+            <Button
+              type="button"
+              variant="secondary"
+              fullWidth
+              onClick={onCancel}
+            >
+              Cancel
+            </Button>
+          </Grid>
+        </Stack>
       </form>
     </Card>
   );

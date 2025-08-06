@@ -1,100 +1,119 @@
-import { createContext, useContext } from "react";
-import { useLocalStorage } from "../hooks/useLocalStorage";
+import { createContext, useContext, useState, useEffect } from "react";
 import { useNavigate } from "@tanstack/react-router";
+import { authAPI, userAPI } from "../utils/api";
 
 const AuthContext = createContext(null);
 
 export function AuthProvider({ children }) {
   const navigate = useNavigate();
-  const [user, setUser, userLoading] = useLocalStorage(
-    "socialconnect-current-user",
-    null
-  );
-  const [users, setUsers, usersLoading] = useLocalStorage(
-    "socialconnect-users",
-    []
-  );
+  const [user, setUser] = useState(null);
+  const [users, setUsers] = useState([]);
+  const [isLoading, setIsLoading] = useState(true);
+  const [error, setError] = useState(null);
 
-  const isLoading = userLoading || usersLoading;
-
-  const handleSignup = (userData) => {
-    // Check if username is unique
-    const usernameExists = users.some((u) => u.username === userData.username);
-    if (usernameExists) {
-      return { success: false, message: "Username already exists" };
-    }
-
-    const newUser = {
-      ...userData,
-      id: Date.now(),
-      // Remove confirmPassword from stored user data
-      confirmPassword: undefined,
+  // Check for existing auth token and fetch user data on mount
+  useEffect(() => {
+    const initializeAuth = async () => {
+      const token = localStorage.getItem("authToken");
+      if (token) {
+        try {
+          const userData = await userAPI.getCurrentUser();
+          setUser(userData.user);
+        } catch (err) {
+          console.error("Failed to fetch user:", err);
+          localStorage.removeItem("authToken");
+        }
+      }
+      setIsLoading(false);
     };
-    setUsers((prev) => [...prev, newUser]);
-    setUser(newUser);
 
-    // Navigate to dashboard after successful signup
-    navigate({ to: "/dashboard" });
-    return { success: true };
+    initializeAuth();
+  }, []);
+
+  // Fetch users list when user is authenticated
+  useEffect(() => {
+    const fetchUsers = async () => {
+      if (user) {
+        try {
+          const data = await userAPI.getAllUsers();
+          setUsers(data.users || []);
+        } catch (err) {
+          console.error("Failed to fetch users:", err);
+        }
+      }
+    };
+
+    fetchUsers();
+  }, [user]);
+
+  const handleSignup = async (userData) => {
+    setError(null);
+    try {
+      const response = await authAPI.signup(userData);
+      setUser(response.user);
+
+      // Navigate to dashboard after successful signup
+      navigate({ to: "/dashboard" });
+      return { success: true };
+    } catch (err) {
+      const message = err.message || "Signup failed";
+      setError(message);
+      return { success: false, message };
+    }
   };
 
-  const handleLogin = (credentials) => {
-    const foundUser = users.find(
-      (u) =>
-        u.username === credentials.username &&
-        u.password === credentials.password
-    );
+  const handleLogin = async (credentials) => {
+    setError(null);
+    try {
+      const response = await authAPI.signin(credentials);
+      setUser(response.user);
 
-    if (!foundUser) {
-      return { success: false, message: "Invalid username or password" };
+      // Navigate to dashboard after successful login
+      navigate({ to: "/dashboard" });
+      return { success: true };
+    } catch (err) {
+      const message = err.message || "Invalid username or password";
+      setError(message);
+      return { success: false, message };
     }
-
-    setUser(foundUser);
-
-    // Navigate to dashboard after successful login
-    navigate({ to: "/dashboard" });
-    return { success: true };
   };
 
   const handleLogout = () => {
+    authAPI.signout();
     setUser(null);
+    setUsers([]);
     // Navigate to login page after logout
     navigate({ to: "/login" });
   };
 
-  const updateUserProfile = (userId, updateData) => {
-    // Check if username is unique (if it's being changed)
-    const existingUser = users.find((u) => u.id === userId);
-    if (!existingUser) {
-      return { success: false, message: "User not found" };
-    }
+  const updateUserProfile = async (userId, updateData) => {
+    setError(null);
+    try {
+      const response = await userAPI.updateProfile(userId, updateData);
 
-    if (updateData.username !== existingUser.username) {
-      const usernameExists = users.some(
-        (u) => u.id !== userId && u.username === updateData.username
-      );
-      if (usernameExists) {
-        return { success: false, message: "Username already exists" };
+      // Update local user state if it's the current user
+      if (user && user.id === userId) {
+        setUser(response.user);
       }
+
+      // Update users list
+      setUsers((prev) =>
+        prev.map((u) => (u.id === userId ? response.user : u))
+      );
+
+      return { success: true };
+    } catch (err) {
+      const message = err.message || "Failed to update profile";
+      setError(message);
+      return { success: false, message };
     }
-
-    // Update user in users array
-    setUsers((prev) =>
-      prev.map((u) => (u.id === userId ? { ...u, ...updateData } : u))
-    );
-
-    // If updating current user, update user state
-    if (user && user.id === userId) {
-      setUser((prev) => ({ ...prev, ...updateData }));
-    }
-
-    return { success: true };
   };
 
   const value = {
     user,
     users,
     isLoading,
+    error,
     handleSignup,
     handleLogin,
     handleLogout,

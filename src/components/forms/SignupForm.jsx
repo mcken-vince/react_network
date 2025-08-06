@@ -1,8 +1,8 @@
 import AuthCard from "./common/AuthCard";
 import FormField from "./common/FormField";
 import ErrorBanner from "./common/ErrorBanner";
-import SubmitButton from "./common/SubmitButton";
 import AuthModeSwitch from "./common/AuthModeSwitch";
+import { Button, Grid, Stack } from "../atoms";
 import { useFormState } from "../../hooks/useFormState";
 import { validateSignupForm } from "../../utils/validation";
 import { useNavigate } from "@tanstack/react-router";
@@ -40,7 +40,7 @@ function SignupForm({ onSignup }) {
       return;
     }
 
-    const result = onSignup(formData);
+    const result = await onSignup(formData);
     if (!result.success) {
       setErrors({ general: result.message });
     }
@@ -59,84 +59,91 @@ function SignupForm({ onSignup }) {
     >
       <ErrorBanner message={errors.general} />
 
-      <form onSubmit={handleSubmit} className="flex flex-col gap-5 w-full">
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+      <form onSubmit={handleSubmit}>
+        <Stack spacing="medium">
+          <Grid cols={1} mdCols={2}>
+            <FormField
+              label="First Name"
+              name="firstName"
+              value={formData.firstName}
+              onChange={handleChange}
+              placeholder="Enter your first name"
+              error={errors.firstName}
+            />
+
+            <FormField
+              label="Last Name"
+              name="lastName"
+              value={formData.lastName}
+              onChange={handleChange}
+              placeholder="Enter your last name"
+              error={errors.lastName}
+            />
+          </Grid>
+
+          <Grid cols={1} mdCols={2}>
+            <FormField
+              label="Age"
+              type="number"
+              name="age"
+              value={formData.age}
+              onChange={handleChange}
+              placeholder="Your age"
+              min="13"
+              max="120"
+              error={errors.age}
+            />
+
+            <FormField
+              label="Location"
+              name="location"
+              value={formData.location}
+              onChange={handleChange}
+              placeholder="City, Country"
+              error={errors.location}
+            />
+          </Grid>
+
           <FormField
-            label="First Name"
-            name="firstName"
-            value={formData.firstName}
+            label="Username"
+            name="username"
+            value={formData.username}
             onChange={handleChange}
-            placeholder="Enter your first name"
-            error={errors.firstName}
+            placeholder="Choose a unique username"
+            error={errors.username}
           />
 
           <FormField
-            label="Last Name"
-            name="lastName"
-            value={formData.lastName}
+            label="Password"
+            type="password"
+            name="password"
+            value={formData.password}
             onChange={handleChange}
-            placeholder="Enter your last name"
-            error={errors.lastName}
-          />
-        </div>
-
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-          <FormField
-            label="Age"
-            type="number"
-            name="age"
-            value={formData.age}
-            onChange={handleChange}
-            placeholder="Your age"
-            min="13"
-            max="120"
-            error={errors.age}
+            placeholder="Create a password (min 6 characters)"
+            error={errors.password}
           />
 
           <FormField
-            label="Location"
-            name="location"
-            value={formData.location}
+            label="Confirm Password"
+            type="password"
+            name="confirmPassword"
+            value={formData.confirmPassword}
             onChange={handleChange}
-            placeholder="City, Country"
-            error={errors.location}
+            placeholder="Confirm your password"
+            error={errors.confirmPassword}
           />
-        </div>
 
-        <FormField
-          label="Username"
-          name="username"
-          value={formData.username}
-          onChange={handleChange}
-          placeholder="Choose a unique username"
-          error={errors.username}
-        />
-
-        <FormField
-          label="Password"
-          type="password"
-          name="password"
-          value={formData.password}
-          onChange={handleChange}
-          placeholder="Create a password (min 6 characters)"
-          error={errors.password}
-        />
-
-        <FormField
-          label="Confirm Password"
-          type="password"
-          name="confirmPassword"
-          value={formData.confirmPassword}
-          onChange={handleChange}
-          placeholder="Confirm your password"
-          error={errors.confirmPassword}
-        />
-
-        <SubmitButton
-          isSubmitting={isSubmitting}
-          submitText="Create Account"
-          submittingText="Creating Account..."
-        />
+          <Button
+            type="submit"
+            variant="primary"
+            size="large"
+            fullWidth
+            isLoading={isSubmitting}
+            loadingText="Creating Account..."
+          >
+            Create Account
+          </Button>
+        </Stack>
       </form>
 
       <AuthModeSwitch isLoginMode={false} onSwitch={handleSwitchMode} />

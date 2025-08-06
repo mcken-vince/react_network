@@ -1,11 +1,24 @@
+import { Heading, Text, Container, Stack } from "../../atoms";
+
 function AuthCard({ title, subtitle, children }) {
   return (
     <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-primary-600 to-secondary-600 p-5">
-      <div className="bg-white rounded-2xl p-10 shadow-2xl w-full max-w-lg">
-        <h1 className="text-center text-gray-800 mb-2 text-4xl font-bold">{title}</h1>
-        <p className="text-center text-gray-600 mb-8">{subtitle}</p>
-        {children}
-      </div>
+      <Container 
+        size="small" 
+        className="bg-white rounded-2xl p-10 shadow-2xl w-full max-w-lg"
+      >
+        <Stack spacing="large" className="text-center">
+          <Stack spacing="small">
+            <Heading level={1} color="gray-800" className="mb-0">
+              {title}
+            </Heading>
+            <Text color="gray-600" className="mb-0">
+              {subtitle}
+            </Text>
+          </Stack>
+          {children}
+        </Stack>
+      </Container>
     </div>
   );
 }

@@ -1,35 +1,63 @@
+import { Label, Text, Input, Stack } from "../../atoms";
+
+/**
+ * Reusable form field component with label and error handling
+ * @param {string} label - Field label text
+ * @param {string} name - Field name attribute
+ * @param {string} type - Input type (text, password, email, number, etc.)
+ * @param {string} value - Field value
+ * @param {function} onChange - Change handler
+ * @param {string} error - Error message to display
+ * @param {string} placeholder - Placeholder text
+ * @param {boolean} required - Whether field is required
+ * @param {string} className - Additional CSS classes for the input
+ * @param {object} props - Additional input props
+ */
 function FormField({
   label,
-  type = "text",
   name,
+  type = "text",
   value,
   onChange,
-  placeholder,
   error,
-  min,
-  max,
+  placeholder,
+  required = false,
   className = "",
+  ...props
 }) {
   return (
-    <div className="flex flex-col gap-1.5 w-full">
-      <label htmlFor={name} className="font-semibold text-gray-800 text-sm">
+    <Stack spacing="small" className="w-full">
+      <Label htmlFor={name} required={required}>
         {label}
-      </label>
-      <input
-        type={type}
+      </Label>
+      
+      <Input
         id={name}
         name={name}
+        type={type}
         value={value}
         onChange={onChange}
-        className={`w-full p-3 px-4 border-2 rounded-lg text-base transition-colors duration-200 focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-transparent ${
-          error ? "border-red-500" : "border-gray-300 hover:border-gray-400"
-        } ${className}`}
         placeholder={placeholder}
-        min={min}
-        max={max}
+        variant={error ? 'error' : 'default'}
+        fullWidth
+        className={className}
+        aria-invalid={!!error}
+        aria-describedby={error ? `${name}-error` : undefined}
+        {...props}
       />
-      {error && <span className="text-red-500 text-xs mt-1">{error}</span>}
-    </div>
+      
+      {error && (
+        <Text
+          id={`${name}-error`}
+          size="sm"
+          color="red-500"
+          className="mt-1"
+          role="alert"
+        >
+          {error}
+        </Text>
+      )}
+    </Stack>
   );
 }
 

@@ -1,10 +1,20 @@
+import { Text, Flex } from "./atoms";
+
 function Loading() {
   return (
-    <div className="min-h-screen flex items-center justify-center">
-      <div className="text-lg text-primary-600 animate-pulse">
+    <Flex 
+      justify="center" 
+      align="center" 
+      className="min-h-screen"
+    >
+      <Text 
+        size="lg" 
+        color="primary-600" 
+        className="animate-pulse mb-0"
+      >
         Loading...
-      </div>
-    </div>
+      </Text>
+    </Flex>
   );
 }
 

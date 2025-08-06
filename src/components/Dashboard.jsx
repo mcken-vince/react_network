@@ -5,6 +5,7 @@ import {
   ProfileSection,
   UsersSection,
 } from "./dashboard/index";
+import { Container, Grid, Stack, Button } from "./atoms";
 
 /**
  * Refactored Dashboard component using reusable components
@@ -26,26 +27,28 @@ function Dashboard({ user, onLogout, allUsers }) {
         appTitle="SocialConnect"
       />
 
-      <main className="p-6 max-w-screen-xl mx-auto grid grid-cols-1 md:grid-cols-3 gap-6">
-        <div className="md:col-span-1">
-          <ProfileSection user={user} />
-          <div className="mt-4">
-            <Link 
-              to={`/profile/${user.id}`} 
-              className="block text-center py-2 px-4 bg-primary-600 text-white rounded-lg hover:bg-primary-700 transition-colors duration-200"
-            >
-              View Full Profile
-            </Link>
+      <Container size="large" padding="medium">
+        <Grid cols={1} mdCols={3} gap="medium" className="min-h-screen">
+          <div className="md:col-span-1">
+            <Stack spacing="medium">
+              <ProfileSection user={user} />
+              <Link 
+                to={`/profile/${user.id}`}
+                className="block text-center py-2 px-4 bg-primary-600 text-white rounded-lg hover:bg-primary-700 transition-colors duration-200"
+              >
+                View Full Profile
+              </Link>
+            </Stack>
           </div>
-        </div>
 
-        <div className="md:col-span-2">
-          <UsersSection
-            users={otherUsers}
-            emptyMessage="No other users yet. Invite your friends!"
-          />
-        </div>
-      </main>
+          <div className="md:col-span-2">
+            <UsersSection
+              users={otherUsers}
+              emptyMessage="No other users yet. Invite your friends!"
+            />
+          </div>
+        </Grid>
+      </Container>
     </div>
   );
 }

@@ -1,4 +1,5 @@
 import { Avatar, Card, UserInfo } from "../common";
+import { Flex } from "../atoms";
 
 /**
  * UserCard component for displaying individual user information
@@ -14,13 +15,15 @@ function UserCard({ user, onClick, hoverable = true }) {
   };
 
   return (
-    <Card className="flex items-center gap-4" hoverable={hoverable} onClick={handleClick}>
-      <Avatar
-        firstName={user.firstName}
-        lastName={user.lastName}
-        size="medium"
-      />
-      <UserInfo user={user} variant="compact" />
+    <Card hoverable={hoverable} onClick={handleClick}>
+      <Flex align="center" gap="medium">
+        <Avatar
+          firstName={user.firstName}
+          lastName={user.lastName}
+          size="medium"
+        />
+        <UserInfo user={user} variant="compact" />
+      </Flex>
     </Card>
   );
 }

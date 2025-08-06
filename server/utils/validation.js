@@ -79,3 +79,45 @@ export const validateLogin = (data) => {
   
   return { error: null, data };
 };
+
+export const validateProfileUpdate = (data) => {
+  const errors = {};
+  
+  // All fields are optional for profile update
+  if (data.firstName !== undefined) {
+    const firstNameError = validateRequired(data.firstName, "First name");
+    if (firstNameError) errors.firstName = firstNameError;
+  }
+  
+  if (data.lastName !== undefined) {
+    const lastNameError = validateRequired(data.lastName, "Last name");
+    if (lastNameError) errors.lastName = lastNameError;
+  }
+  
+  if (data.age !== undefined) {
+    const ageError = validateAge(data.age);
+    if (ageError) errors.age = ageError;
+  }
+  
+  if (data.location !== undefined) {
+    const locationError = validateRequired(data.location, "Location");
+    if (locationError) errors.location = locationError;
+  }
+  
+  if (data.username !== undefined) {
+    const usernameError = validateUsername(data.username);
+    if (usernameError) errors.username = usernameError;
+  }
+  
+  // Password is optional for profile update
+  if (data.password !== undefined && data.password !== "") {
+    const passwordError = validatePassword(data.password, false);
+    if (passwordError) errors.password = passwordError;
+  }
+  
+  if (Object.keys(errors).length > 0) {
+    return { error: { message: "Validation failed", errors }, data: null };
+  }
+  
+  return { error: null, data };
+};

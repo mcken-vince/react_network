@@ -115,4 +115,84 @@ export const getAllUsers = async () => {
   }
 };
 
+export const updateUser = async (id, userData) => {
+  const client = await pool.connect();
+  
+  try {
+    // Build dynamic query based on provided fields
+    const fields = [];
+    const values = [];
+    let paramCount = 1;
+    
+    if (userData.firstName !== undefined) {
+      fields.push(`first_name = $${paramCount}`);
+      values.push(userData.firstName);
+      paramCount++;
+    }
+    
+    if (userData.lastName !== undefined) {
+      fields.push(`last_name = $${paramCount}`);
+      values.push(userData.lastName);
+      paramCount++;
+    }
+    
+    if (userData.age !== undefined) {
+      fields.push(`age = $${paramCount}`);
+      values.push(userData.age);
+      paramCount++;
+    }
+    
+    if (userData.location !== undefined) {
+      fields.push(`location = $${paramCount}`);
+      values.push(userData.location);
+      paramCount++;
+    }
+    
+    if (userData.username !== undefined) {
+      fields.push(`username = $${paramCount}`);
+      values.push(userData.username);
+      paramCount++;
+    }
+    
+    if (userData.password !== undefined) {
+      const hashedPassword = await bcrypt.hash(userData.password, 12);
+      fields.push(`password = $${paramCount}`);
+      values.push(hashedPassword);
+      paramCount++;
+    }
+    
+    // Always update the updated_at timestamp
+    fields.push(`updated_at = $${paramCount}`);
+    values.push(new Date());
+    paramCount++;
+    
+    // Add the user ID as the last parameter
+    values.push(id);
+    
+    if (fields.length === 1) { // Only updated_at was added
+      throw new Error('No fields to update');
+    }
+    
+    const query = `
+      UPDATE users 
+      SET ${fields.join(', ')} 
+      WHERE id = $${paramCount} 
+      RETURNING *
+    `;
+    
+    const result = await client.query(query, values);
+    
+    if (result.rows.length === 0) {
+      return null; // User not found
+    }
+    
+    return new User(result.rows[0]);
+  } catch (error) {
+    console.error('Error updating user:', error);
+    throw error;
+  } finally {
+    client.release();
+  }
+};
+
 export default User;

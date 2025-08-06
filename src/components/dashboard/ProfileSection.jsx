@@ -1,4 +1,5 @@
 import { Avatar, Card, UserInfo } from "../common";
+import { Heading, Flex, Stack } from "../atoms";
 
 /**
  * Profile section component displaying current user's profile
@@ -7,19 +8,26 @@ import { Avatar, Card, UserInfo } from "../common";
  */
 function ProfileSection({ user, title = "Your Profile" }) {
   return (
-    <section className="flex flex-col">
-      <h2 className="text-gray-800 mb-4 text-2xl font-semibold">{title}</h2>
+    <Stack as="section" spacing="medium">
+      <Heading level={2} color="gray-800" className="mb-0">
+        {title}
+      </Heading>
       <Card className="p-6">
-        <div className="flex items-center gap-5 md:flex-row flex-col md:text-left text-center">
+        <Flex 
+          direction="col" 
+          align="center"
+          gap="large"
+          className="md:flex-row md:items-center md:text-left text-center"
+        >
           <Avatar 
             firstName={user.firstName} 
             lastName={user.lastName} 
             size="large" 
           />
           <UserInfo user={user} variant="detailed" />
-        </div>
+        </Flex>
       </Card>
-    </section>
+    </Stack>
   );
 }
 

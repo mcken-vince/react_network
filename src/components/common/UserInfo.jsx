@@ -1,3 +1,5 @@
+import { Heading, Text, Stack } from "../atoms";
+
 /**
  * Reusable UserInfo component for displaying user details
  * @param {object} user - User object containing user information
@@ -8,28 +10,34 @@ function UserInfo({ user, variant = "compact", className = "" }) {
   const { firstName, lastName, username, location, age } = user;
   const fullName = `${firstName} ${lastName}`;
 
-  const variantStyles = {
-    compact: {
-      name: "text-[1.1rem] mb-1",
-      info: "text-sm my-0.5"
-    },
-    detailed: {
-      name: "text-[1.3rem] mb-2",
-      info: "text-sm my-1"
-    }
+  const spacingByVariant = {
+    compact: "small",
+    detailed: "medium"
   };
 
-  const styles = variantStyles[variant];
+  const headingLevel = variant === "detailed" ? 3 : 4;
 
   return (
-    <div className={`flex flex-col ${className}`}>
-      <h3 className={`m-0 text-gray-800 font-semibold ${styles.name}`}>{fullName}</h3>
-      <p className={`text-gray-600 ${styles.info}`}>@{username}</p>
-      <p className={`text-gray-600 ${styles.info}`}>📍 {location}</p>
+    <Stack spacing={spacingByVariant[variant]} className={className}>
+      <Heading 
+        level={headingLevel} 
+        color="gray-800" 
+        className="m-0"
+      >
+        {fullName}
+      </Heading>
+      <Text size="sm" color="gray-600" className="my-0">
+        @{username}
+      </Text>
+      <Text size="sm" color="gray-600" className="my-0">
+        📍 {location}
+      </Text>
       {variant === "detailed" && age && (
-        <p className={`text-gray-600 ${styles.info}`}>🎂 {age} years old</p>
+        <Text size="sm" color="gray-600" className="my-0">
+          🎂 {age} years old
+        </Text>
       )}
-    </div>
+    </Stack>
   );
 }
 

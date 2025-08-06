@@ -1,4 +1,5 @@
 import { Card } from "../common";
+import { Text, Stack } from "../atoms";
 
 /**
  * Empty state component for when no data is available
@@ -9,9 +10,13 @@ import { Card } from "../common";
 function EmptyState({ message, icon = "👥", action = null }) {
   return (
     <Card className="flex flex-col items-center justify-center p-10 text-center min-h-[200px]">
-      {icon && <span className="text-5xl mb-4">{icon}</span>}
-      <p className="text-gray-600 text-base m-0 mb-4">{message}</p>
-      {action && <div className="mt-4">{action}</div>}
+      <Stack spacing="medium" className="items-center">
+        {icon && <span className="text-5xl">{icon}</span>}
+        <Text color="gray-600" className="m-0">
+          {message}
+        </Text>
+        {action && <div>{action}</div>}
+      </Stack>
     </Card>
   );
 }

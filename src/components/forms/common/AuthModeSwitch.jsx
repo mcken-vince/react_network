@@ -1,17 +1,27 @@
+import { Button, Flex, Text } from "../../atoms";
+
+/**
+ * AuthModeSwitch component for switching between login and signup modes
+ * @param {boolean} isLoginMode - Whether currently in login mode
+ * @param {function} onSwitch - Function to call when switching modes
+ */
 function AuthModeSwitch({ isLoginMode, onSwitch }) {
   return (
-    <div className="text-center mt-6">
-      <p className="text-gray-600">
-        {isLoginMode ? "Don't have an account? " : "Already have an account? "}
-        <button
-          type="button"
-          onClick={onSwitch}
-          className="text-primary-600 font-semibold hover:text-primary-700 focus:outline-none focus:underline transition-colors duration-200"
-        >
-          {isLoginMode ? "Sign Up" : "Sign In"}
-        </button>
-      </p>
-    </div>
+    <Flex justify="center" align="center" gap="small" className="pt-6 border-t border-gray-200">
+      <Text size="sm" color="gray-600">
+        {isLoginMode
+          ? "Don't have an account?"
+          : "Already have an account?"}
+      </Text>
+      <Button
+        variant="ghost"
+        size="small"
+        onClick={onSwitch}
+        className="font-semibold text-primary-600 hover:text-primary-700"
+      >
+        {isLoginMode ? "Sign Up" : "Sign In"}
+      </Button>
+    </Flex>
   );
 }
 
