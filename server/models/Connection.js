@@ -106,6 +106,36 @@ export const getConnectionStatus = async (userId1, userId2) => {
   }
 };
 
+// Get users with their connection status relative to a specific user
+export const getUsersWithConnectionStatus = async (currentUserId) => {
+  try {
+    const { User } = await import('./sequelize/index.js');
+    
+    const users = await User.findAll({
+      attributes: ['id', 'firstName', 'lastName', 'username', 'location'],
+      where: {
+        id: { [sequelize.Sequelize.Op.ne]: currentUserId } // Exclude current user
+      }
+    });
+
+    // Get all connection statuses in batch
+    const userWithStatus = await Promise.all(
+      users.map(async (user) => {
+        const connectionStatus = await SequelizeConnection.getConnectionStatus(currentUserId, user.id);
+        return {
+          ...user.toJSON(),
+          connectionStatus
+        };
+      })
+    );
+
+    return userWithStatus;
+  } catch (error) {
+    console.error('Error getting users with connection status:', error);
+    throw error;
+  }
+};
+
 // Remove/cancel a connection with transaction
 export const removeConnection = async (connectionId, userId) => {
   const transaction = await sequelize.transaction();

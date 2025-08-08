@@ -97,6 +97,10 @@ export const userAPI = {
   async getAllUsers() {
     return apiRequest('/users');
   },
+
+  async getAllUsersWithConnectionStatus() {
+    return apiRequest('/users?includeConnectionStatus=true');
+  },
   
   async getUser(userId) {
     return apiRequest(`/users/${userId}`);

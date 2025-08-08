@@ -1,126 +1,61 @@
-import { createContext, useContext, useState, useEffect } from "react";
-import { notificationAPI } from "../utils/api";
+import { createContext } from "react";
+import {
+  useNotificationsList,
+  useUnreadNotificationCount,
+  useMarkNotificationAsRead,
+  useMarkAllNotificationsAsRead,
+  useDeleteNotification,
+} from "../hooks/useNotifications";
 
 const NotificationContext = createContext();
 
-export const useNotifications = () => {
-  const context = useContext(NotificationContext);
-  if (!context) {
-    throw new Error(
-      "useNotifications must be used within a NotificationProvider"
-    );
-  }
-  return context;
-};
+export { NotificationContext };
 
 export const NotificationProvider = ({ children }) => {
-  const [notifications, setNotifications] = useState([]);
-  const [unreadCount, setUnreadCount] = useState(0);
-  const [isLoading, setIsLoading] = useState(false);
+  // Use React Query hooks for data and mutations
+  const {
+    data: notifications = [],
+    isLoading,
+    refetch: refetchNotifications,
+  } = useNotificationsList();
 
-  // Load notifications
-  const loadNotifications = async (options = {}) => {
-    try {
-      setIsLoading(true);
-      const response = await notificationAPI.getNotifications(options);
-      setNotifications(response.notifications || []);
-    } catch (error) {
-      console.error("Error loading notifications:", error);
-      setNotifications([]);
-    } finally {
-      setIsLoading(false);
-    }
+  const { data: unreadCount = 0, refetch: refetchUnreadCount } =
+    useUnreadNotificationCount();
+
+  const markAsReadMutation = useMarkNotificationAsRead();
+  const markAllAsReadMutation = useMarkAllNotificationsAsRead();
+  const deleteNotificationMutation = useDeleteNotification();
+
+  // Load notifications (refetch)
+  const loadNotifications = async () => {
+    return refetchNotifications();
   };
 
-  // Load unread count
+  // Load unread count (refetch)
   const loadUnreadCount = async () => {
-    try {
-      const response = await notificationAPI.getUnreadCount();
-      setUnreadCount(response.count || 0);
-    } catch (error) {
-      console.error("Error loading unread count:", error);
-      setUnreadCount(0);
-    }
+    return refetchUnreadCount();
   };
 
   // Mark notification as read
   const markAsRead = async (notificationId) => {
-    try {
-      await notificationAPI.markAsRead(notificationId);
-
-      // Update local state
-      setNotifications((prev) =>
-        prev.map((notification) =>
-          notification.id === notificationId
-            ? { ...notification, isRead: true }
-            : notification
-        )
-      );
-
-      // Update unread count
-      setUnreadCount((prev) => Math.max(0, prev - 1));
-
-      return true;
-    } catch (error) {
-      console.error("Error marking notification as read:", error);
-      return false;
-    }
+    return markAsReadMutation.mutateAsync(notificationId);
   };
 
-  // Mark all as read
+  // Mark all notifications as read
   const markAllAsRead = async () => {
-    try {
-      await notificationAPI.markAllAsRead();
-
-      // Update local state
-      setNotifications((prev) =>
-        prev.map((notification) => ({ ...notification, isRead: true }))
-      );
-
-      setUnreadCount(0);
-
-      return true;
-    } catch (error) {
-      console.error("Error marking all notifications as read:", error);
-      return false;
-    }
+    return markAllAsReadMutation.mutateAsync();
   };
 
-  // Delete notification
+  // Delete a notification
   const deleteNotification = async (notificationId) => {
-    try {
-      await notificationAPI.deleteNotification(notificationId);
-
-      // Find the notification to check if it was unread
-      const notification = notifications.find((n) => n.id === notificationId);
-      const wasUnread = notification && !notification.isRead;
-
-      // Update local state
-      setNotifications((prev) => prev.filter((n) => n.id !== notificationId));
-
-      // Update unread count if the deleted notification was unread
-      if (wasUnread) {
-        setUnreadCount((prev) => Math.max(0, prev - 1));
-      }
-
-      return true;
-    } catch (error) {
-      console.error("Error deleting notification:", error);
-      return false;
-    }
+    return deleteNotificationMutation.mutateAsync(notificationId);
   };
 
-  // Auto-refresh unread count periodically
-  useEffect(() => {
-    const interval = setInterval(loadUnreadCount, 30000); // Refresh every 30 seconds
-    return () => clearInterval(interval);
-  }, []);
-
-  // Initial load
-  useEffect(() => {
-    loadNotifications();
-    loadUnreadCount();
-  }, []);
+  // Refresh both notifications and unread count
+  const refreshNotifications = () => {
+    refetchNotifications();
+    refetchUnreadCount();
+  };
 
   const value = {
     notifications,
@@ -131,10 +66,11 @@ export const NotificationProvider = ({ children }) => {
     markAsRead,
     markAllAsRead,
     deleteNotification,
-    refreshNotifications: () => {
-      loadNotifications();
-      loadUnreadCount();
-    },
+    refreshNotifications,
+    // Expose mutation states for UI feedback
+    isMarkingAsRead: markAsReadMutation.isPending,
+    isMarkingAllAsRead: markAllAsReadMutation.isPending,
+    isDeletingNotification: deleteNotificationMutation.isPending,
   };
 
   return (

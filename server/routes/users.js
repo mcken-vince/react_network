@@ -8,7 +8,17 @@ const router = express.Router();
 // Get all users (protected route)
 router.get('/', authenticateToken, async (req, res) => {
   try {
-    const users = await getAllUsers();
+    const { includeConnectionStatus } = req.query;
+    let users;
+    
+    if (includeConnectionStatus === 'true') {
+      // Import here to avoid circular dependency
+      const { getUsersWithConnectionStatus } = await import('../models/Connection.js');
+      users = await getUsersWithConnectionStatus(req.userId);
+    } else {
+      users = await getAllUsers();
+    }
+    
     res.json({ users });
   } catch (error) {
     console.error('Get users error:', error);

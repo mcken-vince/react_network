@@ -4,7 +4,7 @@ import ErrorBanner from "../forms/common/ErrorBanner";
 import { Button, Grid, Stack, Text, Heading } from "../atoms";
 import { useFormState } from "../../hooks/useFormState";
 import { validateSignupForm } from "../../utils/validation";
-import { useAuth } from "../../context/AuthContext";
+import { useAuth } from "../../hooks/useAuth";
 
 /**
  * Profile edit component for editing user information
@@ -75,7 +75,9 @@ function ProfileEdit({ user, onSave, onCancel }) {
 
   return (
     <Card className="p-6">
-      <Heading level={3} className="mb-6">Edit Profile</Heading>
+      <Heading level={3} className="mb-6">
+        Edit Profile
+      </Heading>
 
       <ErrorBanner message={errors.general} />
 

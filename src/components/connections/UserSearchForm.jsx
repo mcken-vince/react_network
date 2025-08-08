@@ -1,94 +1,59 @@
 import { useState } from "react";
 import { Input, Button, Stack, Flex, Text } from "../atoms";
 import { Card } from "../common";
-import { userAPI, connectionAPI } from "../../utils/api";
+import {
+  useUsersWithConnectionStatus,
+  usePrefetchUser,
+} from "../../hooks/useUsers";
+import { useSendConnectionRequest } from "../../hooks/useConnections";
 import UserSearchResult from "./UserSearchResult";
 
 const UserSearchForm = ({ currentUser, onConnectionUpdate }) => {
   const [searchTerm, setSearchTerm] = useState("");
-  const [searchResults, setSearchResults] = useState([]);
-  const [loading, setLoading] = useState(false);
+  const [filteredResults, setFilteredResults] = useState([]);
   const [hasSearched, setHasSearched] = useState(false);
 
-  const handleSearch = async (e) => {
+  // React Query hooks
+  const { data: usersWithStatus = [], isLoading: loading } =
+    useUsersWithConnectionStatus();
+  const sendRequestMutation = useSendConnectionRequest();
+  const prefetchUser = usePrefetchUser();
+
+  const handleSearch = (e) => {
     e.preventDefault();
     if (!searchTerm.trim()) return;
 
-    setLoading(true);
     setHasSearched(true);
 
-    try {
-      const response = await userAPI.getAllUsers();
-      const allUsers = response.users || response || [];
+    // Filter users based on search term and exclude current user
+    const filtered = usersWithStatus.filter((user) => {
+      const searchLower = searchTerm.toLowerCase();
+      const fullName = `${user.firstName} ${user.lastName}`.toLowerCase();
+      const username = user.username.toLowerCase();
+      const location = user.location?.toLowerCase() || "";
 
-      // Filter users based on search term and exclude current user
-      const filtered = allUsers.filter((user) => {
-        const searchLower = searchTerm.toLowerCase();
-        const fullName = `${user.firstName} ${user.lastName}`.toLowerCase();
-        const username = user.username.toLowerCase();
-        const location = user.location?.toLowerCase() || "";
-
-        return (
-          user.id !== currentUser.id &&
-          (fullName.includes(searchLower) ||
-            username.includes(searchLower) ||
-            location.includes(searchLower))
-        );
-      });
-
-      // Get connection status for each user
-      const resultsWithStatus = await Promise.all(
-        filtered.map(async (user) => {
-          try {
-            const statusResponse = await connectionAPI.getConnectionStatus(
-              user.id
-            );
-            return {
-              ...user,
-              connectionStatus: statusResponse.status,
-            };
-          } catch {
-            return {
-              ...user,
-              connectionStatus: null,
-            };
-          }
-        })
+      return (
+        user.id !== currentUser.id &&
+        (fullName.includes(searchLower) ||
+          username.includes(searchLower) ||
+          location.includes(searchLower))
       );
+    });
 
-      setSearchResults(resultsWithStatus);
-    } catch (error) {
-      console.error("Error searching users:", error);
-      setSearchResults([]);
-    } finally {
-      setLoading(false);
-    }
+    setFilteredResults(filtered);
   };
 
   const handleSendRequest = async (userId) => {
     try {
-      await connectionAPI.sendConnectionRequest(userId);
-
-      // Update the search results to reflect the new connection status
-      setSearchResults((prev) =>
-        prev.map((user) =>
-          user.id === userId
-            ? {
-                ...user,
-                connectionStatus: {
-                  status: "pending",
-                  isRequester: true,
-                },
-              }
-            : user
-        )
-      );
-
+      await sendRequestMutation.mutateAsync(userId);
       onConnectionUpdate();
     } catch (error) {
       console.error("Error sending connection request:", error);
     }
   };
+
+  // Get the search results to display
+  const searchResults = hasSearched ? filteredResults : [];
 
   return (
     <Stack spacing="lg">
@@ -139,6 +104,7 @@ const UserSearchForm = ({ currentUser, onConnectionUpdate }) => {
                   key={user.id}
                   user={user}
                   onSendRequest={() => handleSendRequest(user.id)}
+                  onMouseEnter={() => prefetchUser(user.id)}
                 />
               ))}
             </>

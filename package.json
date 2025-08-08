@@ -13,6 +13,8 @@
     "install:server": "cd server && npm install"
   },
   "dependencies": {
+    "@tanstack/react-query": "^5.84.2",
+    "@tanstack/react-query-devtools": "^5.84.2",
     "@tanstack/react-router": "^1.130.9",
     "react": "^19.1.0",
     "react-dom": "^19.1.0"

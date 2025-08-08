@@ -1,7 +1,7 @@
 import { Link, useLocation } from "@tanstack/react-router";
 import { Button, Flex, Heading, Text } from "../atoms";
 import { NotificationBell } from "../notifications";
-import { useAuth } from "../../context/AuthContext";
+import { useAuth } from "../../hooks/useAuth";
 
 /**
  * Layout component for authenticated users with persistent navigation

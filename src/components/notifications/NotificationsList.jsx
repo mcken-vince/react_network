@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { Button, Flex, Stack, Text, Heading } from "../atoms";
-import { useNotifications } from "../../context/NotificationContext";
+import { useNotifications } from "../../hooks/useNotificationsContext";
 import NotificationCard from "./NotificationCard";
 
 const NotificationsList = () => {

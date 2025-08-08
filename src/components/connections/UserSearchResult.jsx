@@ -2,7 +2,7 @@ import { Link } from "@tanstack/react-router";
 import { Card } from "../common";
 import { Button, Flex, Text, Stack } from "../atoms";
 
-const UserSearchResult = ({ user, onSendRequest }) => {
+const UserSearchResult = ({ user, onSendRequest, onMouseEnter }) => {
   const getConnectionButton = () => {
     const status = user.connectionStatus;
 
@@ -57,7 +57,7 @@ const UserSearchResult = ({ user, onSendRequest }) => {
   };
 
   return (
-    <Card>
+    <Card onMouseEnter={onMouseEnter}>
       <Flex justify="between" align="center">
         <Stack spacing="sm">
           <Text size="lg" weight="semibold">

@@ -1,7 +1,7 @@
 import { useState } from "react";
 import { Button, Flex, Text, Stack } from "../atoms";
 import { Card } from "../common";
-import { useNotifications } from "../../context/NotificationContext";
+import { useNotifications } from "../../hooks/useNotificationsContext";
 
 const NotificationCard = ({ notification }) => {
   const { markAsRead, deleteNotification } = useNotifications();

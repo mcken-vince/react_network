@@ -1,6 +1,6 @@
 import { useState, useRef, useEffect } from "react";
 import { Button, Text, Stack } from "../atoms";
-import { useNotifications } from "../../context/NotificationContext";
+import { useNotifications } from "../../hooks/useNotificationsContext";
 import NotificationsList from "./NotificationsList";
 
 const NotificationBell = () => {

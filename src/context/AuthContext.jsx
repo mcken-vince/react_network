@@ -1,56 +1,38 @@
-import { createContext, useContext, useState, useEffect } from "react";
+import { createContext, useState } from "react";
 import { useNavigate } from "@tanstack/react-router";
+import { useQueryClient } from "@tanstack/react-query";
 import { authAPI, userAPI } from "../utils/api";
+import { useCurrentUser, useUsers, userKeys } from "../hooks/useUsers";
 
 const AuthContext = createContext(null);
 
+export { AuthContext };
+
 export function AuthProvider({ children }) {
   const navigate = useNavigate();
-  const [user, setUser] = useState(null);
-  const [users, setUsers] = useState([]);
-  const [isLoading, setIsLoading] = useState(true);
+  const queryClient = useQueryClient();
   const [error, setError] = useState(null);
 
-  // Check for existing auth token and fetch user data on mount
-  useEffect(() => {
-    const initializeAuth = async () => {
-      const token = localStorage.getItem("auth-token");
-      if (token) {
-        try {
-          const userData = await userAPI.getCurrentUser();
-          setUser(userData.user);
-        } catch (err) {
-          console.error("Failed to fetch user:", err);
-          localStorage.removeItem("auth-token");
-        }
-      }
-      setIsLoading(false);
-    };
+  // Use React Query for current user data
+  const {
+    data: userData,
+    isLoading,
+    error: queryError,
+    refetch: refetchCurrentUser,
+  } = useCurrentUser();
 
-    initializeAuth();
-  }, []);
+  const user = userData?.user;
 
-  // Fetch users list when user is authenticated
-  useEffect(() => {
-    const fetchUsers = async () => {
-      if (user) {
-        try {
-          const data = await userAPI.getAllUsers();
-          setUsers(data.users || []);
-        } catch (err) {
-          console.error("Failed to fetch users:", err);
-        }
-      }
-    };
-
-    fetchUsers();
-  }, [user]);
+  // Get users list using React Query
+  const { data: users = [] } = useUsers();
 
   const handleSignup = async (userData) => {
     setError(null);
     try {
       const response = await authAPI.signup(userData);
-      setUser(response.user);
+
+      // Update the current user cache with the new user data
+      queryClient.setQueryData(userKeys.current(), response);
 
       // Navigate to dashboard after successful signup
       navigate({ to: "/dashboard" });
@@ -66,7 +48,9 @@ export function AuthProvider({ children }) {
     setError(null);
     try {
       const response = await authAPI.signin(credentials);
-      setUser(response.user);
+
+      // Update the current user cache with the new user data
+      queryClient.setQueryData(userKeys.current(), response);
 
       // Navigate to dashboard after successful login
       navigate({ to: "/dashboard" });
@@ -80,8 +64,10 @@ export function AuthProvider({ children }) {
 
   const handleLogout = () => {
     authAPI.signout();
-    setUser(null);
-    setUsers([]);
+
+    // Clear all React Query caches
+    queryClient.clear();
+
     // Navigate to login page after logout
     navigate({ to: "/login" });
   };
@@ -91,15 +77,16 @@ export function AuthProvider({ children }) {
     try {
       const response = await userAPI.updateProfile(userId, updateData);
 
-      // Update local user state if it's the current user
+      // Update React Query caches
+      queryClient.setQueryData(userKeys.detail(userId), response);
+
+      // Update current user cache if it's the same user
       if (user && user.id === userId) {
-        setUser(response.user);
+        queryClient.setQueryData(userKeys.current(), response);
       }
 
-      // Update users list
-      setUsers((prev) =>
-        prev.map((u) => (u.id === userId ? response.user : u))
-      );
+      // Invalidate users list to reflect changes
+      queryClient.invalidateQueries(userKeys.lists());
 
       return { success: true };
     } catch (err) {
@@ -113,20 +100,13 @@ export function AuthProvider({ children }) {
     user,
     users,
     isLoading,
-    error,
+    error: error || queryError?.message,
     handleSignup,
     handleLogin,
     handleLogout,
     updateUserProfile,
+    refetchCurrentUser,
   };
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;
-}
-
-export function useAuth() {
-  const context = useContext(AuthContext);
-  if (!context) {
-    throw new Error("useAuth must be used within an AuthProvider");
-  }
-  return context;
 }

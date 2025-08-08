@@ -1,7 +1,14 @@
-import { useState, useEffect } from "react";
+import React, { useState } from "react";
 import { Container, Heading, Stack, Flex } from "../atoms";
-import { connectionAPI } from "../../utils/api";
-import { useNotifications } from "../../context/NotificationContext";
+import { useNotifications } from "../../hooks/useNotificationsContext";
+import {
+  usePendingRequests,
+  useSentRequests,
+  useConnections,
+  useAcceptConnectionRequest,
+  useRejectConnectionRequest,
+  useRemoveConnection,
+} from "../../hooks/useConnections";
 import ConnectionRequestCard from "./ConnectionRequestCard";
 import ConnectionCard from "./ConnectionCard";
 import UserSearchForm from "./UserSearchForm";
@@ -9,10 +16,21 @@ import UserSearchForm from "./UserSearchForm";
 const ConnectionsPage = ({ user }) => {
   const { refreshNotifications } = useNotifications();
   const [activeTab, setActiveTab] = useState("search");
-  const [pendingRequests, setPendingRequests] = useState([]);
-  const [sentRequests, setSentRequests] = useState([]);
-  const [connections, setConnections] = useState([]);
-  const [loading, setLoading] = useState(false);
+
+  // React Query hooks for data
+  const { data: pendingRequests = [], isLoading: isPendingLoading } =
+    usePendingRequests();
+  const { data: sentRequests = [], isLoading: isSentLoading } =
+    useSentRequests();
+  const { data: connections = [], isLoading: isConnectionsLoading } =
+    useConnections();
+
+  // React Query hooks for mutations
+  const acceptRequestMutation = useAcceptConnectionRequest();
+  const rejectRequestMutation = useRejectConnectionRequest();
+  const removeConnectionMutation = useRemoveConnection();
+
+  const loading = isPendingLoading || isSentLoading || isConnectionsLoading;
 
   const tabs = [
     { id: "search", label: "Find Users", icon: "🔍" },
@@ -21,33 +39,9 @@ const ConnectionsPage = ({ user }) => {
     { id: "connections", label: "Connections", icon: "🤝" },
   ];
 
-  useEffect(() => {
-    loadConnectionData();
-  }, []);
-
-  const loadConnectionData = async () => {
-    setLoading(true);
-    try {
-      const [pendingRes, sentRes, connectionsRes] = await Promise.all([
-        connectionAPI.getPendingRequests(),
-        connectionAPI.getSentRequests(),
-        connectionAPI.getUserConnections(),
-      ]);
-
-      setPendingRequests(pendingRes.requests || []);
-      setSentRequests(sentRes.requests || []);
-      setConnections(connectionsRes.connections || []);
-    } catch (error) {
-      console.error("Error loading connection data:", error);
-    } finally {
-      setLoading(false);
-    }
-  };
-
   const handleAcceptRequest = async (connectionId) => {
     try {
-      await connectionAPI.acceptConnectionRequest(connectionId);
-      await loadConnectionData(); // Refresh data
+      await acceptRequestMutation.mutateAsync(connectionId);
       refreshNotifications(); // Refresh notifications
     } catch (error) {
       console.error("Error accepting request:", error);
@@ -56,8 +50,7 @@ const ConnectionsPage = ({ user }) => {
 
   const handleRejectRequest = async (connectionId) => {
     try {
-      await connectionAPI.rejectConnectionRequest(connectionId);
-      await loadConnectionData(); // Refresh data
+      await rejectRequestMutation.mutateAsync(connectionId);
       refreshNotifications(); // Refresh notifications
     } catch (error) {
       console.error("Error rejecting request:", error);
@@ -66,8 +59,7 @@ const ConnectionsPage = ({ user }) => {
 
   const handleRemoveConnection = async (connectionId) => {
     try {
-      await connectionAPI.removeConnection(connectionId);
-      await loadConnectionData(); // Refresh data
+      await removeConnectionMutation.mutateAsync(connectionId);
     } catch (error) {
       console.error("Error removing connection:", error);
     }
@@ -88,7 +80,6 @@ const ConnectionsPage = ({ user }) => {
           <UserSearchForm
             currentUser={user}
             onConnectionUpdate={() => {
-              loadConnectionData();
               refreshNotifications();
             }}
           />

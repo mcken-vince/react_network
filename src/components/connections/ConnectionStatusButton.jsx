@@ -1,7 +1,7 @@
 import { useState, useEffect } from "react";
 import { Button, Stack, Text } from "../atoms";
 import { connectionAPI } from "../../utils/api";
-import { useNotifications } from "../../context/NotificationContext";
+import { useNotifications } from "../../hooks/useNotificationsContext";
 
 const ConnectionStatusButton = ({
   targetUserId,

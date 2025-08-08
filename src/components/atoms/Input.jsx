@@ -6,13 +6,13 @@
  * @param {boolean} fullWidth - Whether input should take full width
  * @param {string} className - Additional CSS classes
  */
-export const Input = ({ 
-  type = 'text',
-  variant = 'default',
-  size = 'medium',
+export const Input = ({
+  type = "text",
+  variant = "default",
+  size = "medium",
   fullWidth = false,
-  className = '',
-  ...props 
+  className = "",
+  ...props
 }) => {
   const baseStyles = `
     px-3 py-2 
@@ -23,18 +23,18 @@ export const Input = ({
   `;
 
   const variantStyles = {
-    default: 'border-gray-300 hover:border-gray-400',
-    error: 'border-red-500 focus:ring-red-500 focus:border-red-500',
-    success: 'border-green-500 focus:ring-green-500 focus:border-green-500',
+    default: "border-gray-300 hover:border-gray-400",
+    error: "border-red-500 focus:ring-red-500 focus:border-red-500",
+    success: "border-green-500 focus:ring-green-500 focus:border-green-500",
   };
 
   const sizeStyles = {
-    small: 'text-sm px-2 py-1',
-    medium: 'text-base px-3 py-2',
-    large: 'text-lg px-4 py-3',
+    small: "text-sm px-2 py-1",
+    medium: "text-base px-3 py-2",
+    large: "text-lg px-4 py-3",
   };
 
-  const widthStyle = fullWidth ? 'w-full' : '';
+  const widthStyle = fullWidth ? "w-full" : "";
 
   return (
     <input
