@@ -45,6 +45,12 @@ function Dashboard({ user, onLogout, allUsers }) {
                 >
                   🤝 Connections
                 </Link>
+                <Link
+                  to="/notifications"
+                  className="block text-center py-2 px-4 bg-purple-600 text-white rounded-lg hover:bg-purple-700 transition-colors duration-200"
+                >
+                  🔔 Notifications
+                </Link>
               </Stack>
             </Stack>
           </div>

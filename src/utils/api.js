@@ -157,3 +157,41 @@ export const connectionAPI = {
     });
   },
 };
+
+// Notification API functions
+export const notificationAPI = {
+  async getNotifications(options = {}) {
+    const queryParams = new URLSearchParams();
+    
+    if (options.limit) queryParams.append('limit', options.limit);
+    if (options.offset) queryParams.append('offset', options.offset);
+    if (options.unreadOnly) queryParams.append('unreadOnly', options.unreadOnly);
+    
+    const queryString = queryParams.toString();
+    const url = queryString ? `/notifications?${queryString}` : '/notifications';
+    
+    return apiRequest(url);
+  },
+
+  async getUnreadCount() {
+    return apiRequest('/notifications/unread-count');
+  },
+
+  async markAsRead(notificationId) {
+    return apiRequest(`/notifications/${notificationId}/read`, {
+      method: 'PUT'
+    });
+  },
+
+  async markAllAsRead() {
+    return apiRequest('/notifications/read-all', {
+      method: 'PUT'
+    });
+  },
+
+  async deleteNotification(notificationId) {
+    return apiRequest(`/notifications/${notificationId}`, {
+      method: 'DELETE'
+    });
+  }
+};

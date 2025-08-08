@@ -10,6 +10,11 @@ import {
   getConnectionStatus,
   removeConnection
 } from '../models/Connection.js';
+import {
+  createConnectionRequestNotification,
+  createConnectionAcceptedNotification,
+  createConnectionRejectedNotification
+} from '../models/Notification.js';
 
 const router = express.Router();
 
@@ -24,6 +29,15 @@ router.post('/request', authenticateToken, async (req, res) => {
     }
 
     const connection = await sendConnectionRequest(requesterId, recipientId);
+    
+    // Create notification for the recipient
+    try {
+      await createConnectionRequestNotification(recipientId, requesterId, connection.id);
+    } catch (notificationError) {
+      console.error('Error creating connection request notification:', notificationError);
+      // Don't fail the request if notification fails
+    }
+    
     res.status(201).json({ 
       message: 'Connection request sent successfully',
       connection: connection.toJSON()
@@ -44,6 +58,15 @@ router.put('/:connectionId/accept', authenticateToken, async (req, res) => {
     const { connectionId } = req.params;
 
     const connection = await acceptConnectionRequest(connectionId, userId);
+    
+    // Create notification for the requester
+    try {
+      await createConnectionAcceptedNotification(connection.requesterId, userId, connection.id);
+    } catch (notificationError) {
+      console.error('Error creating connection accepted notification:', notificationError);
+      // Don't fail the request if notification fails
+    }
+    
     res.json({ 
       message: 'Connection request accepted',
       connection: connection.toJSON()
@@ -64,6 +87,15 @@ router.put('/:connectionId/reject', authenticateToken, async (req, res) => {
     const { connectionId } = req.params;
 
     const connection = await rejectConnectionRequest(connectionId, userId);
+    
+    // Create notification for the requester
+    try {
+      await createConnectionRejectedNotification(connection.requesterId, userId, connection.id);
+    } catch (notificationError) {
+      console.error('Error creating connection rejected notification:', notificationError);
+      // Don't fail the request if notification fails
+    }
+    
     res.json({ 
       message: 'Connection request rejected',
       connection: connection.toJSON()

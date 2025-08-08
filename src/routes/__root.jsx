@@ -1,5 +1,6 @@
 import { createRootRoute, Outlet } from "@tanstack/react-router";
 import { AuthProvider } from "../context/AuthContext";
+import { NotificationProvider } from "../context/NotificationContext";
 
 export const Route = createRootRoute({
   component: RootComponent,
@@ -8,9 +9,11 @@ export const Route = createRootRoute({
 function RootComponent() {
   return (
     <AuthProvider>
-      <div className="app">
-        <Outlet />
-      </div>
+      <NotificationProvider>
+        <div className="app">
+          <Outlet />
+        </div>
+      </NotificationProvider>
     </AuthProvider>
   );
 }

@@ -1,11 +1,13 @@
 import { useState, useEffect } from "react";
 import { Container, Heading, Stack, Flex } from "../atoms";
 import { connectionAPI } from "../../utils/api";
+import { useNotifications } from "../../context/NotificationContext";
 import ConnectionRequestCard from "./ConnectionRequestCard";
 import ConnectionCard from "./ConnectionCard";
 import UserSearchForm from "./UserSearchForm";
 
 const ConnectionsPage = ({ user }) => {
+  const { refreshNotifications } = useNotifications();
   const [activeTab, setActiveTab] = useState("search");
   const [pendingRequests, setPendingRequests] = useState([]);
   const [sentRequests, setSentRequests] = useState([]);
@@ -46,6 +48,7 @@ const ConnectionsPage = ({ user }) => {
     try {
       await connectionAPI.acceptConnectionRequest(connectionId);
       await loadConnectionData(); // Refresh data
+      refreshNotifications(); // Refresh notifications
     } catch (error) {
       console.error("Error accepting request:", error);
     }
@@ -55,6 +58,7 @@ const ConnectionsPage = ({ user }) => {
     try {
       await connectionAPI.rejectConnectionRequest(connectionId);
       await loadConnectionData(); // Refresh data
+      refreshNotifications(); // Refresh notifications
     } catch (error) {
       console.error("Error rejecting request:", error);
     }
@@ -83,7 +87,10 @@ const ConnectionsPage = ({ user }) => {
         return (
           <UserSearchForm
             currentUser={user}
-            onConnectionUpdate={loadConnectionData}
+            onConnectionUpdate={() => {
+              loadConnectionData();
+              refreshNotifications();
+            }}
           />
         );
 

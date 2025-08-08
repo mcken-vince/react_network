@@ -10,6 +10,7 @@
 
 import { Route as rootRouteImport } from './routes/__root'
 import { Route as SignupRouteImport } from './routes/signup'
+import { Route as NotificationsRouteImport } from './routes/notifications'
 import { Route as LoginRouteImport } from './routes/login'
 import { Route as DashboardRouteImport } from './routes/dashboard'
 import { Route as ConnectionsRouteImport } from './routes/connections'
@@ -21,6 +22,11 @@ import { Route as ProfileUserIdRouteImport } from './routes/profile/$userId'
 const SignupRoute = SignupRouteImport.update({
   id: '/signup',
   path: '/signup',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const NotificationsRoute = NotificationsRouteImport.update({
+  id: '/notifications',
+  path: '/notifications',
   getParentRoute: () => rootRouteImport,
 } as any)
 const LoginRoute = LoginRouteImport.update({
@@ -65,6 +71,7 @@ export interface FileRoutesByFullPath {
   '/connections': typeof ConnectionsRoute
   '/dashboard': typeof DashboardRoute
   '/login': typeof LoginRoute
+  '/notifications': typeof NotificationsRoute
   '/signup': typeof SignupRoute
   '/profile/$userId': typeof ProfileUserIdRoute
   '/profile': typeof ProfileIndexRoute
@@ -75,6 +82,7 @@ export interface FileRoutesByTo {
   '/connections': typeof ConnectionsRoute
   '/dashboard': typeof DashboardRoute
   '/login': typeof LoginRoute
+  '/notifications': typeof NotificationsRoute
   '/signup': typeof SignupRoute
   '/profile/$userId': typeof ProfileUserIdRoute
   '/profile': typeof ProfileIndexRoute
@@ -86,6 +94,7 @@ export interface FileRoutesById {
   '/connections': typeof ConnectionsRoute
   '/dashboard': typeof DashboardRoute
   '/login': typeof LoginRoute
+  '/notifications': typeof NotificationsRoute
   '/signup': typeof SignupRoute
   '/profile/$userId': typeof ProfileUserIdRoute
   '/profile/': typeof ProfileIndexRoute
@@ -98,6 +107,7 @@ export interface FileRouteTypes {
     | '/connections'
     | '/dashboard'
     | '/login'
+    | '/notifications'
     | '/signup'
     | '/profile/$userId'
     | '/profile'
@@ -108,6 +118,7 @@ export interface FileRouteTypes {
     | '/connections'
     | '/dashboard'
     | '/login'
+    | '/notifications'
     | '/signup'
     | '/profile/$userId'
     | '/profile'
@@ -118,6 +129,7 @@ export interface FileRouteTypes {
     | '/connections'
     | '/dashboard'
     | '/login'
+    | '/notifications'
     | '/signup'
     | '/profile/$userId'
     | '/profile/'
@@ -129,6 +141,7 @@ export interface RootRouteChildren {
   ConnectionsRoute: typeof ConnectionsRoute
   DashboardRoute: typeof DashboardRoute
   LoginRoute: typeof LoginRoute
+  NotificationsRoute: typeof NotificationsRoute
   SignupRoute: typeof SignupRoute
   ProfileUserIdRoute: typeof ProfileUserIdRoute
   ProfileIndexRoute: typeof ProfileIndexRoute
@@ -141,6 +154,13 @@ declare module '@tanstack/react-router' {
       path: '/signup'
       fullPath: '/signup'
       preLoaderRoute: typeof SignupRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/notifications': {
+      id: '/notifications'
+      path: '/notifications'
+      fullPath: '/notifications'
+      preLoaderRoute: typeof NotificationsRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/login': {
@@ -201,6 +221,7 @@ const rootRouteChildren: RootRouteChildren = {
   ConnectionsRoute: ConnectionsRoute,
   DashboardRoute: DashboardRoute,
   LoginRoute: LoginRoute,
+  NotificationsRoute: NotificationsRoute,
   SignupRoute: SignupRoute,
   ProfileUserIdRoute: ProfileUserIdRoute,
   ProfileIndexRoute: ProfileIndexRoute,

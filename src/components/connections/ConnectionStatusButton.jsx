@@ -1,12 +1,14 @@
 import { useState, useEffect } from "react";
 import { Button, Stack, Text } from "../atoms";
 import { connectionAPI } from "../../utils/api";
+import { useNotifications } from "../../context/NotificationContext";
 
 const ConnectionStatusButton = ({
   targetUserId,
   currentUserId,
   onConnectionUpdate,
 }) => {
+  const { refreshNotifications } = useNotifications();
   const [connectionStatus, setConnectionStatus] = useState(null);
   const [loading, setLoading] = useState(true);
   const [actionLoading, setActionLoading] = useState(false);
@@ -55,6 +57,7 @@ const ConnectionStatusButton = ({
       await connectionAPI.sendConnectionRequest(targetUserId);
       await loadConnectionStatus();
       onConnectionUpdate?.();
+      refreshNotifications();
     } catch (error) {
       console.error("Error sending connection request:", error);
     } finally {
@@ -68,6 +71,7 @@ const ConnectionStatusButton = ({
       await connectionAPI.acceptConnectionRequest(connectionStatus.id);
       await loadConnectionStatus();
       onConnectionUpdate?.();
+      refreshNotifications();
     } catch (error) {
       console.error("Error accepting connection request:", error);
     } finally {
@@ -81,6 +85,7 @@ const ConnectionStatusButton = ({
       await connectionAPI.rejectConnectionRequest(connectionStatus.id);
       await loadConnectionStatus();
       onConnectionUpdate?.();
+      refreshNotifications();
     } catch (error) {
       console.error("Error rejecting connection request:", error);
     } finally {
