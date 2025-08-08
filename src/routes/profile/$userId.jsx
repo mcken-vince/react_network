@@ -1,6 +1,7 @@
 import { createFileRoute, Navigate } from "@tanstack/react-router";
 import { useAuth } from "../../context/AuthContext";
 import Loading from "../../components/Loading";
+import { AuthenticatedLayout } from "../../components/layout";
 import ProfilePage from "../../components/profile/ProfilePage";
 
 export const Route = createFileRoute("/profile/$userId")({
@@ -31,10 +32,12 @@ function ProfileRoute() {
   const isOwnProfile = user.id.toString() === userId;
 
   return (
-    <ProfilePage
-      profileUser={profileUser}
-      currentUser={user}
-      isOwnProfile={isOwnProfile}
-    />
+    <AuthenticatedLayout>
+      <ProfilePage
+        profileUser={profileUser}
+        currentUser={user}
+        isOwnProfile={isOwnProfile}
+      />
+    </AuthenticatedLayout>
   );
 }

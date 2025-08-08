@@ -1,6 +1,7 @@
 import { createFileRoute, Navigate } from "@tanstack/react-router";
 import { useAuth } from "../context/AuthContext";
 import Loading from "../components/Loading";
+import { AuthenticatedLayout } from "../components/layout";
 import ConnectionsPage from "../components/connections/ConnectionsPage";
 
 export const Route = createFileRoute("/connections")({
@@ -19,5 +20,9 @@ function ConnectionsRoute() {
     return <Navigate to="/login" />;
   }
 
-  return <ConnectionsPage user={user} />;
+  return (
+    <AuthenticatedLayout>
+      <ConnectionsPage user={user} />
+    </AuthenticatedLayout>
+  );
 }

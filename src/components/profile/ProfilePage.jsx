@@ -1,5 +1,4 @@
 import { useState } from "react";
-import { Link } from "@tanstack/react-router";
 import ProfileHeader from "./ProfileHeader";
 import ProfileView from "./ProfileView";
 import ProfileEdit from "./ProfileEdit";
@@ -36,15 +35,6 @@ function ProfilePage({ profileUser, currentUser, isOwnProfile }) {
 
       <main className="p-6">
         <div className="max-w-3xl mx-auto">
-          <nav className="mb-6">
-            <Link
-              to="/dashboard"
-              className="inline-flex items-center text-primary-600 no-underline font-semibold px-4 py-2 rounded-md transition-colors duration-200 hover:bg-primary-50"
-            >
-              ← Back to Dashboard
-            </Link>
-          </nav>
-
           {isEditing ? (
             <ProfileEdit
               user={profileUser}
