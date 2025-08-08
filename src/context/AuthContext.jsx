@@ -14,14 +14,14 @@ export function AuthProvider({ children }) {
   // Check for existing auth token and fetch user data on mount
   useEffect(() => {
     const initializeAuth = async () => {
-      const token = localStorage.getItem("authToken");
+      const token = localStorage.getItem("auth-token");
       if (token) {
         try {
           const userData = await userAPI.getCurrentUser();
           setUser(userData.user);
         } catch (err) {
           console.error("Failed to fetch user:", err);
-          localStorage.removeItem("authToken");
+          localStorage.removeItem("auth-token");
         }
       }
       setIsLoading(false);

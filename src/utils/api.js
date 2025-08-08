@@ -52,21 +52,11 @@ async function apiRequest(endpoint, options = {}) {
   }
 }
 
-// Helper function to get auth headers
-function getAuthHeaders() {
-  const token = localStorage.getItem('authToken');
-  return {
-    'Content-Type': 'application/json',
-    ...(token && { 'Authorization': `Bearer ${token}` })
-  };
-}
-
 // Auth API functions
 export const authAPI = {
   async signup(userData) {
     const response = await apiRequest('/auth/signup', {
       method: 'POST',
-      headers: getAuthHeaders(),
       body: JSON.stringify(userData)
     });
     if (response.token) {
@@ -78,7 +68,6 @@ export const authAPI = {
   async signin(credentials) {
     const response = await apiRequest('/auth/signin', {
       method: 'POST',
-      headers: getAuthHeaders(),
       body: JSON.stringify(credentials)
     });
     if (response.token) {
