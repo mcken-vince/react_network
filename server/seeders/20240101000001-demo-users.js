@@ -14,6 +14,8 @@ export default {
         location: 'New York, NY',
         username: 'johndoe',
         password: hashedPassword,
+        email: 'john.doe@example.com',
+        bio: 'Software developer passionate about building great user experiences.',
         created_at: new Date(),
         updated_at: new Date()
       },
@@ -24,6 +26,8 @@ export default {
         location: 'Los Angeles, CA',
         username: 'janesmith',
         password: hashedPassword,
+        email: 'jane.smith@example.com',
+        bio: 'UI/UX designer who loves creating beautiful and functional designs.',
         created_at: new Date(),
         updated_at: new Date()
       },
@@ -34,6 +38,8 @@ export default {
         location: 'Chicago, IL',
         username: 'bobjohnson',
         password: hashedPassword,
+        email: 'bob.johnson@example.com',
+        bio: 'Full-stack developer with 10+ years of experience in web development.',
         created_at: new Date(),
         updated_at: new Date()
       },
@@ -44,6 +50,8 @@ export default {
         location: 'Houston, TX',
         username: 'alicewilliams',
         password: hashedPassword,
+        email: 'alice.williams@example.com',
+        bio: 'Data scientist exploring the intersection of AI and human behavior.',
         created_at: new Date(),
         updated_at: new Date()
       },
@@ -54,6 +62,8 @@ export default {
         location: 'Phoenix, AZ',
         username: 'charliebrown',
         password: hashedPassword,
+        email: 'charlie.brown@example.com',
+        bio: 'Product manager focused on creating technology that makes a difference.',
         created_at: new Date(),
         updated_at: new Date()
       }

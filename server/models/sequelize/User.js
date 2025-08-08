@@ -97,6 +97,25 @@ User.init({
         msg: 'Password must be at least 6 characters long'
       }
     }
+  },
+  email: {
+    type: DataTypes.STRING,
+    allowNull: true,
+    validate: {
+      isEmail: {
+        msg: 'Must be a valid email address'
+      }
+    }
+  },
+  bio: {
+    type: DataTypes.TEXT,
+    allowNull: true,
+    validate: {
+      len: {
+        args: [0, 500],
+        msg: 'Bio must be less than 500 characters'
+      }
+    }
   }
 }, {
   sequelize,

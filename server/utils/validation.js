@@ -36,6 +36,25 @@ const validateAge = (age) => {
   return null;
 };
 
+const validateEmail = (email) => {
+  if (!email) return null; // Email is optional
+  
+  const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+  if (!emailRegex.test(email)) {
+    return 'Please enter a valid email address';
+  }
+  return null;
+};
+
+const validateBio = (bio) => {
+  if (!bio) return null; // Bio is optional
+  
+  if (bio.length > 500) {
+    return 'Bio must be less than 500 characters';
+  }
+  return null;
+};
+
 export const validateSignup = (data) => {
   const errors = {};
   
@@ -56,6 +75,13 @@ export const validateSignup = (data) => {
   
   const passwordError = validatePassword(data.password);
   if (passwordError) errors.password = passwordError;
+  
+  // Optional fields
+  const emailError = validateEmail(data.email);
+  if (emailError) errors.email = emailError;
+  
+  const bioError = validateBio(data.bio);
+  if (bioError) errors.bio = bioError;
   
   if (Object.keys(errors).length > 0) {
     return { error: { message: 'Validation failed', errors }, data: null };
@@ -113,6 +139,17 @@ export const validateProfileUpdate = (data) => {
   if (data.password !== undefined && data.password !== "") {
     const passwordError = validatePassword(data.password, false);
     if (passwordError) errors.password = passwordError;
+  }
+  
+  // Optional fields
+  if (data.email !== undefined) {
+    const emailError = validateEmail(data.email);
+    if (emailError) errors.email = emailError;
+  }
+  
+  if (data.bio !== undefined) {
+    const bioError = validateBio(data.bio);
+    if (bioError) errors.bio = bioError;
   }
   
   if (Object.keys(errors).length > 0) {

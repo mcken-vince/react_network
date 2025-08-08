@@ -42,6 +42,25 @@ export const validatePasswordMatch = (password, confirmPassword) => {
   return null
 }
 
+export const validateEmail = (email) => {
+  if (!email) return null // Email is optional
+  
+  const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/
+  if (!emailRegex.test(email)) {
+    return 'Please enter a valid email address'
+  }
+  return null
+}
+
+export const validateBio = (bio) => {
+  if (!bio) return null // Bio is optional
+  
+  if (bio.length > 500) {
+    return 'Bio must be less than 500 characters'
+  }
+  return null
+}
+
 export const validateLoginForm = (formData) => {
   const errors = {}
   
@@ -77,6 +96,13 @@ export const validateSignupForm = (formData) => {
   
   const confirmPasswordError = validatePasswordMatch(formData.password, formData.confirmPassword)
   if (confirmPasswordError) errors.confirmPassword = confirmPasswordError
+  
+  // Optional fields
+  const emailError = validateEmail(formData.email)
+  if (emailError) errors.email = emailError
+  
+  const bioError = validateBio(formData.bio)
+  if (bioError) errors.bio = bioError
   
   return errors
 }

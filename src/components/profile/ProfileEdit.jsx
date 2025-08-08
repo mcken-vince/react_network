@@ -23,6 +23,8 @@ function ProfileEdit({ user, onSave, onCancel }) {
     username: user.username,
     password: "",
     confirmPassword: "",
+    email: user.email || "",
+    bio: user.bio || "",
   };
 
   const {
@@ -126,6 +128,28 @@ function ProfileEdit({ user, onSave, onCancel }) {
             value={formData.username}
             onChange={handleChange}
             error={errors.username}
+          />
+
+          <FormField
+            label="Email (Optional)"
+            type="email"
+            name="email"
+            value={formData.email}
+            onChange={handleChange}
+            placeholder="Enter your email address"
+            error={errors.email}
+          />
+
+          <FormField
+            label="Bio (Optional)"
+            name="bio"
+            value={formData.bio}
+            onChange={handleChange}
+            placeholder="Tell us a bit about yourself (max 500 characters)"
+            multiline
+            rows={3}
+            error={errors.bio}
+            helperText={`${formData.bio.length}/500 characters`}
           />
 
           <div className="pt-4 border-t border-gray-200">

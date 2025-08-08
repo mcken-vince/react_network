@@ -8,7 +8,7 @@ import { ConnectionStatusButton } from "../connections";
  * @param {boolean} isOwnProfile - Whether the current user is viewing their own profile
  */
 function ProfileView({ user, currentUser, isOwnProfile }) {
-  const { firstName, lastName, username, age, location } = user;
+  const { firstName, lastName, username, age, location, email, bio } = user;
 
   return (
     <div>
@@ -50,6 +50,20 @@ function ProfileView({ user, currentUser, isOwnProfile }) {
             </label>
             <p className="mt-1 text-gray-900">{location}</p>
           </div>
+
+          {email && (
+            <div className="border-b border-gray-200 pb-3">
+              <label className="text-sm font-medium text-gray-500">Email</label>
+              <p className="mt-1 text-gray-900">{email}</p>
+            </div>
+          )}
+
+          {bio && (
+            <div className="border-b border-gray-200 pb-3">
+              <label className="text-sm font-medium text-gray-500">Bio</label>
+              <p className="mt-1 text-gray-900 whitespace-pre-wrap">{bio}</p>
+            </div>
+          )}
         </div>
 
         {isOwnProfile && (
