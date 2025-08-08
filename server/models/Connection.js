@@ -1,137 +1,58 @@
-import pool from '../config/database.js';
+import { Connection as SequelizeConnection } from './sequelize/index.js';
+import sequelize from '../config/sequelize.js';
 
-class Connection {
-  constructor({ id, requester_id, recipient_id, status, created_at, updated_at }) {
-    this.id = id;
-    this.requesterId = requester_id;
-    this.recipientId = recipient_id;
-    this.status = status;
-    this.createdAt = created_at;
-    this.updatedAt = updated_at;
-  }
+// Re-export the Sequelize Connection model as default
+export default SequelizeConnection;
 
-  toJSON() {
-    return {
-      id: this.id,
-      requesterId: this.requesterId,
-      recipientId: this.recipientId,
-      status: this.status,
-      createdAt: this.createdAt,
-      updatedAt: this.updatedAt
-    };
-  }
-}
-
-// Send a connection request
+// Send a connection request with transaction
 export const sendConnectionRequest = async (requesterId, recipientId) => {
-  if (requesterId === recipientId) {
-    throw new Error('Cannot send connection request to yourself');
-  }
-
-  const client = await pool.connect();
+  const transaction = await sequelize.transaction();
   
   try {
-    // Check if connection already exists
-    const existingConnection = await client.query(
-      'SELECT * FROM connections WHERE (requester_id = $1 AND recipient_id = $2) OR (requester_id = $2 AND recipient_id = $1)',
-      [requesterId, recipientId]
-    );
-
-    if (existingConnection.rows.length > 0) {
-      throw new Error('Connection request already exists');
-    }
-
-    const result = await client.query(
-      `INSERT INTO connections (requester_id, recipient_id, status) 
-       VALUES ($1, $2, 'pending') 
-       RETURNING *`,
-      [requesterId, recipientId]
-    );
-    
-    return new Connection(result.rows[0]);
+    const connection = await SequelizeConnection.sendConnectionRequest(requesterId, recipientId, transaction);
+    await transaction.commit();
+    return connection;
   } catch (error) {
+    await transaction.rollback();
     console.error('Error sending connection request:', error);
     throw error;
-  } finally {
-    client.release();
   }
 };
 
-// Accept a connection request
+// Accept a connection request with transaction
 export const acceptConnectionRequest = async (connectionId, userId) => {
-  const client = await pool.connect();
+  const transaction = await sequelize.transaction();
   
   try {
-    const result = await client.query(
-      `UPDATE connections 
-       SET status = 'accepted' 
-       WHERE id = $1 AND recipient_id = $2 AND status = 'pending'
-       RETURNING *`,
-      [connectionId, userId]
-    );
-    
-    if (result.rows.length === 0) {
-      throw new Error('Connection request not found or not authorized');
-    }
-    
-    return new Connection(result.rows[0]);
+    const connection = await SequelizeConnection.acceptConnectionRequest(connectionId, userId, transaction);
+    await transaction.commit();
+    return connection;
   } catch (error) {
+    await transaction.rollback();
     console.error('Error accepting connection request:', error);
     throw error;
-  } finally {
-    client.release();
   }
 };
 
-// Reject a connection request
+// Reject a connection request with transaction
 export const rejectConnectionRequest = async (connectionId, userId) => {
-  const client = await pool.connect();
+  const transaction = await sequelize.transaction();
   
   try {
-    const result = await client.query(
-      `UPDATE connections 
-       SET status = 'rejected' 
-       WHERE id = $1 AND recipient_id = $2 AND status = 'pending'
-       RETURNING *`,
-      [connectionId, userId]
-    );
-    
-    if (result.rows.length === 0) {
-      throw new Error('Connection request not found or not authorized');
-    }
-    
-    return new Connection(result.rows[0]);
+    const connection = await SequelizeConnection.rejectConnectionRequest(connectionId, userId, transaction);
+    await transaction.commit();
+    return connection;
   } catch (error) {
+    await transaction.rollback();
     console.error('Error rejecting connection request:', error);
     throw error;
-  } finally {
-    client.release();
   }
 };
 
 // Get pending connection requests for a user (incoming)
 export const getPendingRequests = async (userId) => {
   try {
-    const result = await pool.query(
-      `SELECT c.*, 
-              u.first_name, u.last_name, u.username, u.location
-       FROM connections c
-       JOIN users u ON c.requester_id = u.id
-       WHERE c.recipient_id = $1 AND c.status = 'pending'
-       ORDER BY c.created_at DESC`,
-      [userId]
-    );
-    
-    return result.rows.map(row => ({
-      ...new Connection(row).toJSON(),
-      requester: {
-        id: row.requester_id,
-        firstName: row.first_name,
-        lastName: row.last_name,
-        username: row.username,
-        location: row.location
-      }
-    }));
+    return await SequelizeConnection.getPendingRequests(userId);
   } catch (error) {
     console.error('Error getting pending requests:', error);
     throw error;
@@ -141,26 +62,7 @@ export const getPendingRequests = async (userId) => {
 // Get sent connection requests for a user (outgoing)
 export const getSentRequests = async (userId) => {
   try {
-    const result = await pool.query(
-      `SELECT c.*, 
-              u.first_name, u.last_name, u.username, u.location
-       FROM connections c
-       JOIN users u ON c.recipient_id = u.id
-       WHERE c.requester_id = $1 AND c.status = 'pending'
-       ORDER BY c.created_at DESC`,
-      [userId]
-    );
-    
-    return result.rows.map(row => ({
-      ...new Connection(row).toJSON(),
-      recipient: {
-        id: row.recipient_id,
-        firstName: row.first_name,
-        lastName: row.last_name,
-        username: row.username,
-        location: row.location
-      }
-    }));
+    return await SequelizeConnection.getSentRequests(userId);
   } catch (error) {
     console.error('Error getting sent requests:', error);
     throw error;
@@ -170,46 +72,24 @@ export const getSentRequests = async (userId) => {
 // Get all connections for a user (accepted)
 export const getUserConnections = async (userId) => {
   try {
-    const result = await pool.query(
-      `SELECT c.*, 
-              CASE 
-                WHEN c.requester_id = $1 THEN r.first_name
-                ELSE req.first_name
-              END as first_name,
-              CASE 
-                WHEN c.requester_id = $1 THEN r.last_name
-                ELSE req.last_name
-              END as last_name,
-              CASE 
-                WHEN c.requester_id = $1 THEN r.username
-                ELSE req.username
-              END as username,
-              CASE 
-                WHEN c.requester_id = $1 THEN r.location
-                ELSE req.location
-              END as location,
-              CASE 
-                WHEN c.requester_id = $1 THEN r.id
-                ELSE req.id
-              END as connected_user_id
-       FROM connections c
-       JOIN users req ON c.requester_id = req.id
-       JOIN users r ON c.recipient_id = r.id
-       WHERE (c.requester_id = $1 OR c.recipient_id = $1) AND c.status = 'accepted'
-       ORDER BY c.updated_at DESC`,
-      [userId]
-    );
+    const connections = await SequelizeConnection.getUserConnections(userId);
     
-    return result.rows.map(row => ({
-      ...new Connection(row).toJSON(),
-      connectedUser: {
-        id: row.connected_user_id,
-        firstName: row.first_name,
-        lastName: row.last_name,
-        username: row.username,
-        location: row.location
-      }
-    }));
+    // Transform the data to match the expected format
+    return connections.map(conn => {
+      const connData = conn.toJSON();
+      const connectedUser = connData.requesterId === userId ? connData.recipient : connData.requester;
+      
+      return {
+        ...connData,
+        connectedUser: {
+          id: connectedUser.id,
+          firstName: connectedUser.firstName || connectedUser.first_name,
+          lastName: connectedUser.lastName || connectedUser.last_name,
+          username: connectedUser.username,
+          location: connectedUser.location
+        }
+      };
+    });
   } catch (error) {
     console.error('Error getting user connections:', error);
     throw error;
@@ -219,51 +99,24 @@ export const getUserConnections = async (userId) => {
 // Check connection status between two users
 export const getConnectionStatus = async (userId1, userId2) => {
   try {
-    const result = await pool.query(
-      `SELECT * FROM connections 
-       WHERE (requester_id = $1 AND recipient_id = $2) 
-          OR (requester_id = $2 AND recipient_id = $1)`,
-      [userId1, userId2]
-    );
-    
-    if (result.rows.length === 0) {
-      return null;
-    }
-    
-    const connection = new Connection(result.rows[0]);
-    return {
-      ...connection.toJSON(),
-      isRequester: connection.requesterId === userId1
-    };
+    return await SequelizeConnection.getConnectionStatus(userId1, userId2);
   } catch (error) {
     console.error('Error checking connection status:', error);
     throw error;
   }
 };
 
-// Remove/cancel a connection
+// Remove/cancel a connection with transaction
 export const removeConnection = async (connectionId, userId) => {
-  const client = await pool.connect();
+  const transaction = await sequelize.transaction();
   
   try {
-    const result = await client.query(
-      `DELETE FROM connections 
-       WHERE id = $1 AND (requester_id = $2 OR recipient_id = $2)
-       RETURNING *`,
-      [connectionId, userId]
-    );
-    
-    if (result.rows.length === 0) {
-      throw new Error('Connection not found or not authorized');
-    }
-    
-    return new Connection(result.rows[0]);
+    const connection = await SequelizeConnection.removeConnection(connectionId, userId, transaction);
+    await transaction.commit();
+    return connection;
   } catch (error) {
+    await transaction.rollback();
     console.error('Error removing connection:', error);
     throw error;
-  } finally {
-    client.release();
   }
 };
-
-export default Connection;

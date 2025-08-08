@@ -14,7 +14,7 @@ import {
 const router = express.Router();
 
 // Send a connection request
-router.post('/request', authenticateToken, async (req, res, next) => {
+router.post('/request', authenticateToken, async (req, res) => {
   try {
     const requesterId = req.userId;
     const { recipientId } = req.body;
@@ -29,15 +29,16 @@ router.post('/request', authenticateToken, async (req, res, next) => {
       connection: connection.toJSON()
     });
   } catch (error) {
+    console.error('Send connection request error:', error);
     if (error.message.includes('already exists') || error.message.includes('Cannot send')) {
       return res.status(400).json({ error: error.message });
     }
-    next(error);
+    res.status(500).json({ error: 'Internal server error' });
   }
 });
 
 // Accept a connection request
-router.put('/:connectionId/accept', authenticateToken, async (req, res, next) => {
+router.put('/:connectionId/accept', authenticateToken, async (req, res) => {
   try {
     const userId = req.userId;
     const { connectionId } = req.params;
@@ -48,15 +49,16 @@ router.put('/:connectionId/accept', authenticateToken, async (req, res, next) =>
       connection: connection.toJSON()
     });
   } catch (error) {
+    console.error('Accept connection request error:', error);
     if (error.message.includes('not found') || error.message.includes('not authorized')) {
       return res.status(404).json({ error: error.message });
     }
-    next(error);
+    res.status(500).json({ error: 'Internal server error' });
   }
 });
 
 // Reject a connection request
-router.put('/:connectionId/reject', authenticateToken, async (req, res, next) => {
+router.put('/:connectionId/reject', authenticateToken, async (req, res) => {
   try {
     const userId = req.userId;
     const { connectionId } = req.params;
@@ -67,48 +69,52 @@ router.put('/:connectionId/reject', authenticateToken, async (req, res, next) =>
       connection: connection.toJSON()
     });
   } catch (error) {
+    console.error('Reject connection request error:', error);
     if (error.message.includes('not found') || error.message.includes('not authorized')) {
       return res.status(404).json({ error: error.message });
     }
-    next(error);
+    res.status(500).json({ error: 'Internal server error' });
   }
 });
 
 // Get pending connection requests (incoming)
-router.get('/pending', authenticateToken, async (req, res, next) => {
+router.get('/pending', authenticateToken, async (req, res) => {
   try {
     const userId = req.userId;
     const pendingRequests = await getPendingRequests(userId);
     res.json({ requests: pendingRequests });
   } catch (error) {
-    next(error);
+    console.error('Get pending requests error:', error);
+    res.status(500).json({ error: 'Internal server error' });
   }
 });
 
 // Get sent connection requests (outgoing)
-router.get('/sent', authenticateToken, async (req, res, next) => {
+router.get('/sent', authenticateToken, async (req, res) => {
   try {
     const userId = req.userId;
     const sentRequests = await getSentRequests(userId);
     res.json({ requests: sentRequests });
   } catch (error) {
-    next(error);
+    console.error('Get sent requests error:', error);
+    res.status(500).json({ error: 'Internal server error' });
   }
 });
 
 // Get user's connections (accepted)
-router.get('/connections', authenticateToken, async (req, res, next) => {
+router.get('/connections', authenticateToken, async (req, res) => {
   try {
     const userId = req.userId;
     const connections = await getUserConnections(userId);
     res.json({ connections });
   } catch (error) {
-    next(error);
+    console.error('Get connections error:', error);
+    res.status(500).json({ error: 'Internal server error' });
   }
 });
 
 // Check connection status with another user
-router.get('/status/:userId', authenticateToken, async (req, res, next) => {
+router.get('/status/:userId', authenticateToken, async (req, res) => {
   try {
     const currentUserId = req.userId;
     const { userId } = req.params;
@@ -116,12 +122,13 @@ router.get('/status/:userId', authenticateToken, async (req, res, next) => {
     const connectionStatus = await getConnectionStatus(currentUserId, parseInt(userId));
     res.json({ status: connectionStatus });
   } catch (error) {
-    next(error);
+    console.error('Get connection status error:', error);
+    res.status(500).json({ error: 'Internal server error' });
   }
 });
 
 // Remove/cancel a connection
-router.delete('/:connectionId', authenticateToken, async (req, res, next) => {
+router.delete('/:connectionId', authenticateToken, async (req, res) => {
   try {
     const userId = req.userId;
     const { connectionId } = req.params;
@@ -129,10 +136,11 @@ router.delete('/:connectionId', authenticateToken, async (req, res, next) => {
     await removeConnection(connectionId, userId);
     res.json({ message: 'Connection removed successfully' });
   } catch (error) {
+    console.error('Remove connection error:', error);
     if (error.message.includes('not found') || error.message.includes('not authorized')) {
       return res.status(404).json({ error: error.message });
     }
-    next(error);
+    res.status(500).json({ error: 'Internal server error' });
   }
 });
 

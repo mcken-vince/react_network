@@ -7,7 +7,7 @@ import authRoutes from './routes/auth.js';
 import userRoutes from './routes/users.js';
 import connectionRoutes from './routes/connections.js';
 import { errorHandler } from './middleware/errorHandler.js';
-import pool from './config/database.js';
+import sequelize from './config/sequelize.js';
 
 dotenv.config();
 
@@ -40,7 +40,7 @@ app.use('/api/connections', connectionRoutes);
 // Health check with database connection status
 app.get('/api/health', async (req, res) => {
   try {
-    const result = await pool.query('SELECT NOW()');
+    const result = await sequelize.query('SELECT NOW()');
     res.json({ 
       status: 'ok', 
       timestamp: new Date().toISOString(),
@@ -68,7 +68,7 @@ app.use('*', (req, res) => {
 // Graceful shutdown
 process.on('SIGINT', async () => {
   console.log('\nShutting down gracefully...');
-  await pool.end();
+  await sequelize.close();
   process.exit(0);
 });
 
