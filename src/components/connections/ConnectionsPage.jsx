@@ -4,10 +4,10 @@ import { useNotifications } from "../../hooks/useNotificationsContext";
 import {
   usePendingRequests,
   useSentRequests,
-  useConnections,
   useAcceptConnectionRequest,
   useRejectConnectionRequest,
   useRemoveConnection,
+  useConnectionsList,
 } from "../../hooks/useConnections";
 import ConnectionRequestCard from "./ConnectionRequestCard";
 import ConnectionCard from "./ConnectionCard";
@@ -23,7 +23,7 @@ const ConnectionsPage = ({ user }) => {
   const { data: sentRequests = [], isLoading: isSentLoading } =
     useSentRequests();
   const { data: connections = [], isLoading: isConnectionsLoading } =
-    useConnections();
+    useConnectionsList();
 
   // React Query hooks for mutations
   const acceptRequestMutation = useAcceptConnectionRequest();

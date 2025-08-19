@@ -1,7 +1,9 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { connectionAPI } from '../utils/api';
 
-// Query Keys
+// ================================
+// Query Keys & Constants
+// ================================
 export const connectionKeys = {
   all: ['connections'],
   lists: () => [...connectionKeys.all, 'list'],
@@ -12,223 +14,203 @@ export const connectionKeys = {
   statuses: (userIds) => [...connectionKeys.all, 'statuses', userIds],
 };
 
-// Get pending connection requests
-export const usePendingRequests = () => {
-  return useQuery({
+const STALE_TIMES = {
+  PENDING: 30 * 1000,
+  SENT: 60 * 1000,
+  CONNECTIONS: 5 * 60 * 1000,
+  STATUS: 2 * 60 * 1000,
+};
+
+// ================================
+// Optimistic Update Helpers
+// ================================
+const createOptimisticConnectionHelpers = (queryClient) => ({
+  async cancelQueries(keys = []) {
+    for (const key of keys) {
+      await queryClient.cancelQueries(key);
+    }
+  },
+  getSnapshot(keys = []) {
+    const snap = {};
+    for (const key of keys) {
+      snap[key] = queryClient.getQueryData(key);
+    }
+    return snap;
+  },
+  rollback(snapshot) {
+    if (!snapshot) return;
+    Object.entries(snapshot).forEach(([key, value]) => {
+      if (value !== undefined) queryClient.setQueryData(key, value);
+    });
+  },
+  invalidate(keys = []) {
+    for (const key of keys) {
+      queryClient.invalidateQueries(key);
+    }
+  },
+});
+
+// ================================
+// Query Hooks
+// ================================
+export const usePendingRequests = () =>
+  useQuery({
     queryKey: connectionKeys.pending(),
     queryFn: connectionAPI.getPendingRequests,
     select: (data) => data.requests || [],
-    staleTime: 30 * 1000, // 30 seconds - should be fresh for incoming requests
+    staleTime: STALE_TIMES.PENDING,
   });
-};
 
-// Get sent connection requests
-export const useSentRequests = () => {
-  return useQuery({
+export const useSentRequests = () =>
+  useQuery({
     queryKey: connectionKeys.sent(),
     queryFn: connectionAPI.getSentRequests,
     select: (data) => data.requests || [],
-    staleTime: 60 * 1000, // 1 minute
+    staleTime: STALE_TIMES.SENT,
   });
-};
 
-// Get user connections
-export const useConnections = () => {
-  return useQuery({
+export const useConnectionsList = () =>
+  useQuery({
     queryKey: connectionKeys.connections(),
     queryFn: connectionAPI.getUserConnections,
     select: (data) => data.connections || [],
-    staleTime: 5 * 60 * 1000, // 5 minutes - connections don't change frequently
+    staleTime: STALE_TIMES.CONNECTIONS,
   });
-};
 
-// Get connection status with a specific user
-export const useConnectionStatus = (userId, enabled = true) => {
-  return useQuery({
+export const useConnectionStatus = (userId, enabled = true) =>
+  useQuery({
     queryKey: connectionKeys.status(userId),
     queryFn: () => connectionAPI.getConnectionStatus(userId),
     enabled: enabled && !!userId,
-    staleTime: 2 * 60 * 1000, // 2 minutes
+    staleTime: STALE_TIMES.STATUS,
     select: (data) => data.status,
   });
-};
 
-// Send connection request mutation
+// ================================
+// Mutation Hooks
+// ================================
 export const useSendConnectionRequest = () => {
   const queryClient = useQueryClient();
-
+  const helpers = createOptimisticConnectionHelpers(queryClient);
   return useMutation({
     mutationFn: connectionAPI.sendConnectionRequest,
     onMutate: async (recipientId) => {
-      // Cancel in-flight queries
-      await queryClient.cancelQueries(['users']);
-      await queryClient.cancelQueries(connectionKeys.status(recipientId));
-
-      // Snapshot previous values
-      const previousUsers = queryClient.getQueryData(['users', 'with-connection-status']);
-      const previousStatus = queryClient.getQueryData(connectionKeys.status(recipientId));
-
-      // Optimistically update connection status
-      queryClient.setQueryData(connectionKeys.status(recipientId), () => ({
-        status: 'pending',
-        isRequester: true,
-      }));
-
-      // Optimistically update users list if it exists
-      if (previousUsers) {
-        queryClient.setQueryData(['users', 'with-connection-status'], (old) => 
-          old?.map(user => 
+      await helpers.cancelQueries([
+        ['users'],
+        connectionKeys.status(recipientId),
+      ]);
+      const snapshot = {
+        users: queryClient.getQueryData(['users', 'with-connection-status']),
+        status: queryClient.getQueryData(connectionKeys.status(recipientId)),
+      };
+      // Optimistic update
+      queryClient.setQueryData(connectionKeys.status(recipientId), () => ({ status: 'pending', isRequester: true }));
+      if (snapshot.users) {
+        queryClient.setQueryData(['users', 'with-connection-status'], (old) =>
+          old?.map(user =>
             user.id === recipientId
               ? { ...user, connectionStatus: { status: 'pending', isRequester: true } }
               : user
           )
         );
       }
-
-      return { previousUsers, previousStatus, recipientId };
+      return { snapshot, recipientId };
     },
     onSuccess: () => {
-      // Invalidate relevant queries to ensure consistency
-      queryClient.invalidateQueries(connectionKeys.sent());
-      queryClient.invalidateQueries(['notifications']);
+      helpers.invalidate([connectionKeys.sent(), ['notifications']]);
     },
     onError: (err, recipientId, context) => {
-      // Rollback optimistic updates on error
-      if (context?.previousUsers) {
-        queryClient.setQueryData(['users', 'with-connection-status'], context.previousUsers);
+      if (context?.snapshot?.users) {
+        queryClient.setQueryData(['users', 'with-connection-status'], context.snapshot.users);
       }
-      if (context?.previousStatus) {
-        queryClient.setQueryData(connectionKeys.status(context.recipientId), context.previousStatus);
+      if (context?.snapshot?.status) {
+        queryClient.setQueryData(connectionKeys.status(context.recipientId), context.snapshot.status);
       }
     },
   });
 };
 
-// Accept connection request mutation
 export const useAcceptConnectionRequest = () => {
   const queryClient = useQueryClient();
-
+  const helpers = createOptimisticConnectionHelpers(queryClient);
   return useMutation({
     mutationFn: connectionAPI.acceptConnectionRequest,
     onMutate: async (connectionId) => {
-      // Cancel in-flight queries
-      await queryClient.cancelQueries(connectionKeys.pending());
-      
-      // Get the current pending requests
-      const previousPendingRequests = queryClient.getQueryData(connectionKeys.pending());
-
-      // Find the connection being accepted
-      const acceptedConnection = previousPendingRequests?.find(req => req.id === connectionId);
-
-      // Optimistically remove from pending requests
-      if (previousPendingRequests) {
-        queryClient.setQueryData(connectionKeys.pending(), 
-          previousPendingRequests.filter(req => req.id !== connectionId)
-        );
+      await helpers.cancelQueries([connectionKeys.pending()]);
+      const pending = queryClient.getQueryData(connectionKeys.pending());
+      const accepted = pending?.find(req => req.id === connectionId);
+      if (pending) {
+        queryClient.setQueryData(connectionKeys.pending(), pending.filter(req => req.id !== connectionId));
       }
-
-      return { previousPendingRequests, acceptedConnection };
+      return { snapshot: { pending }, accepted };
     },
     onSuccess: (data, connectionId, context) => {
-      // Invalidate and refetch related queries
-      queryClient.invalidateQueries(connectionKeys.connections());
-      queryClient.invalidateQueries(['notifications']);
-      
-      // Update connection status if we have the related user ID
-      if (context?.acceptedConnection?.requesterId) {
+      helpers.invalidate([connectionKeys.connections(), ['notifications']]);
+      if (context?.accepted?.requesterId) {
         queryClient.setQueryData(
-          connectionKeys.status(context.acceptedConnection.requesterId),
+          connectionKeys.status(context.accepted.requesterId),
           () => ({ status: 'accepted' })
         );
       }
     },
     onError: (err, connectionId, context) => {
-      // Rollback optimistic update on error
-      if (context?.previousPendingRequests) {
-        queryClient.setQueryData(connectionKeys.pending(), context.previousPendingRequests);
+      if (context?.snapshot?.pending) {
+        queryClient.setQueryData(connectionKeys.pending(), context.snapshot.pending);
       }
     },
   });
 };
 
-// Reject connection request mutation
 export const useRejectConnectionRequest = () => {
   const queryClient = useQueryClient();
-
+  const helpers = createOptimisticConnectionHelpers(queryClient);
   return useMutation({
     mutationFn: connectionAPI.rejectConnectionRequest,
     onMutate: async (connectionId) => {
-      // Cancel in-flight queries
-      await queryClient.cancelQueries(connectionKeys.pending());
-      
-      // Get current pending requests
-      const previousPendingRequests = queryClient.getQueryData(connectionKeys.pending());
-
-      // Find the connection being rejected
-      const rejectedConnection = previousPendingRequests?.find(req => req.id === connectionId);
-
-      // Optimistically remove from pending requests
-      if (previousPendingRequests) {
-        queryClient.setQueryData(connectionKeys.pending(), 
-          previousPendingRequests.filter(req => req.id !== connectionId)
-        );
+      await helpers.cancelQueries([connectionKeys.pending()]);
+      const pending = queryClient.getQueryData(connectionKeys.pending());
+      const rejected = pending?.find(req => req.id === connectionId);
+      if (pending) {
+        queryClient.setQueryData(connectionKeys.pending(), pending.filter(req => req.id !== connectionId));
       }
-
-      return { previousPendingRequests, rejectedConnection };
+      return { snapshot: { pending }, rejected };
     },
     onSuccess: (data, connectionId, context) => {
-      // Invalidate notifications to show rejection notification
-      queryClient.invalidateQueries(['notifications']);
-      
-      // Update connection status if we have the related user ID
-      if (context?.rejectedConnection?.requesterId) {
+      helpers.invalidate([['notifications']]);
+      if (context?.rejected?.requesterId) {
         queryClient.setQueryData(
-          connectionKeys.status(context.rejectedConnection.requesterId),
+          connectionKeys.status(context.rejected.requesterId),
           () => ({ status: 'none' })
         );
       }
     },
     onError: (err, connectionId, context) => {
-      // Rollback optimistic update on error
-      if (context?.previousPendingRequests) {
-        queryClient.setQueryData(connectionKeys.pending(), context.previousPendingRequests);
+      if (context?.snapshot?.pending) {
+        queryClient.setQueryData(connectionKeys.pending(), context.snapshot.pending);
       }
     },
   });
 };
 
-// Remove connection mutation
 export const useRemoveConnection = () => {
   const queryClient = useQueryClient();
-
+  const helpers = createOptimisticConnectionHelpers(queryClient);
   return useMutation({
     mutationFn: connectionAPI.removeConnection,
     onMutate: async (connectionId) => {
-      // Cancel in-flight queries
-      await queryClient.cancelQueries(connectionKeys.connections());
-      
-      // Get current connections
-      const previousConnections = queryClient.getQueryData(connectionKeys.connections());
-
-      // Find the connection being removed
-      const removedConnection = previousConnections?.find(conn => conn.id === connectionId);
-
-      // Optimistically remove from connections
-      if (previousConnections) {
-        queryClient.setQueryData(connectionKeys.connections(), 
-          previousConnections.filter(conn => conn.id !== connectionId)
-        );
+      await helpers.cancelQueries([connectionKeys.connections()]);
+      const connections = queryClient.getQueryData(connectionKeys.connections());
+      const removed = connections?.find(conn => conn.id === connectionId);
+      if (connections) {
+        queryClient.setQueryData(connectionKeys.connections(), connections.filter(conn => conn.id !== connectionId));
       }
-
-      return { previousConnections, removedConnection };
+      return { snapshot: { connections }, removed };
     },
     onSuccess: (data, connectionId, context) => {
-      // Update connection status if we have the related user ID
-      if (context?.removedConnection) {
-        const otherUserId = context.removedConnection.requesterId === context.currentUserId 
-          ? context.removedConnection.recipientId 
-          : context.removedConnection.requesterId;
-          
+      if (context?.removed) {
+        const otherUserId = context.removed.requesterId === context.removed.currentUserId
+          ? context.removed.recipientId
+          : context.removed.requesterId;
         queryClient.setQueryData(
           connectionKeys.status(otherUserId),
           () => ({ status: 'none' })
@@ -236,10 +218,47 @@ export const useRemoveConnection = () => {
       }
     },
     onError: (err, connectionId, context) => {
-      // Rollback optimistic update on error
-      if (context?.previousConnections) {
-        queryClient.setQueryData(connectionKeys.connections(), context.previousConnections);
+      if (context?.snapshot?.connections) {
+        queryClient.setQueryData(connectionKeys.connections(), context.snapshot.connections);
       }
     },
   });
 };
+
+// ================================
+// Composite Feature Hook
+// ================================
+export const useConnectionsFeature = () => {
+  const pending = usePendingRequests();
+  const sent = useSentRequests();
+  const connections = useConnectionsList();
+  const sendRequest = useSendConnectionRequest();
+  const acceptRequest = useAcceptConnectionRequest();
+  const rejectRequest = useRejectConnectionRequest();
+  const removeConnection = useRemoveConnection();
+
+  return {
+    // Queries
+    pendingRequests: pending.data || [],
+    sentRequests: sent.data || [],
+    connections: connections.data || [],
+    isLoadingPending: pending.isLoading,
+    isLoadingSent: sent.isLoading,
+    isLoadingConnections: connections.isLoading,
+    // Mutations
+    sendRequest: sendRequest.mutate,
+    acceptRequest: acceptRequest.mutate,
+    rejectRequest: rejectRequest.mutate,
+    removeConnection: removeConnection.mutate,
+    // Mutation states
+    isSending: sendRequest.isPending,
+    isAccepting: acceptRequest.isPending,
+    isRejecting: rejectRequest.isPending,
+    isRemoving: removeConnection.isPending,
+    // Refetch
+    refetchPending: pending.refetch,
+    refetchSent: sent.refetch,
+    refetchConnections: connections.refetch,
+  };
+};
+
