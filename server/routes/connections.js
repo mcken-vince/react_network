@@ -7,7 +7,6 @@ import {
   getPendingRequests,
   getSentRequests,
   getUserConnections,
-  getConnectionStatus,
   removeConnection
 } from '../models/Connection.js';
 import {
@@ -141,20 +140,6 @@ router.get('/connections', authenticateToken, async (req, res) => {
     res.json({ connections });
   } catch (error) {
     console.error('Get connections error:', error);
-    res.status(500).json({ error: 'Internal server error' });
-  }
-});
-
-// Check connection status with another user
-router.get('/status/:userId', authenticateToken, async (req, res) => {
-  try {
-    const currentUserId = req.userId;
-    const { userId } = req.params;
-
-    const connectionStatus = await getConnectionStatus(currentUserId, parseInt(userId));
-    res.json({ status: connectionStatus });
-  } catch (error) {
-    console.error('Get connection status error:', error);
     res.status(500).json({ error: 'Internal server error' });
   }
 });

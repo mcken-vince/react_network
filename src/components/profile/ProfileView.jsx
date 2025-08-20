@@ -1,8 +1,15 @@
 import React from "react";
 import { MapPin, Calendar, UserPlus, Edit, Loader2 } from "lucide-react";
 import { ConnectionStatusButton } from "../connections";
+import { useUserWithConnectionStatus } from "../../hooks/useUsers";
 
 const ProfileView = ({ user, currentUser, isOwnProfile = false }) => {
+  // Get connection status for the user
+  const { data: userWithStatus } = useUserWithConnectionStatus(
+    user.id,
+    !isOwnProfile
+  );
+  const connectionStatus = userWithStatus?.connectionStatus;
   return (
     <div className="min-h-screen bg-gray-50">
       {/* Header Section with Gradient Background */}
@@ -14,8 +21,8 @@ const ProfileView = ({ user, currentUser, isOwnProfile = false }) => {
           <div className="w-32 h-32 bg-white rounded-full border-4 border-white shadow-lg flex items-center justify-center">
             <div className="w-28 h-28 bg-gray-200 rounded-full flex items-center justify-center">
               <span className="text-3xl font-semibold text-gray-600">
-                {user.firstName[0]}
-                {user.lastName[0]}
+                {user.firstName?.[0]}
+                {user.lastName?.[0]}
               </span>
             </div>
           </div>
@@ -53,6 +60,7 @@ const ProfileView = ({ user, currentUser, isOwnProfile = false }) => {
               <ConnectionStatusButton
                 targetUserId={user.id}
                 currentUserId={currentUser.id}
+                connectionStatus={connectionStatus}
               />
             </div>
           )}

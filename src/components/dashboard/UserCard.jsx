@@ -40,6 +40,7 @@ function UserCard({
             <ConnectionStatusButton
               targetUserId={user.id}
               currentUserId={currentUser.id}
+              connectionStatus={user.connectionStatus}
             />
           </Flex>
         )}

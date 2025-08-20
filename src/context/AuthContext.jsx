@@ -2,7 +2,7 @@ import { createContext, useState } from "react";
 import { useNavigate } from "@tanstack/react-router";
 import { useQueryClient } from "@tanstack/react-query";
 import { authAPI, userAPI } from "../utils/api";
-import { useCurrentUser, useUsers, userKeys } from "../hooks/useUsers";
+import { useCurrentUser, userKeys } from "../hooks/useUsers";
 
 const AuthContext = createContext(null);
 
@@ -22,9 +22,6 @@ export function AuthProvider({ children }) {
   } = useCurrentUser();
 
   const user = userData?.user;
-
-  // Get users list using React Query
-  const { data: users = [] } = useUsers();
 
   const handleSignup = async (userData) => {
     setError(null);
@@ -85,9 +82,6 @@ export function AuthProvider({ children }) {
         queryClient.setQueryData(userKeys.current(), response);
       }
 
-      // Invalidate users list to reflect changes
-      queryClient.invalidateQueries(userKeys.lists());
-
       return { success: true };
     } catch (err) {
       const message = err.message || "Failed to update profile";
@@ -98,7 +92,6 @@ export function AuthProvider({ children }) {
 
   const value = {
     user,
-    users,
     isLoading,
     error: error || queryError?.message,
     handleSignup,

@@ -1,5 +1,6 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { connectionAPI } from '../utils/api';
+import { userKeys } from './useUsers';
 
 // ================================
 // Query Keys & Constants
@@ -10,8 +11,6 @@ export const connectionKeys = {
   pending: () => [...connectionKeys.lists(), 'pending'],
   sent: () => [...connectionKeys.lists(), 'sent'],
   connections: () => [...connectionKeys.lists(), 'connections'],
-  status: (userId) => [...connectionKeys.all, 'status', userId],
-  statuses: (userIds) => [...connectionKeys.all, 'statuses', userIds],
 };
 
 const STALE_TIMES = {
@@ -77,15 +76,6 @@ export const useConnectionsList = () =>
     staleTime: STALE_TIMES.CONNECTIONS,
   });
 
-export const useConnectionStatus = (userId, enabled = true) =>
-  useQuery({
-    queryKey: connectionKeys.status(userId),
-    queryFn: () => connectionAPI.getConnectionStatus(userId),
-    enabled: enabled && !!userId,
-    staleTime: STALE_TIMES.STATUS,
-    select: (data) => data.status,
-  });
-
 // ================================
 // Mutation Hooks
 // ================================
@@ -96,17 +86,14 @@ export const useSendConnectionRequest = () => {
     mutationFn: connectionAPI.sendConnectionRequest,
     onMutate: async (recipientId) => {
       await helpers.cancelQueries([
-        ['users'],
-        connectionKeys.status(recipientId),
+        userKeys.withConnectionStatus(),
       ]);
       const snapshot = {
-        users: queryClient.getQueryData(['users', 'with-connection-status']),
-        status: queryClient.getQueryData(connectionKeys.status(recipientId)),
+        users: queryClient.getQueryData(userKeys.withConnectionStatus()),
       };
-      // Optimistic update
-      queryClient.setQueryData(connectionKeys.status(recipientId), () => ({ status: 'pending', isRequester: true }));
+      // Optimistic update - update the users with connection status
       if (snapshot.users) {
-        queryClient.setQueryData(['users', 'with-connection-status'], (old) =>
+        queryClient.setQueryData(userKeys.withConnectionStatus(), (old) =>
           old?.map(user =>
             user.id === recipientId
               ? { ...user, connectionStatus: { status: 'pending', isRequester: true } }
@@ -117,14 +104,11 @@ export const useSendConnectionRequest = () => {
       return { snapshot, recipientId };
     },
     onSuccess: () => {
-      helpers.invalidate([connectionKeys.sent(), ['notifications']]);
+      helpers.invalidate([connectionKeys.sent(), ['notifications'], userKeys.withConnectionStatus()]);
     },
     onError: (err, recipientId, context) => {
       if (context?.snapshot?.users) {
-        queryClient.setQueryData(['users', 'with-connection-status'], context.snapshot.users);
-      }
-      if (context?.snapshot?.status) {
-        queryClient.setQueryData(connectionKeys.status(context.recipientId), context.snapshot.status);
+        queryClient.setQueryData(userKeys.withConnectionStatus(), context.snapshot.users);
       }
     },
   });
@@ -144,14 +128,8 @@ export const useAcceptConnectionRequest = () => {
       }
       return { snapshot: { pending }, accepted };
     },
-    onSuccess: (data, connectionId, context) => {
-      helpers.invalidate([connectionKeys.connections(), ['notifications']]);
-      if (context?.accepted?.requesterId) {
-        queryClient.setQueryData(
-          connectionKeys.status(context.accepted.requesterId),
-          () => ({ status: 'accepted' })
-        );
-      }
+    onSuccess: () => {
+      helpers.invalidate([connectionKeys.connections(), ['notifications'], userKeys.withConnectionStatus()]);
     },
     onError: (err, connectionId, context) => {
       if (context?.snapshot?.pending) {
@@ -175,14 +153,8 @@ export const useRejectConnectionRequest = () => {
       }
       return { snapshot: { pending }, rejected };
     },
-    onSuccess: (data, connectionId, context) => {
-      helpers.invalidate([['notifications']]);
-      if (context?.rejected?.requesterId) {
-        queryClient.setQueryData(
-          connectionKeys.status(context.rejected.requesterId),
-          () => ({ status: 'none' })
-        );
-      }
+    onSuccess: () => {
+      helpers.invalidate([['notifications'], userKeys.withConnectionStatus()]);
     },
     onError: (err, connectionId, context) => {
       if (context?.snapshot?.pending) {
@@ -206,16 +178,8 @@ export const useRemoveConnection = () => {
       }
       return { snapshot: { connections }, removed };
     },
-    onSuccess: (data, connectionId, context) => {
-      if (context?.removed) {
-        const otherUserId = context.removed.requesterId === context.removed.currentUserId
-          ? context.removed.recipientId
-          : context.removed.requesterId;
-        queryClient.setQueryData(
-          connectionKeys.status(otherUserId),
-          () => ({ status: 'none' })
-        );
-      }
+    onSuccess: () => {
+      helpers.invalidate([userKeys.withConnectionStatus()]);
     },
     onError: (err, connectionId, context) => {
       if (context?.snapshot?.connections) {

@@ -88,6 +88,21 @@ export const useUser = (userId, enabled = true) => {
 };
 
 /**
+ * Get a single user with connection status
+ * @param {*} userId - The ID of the user
+ * @param {*} enabled - Whether the query is enabled
+ * @returns {QueryResult<User>}
+ */
+export const useUserWithConnectionStatus = (userId, enabled = true) => {
+  const { data: usersWithStatus = [] } = useUsersWithConnectionStatus(enabled);
+  
+  return {
+    data: usersWithStatus.find(user => user.id === parseInt(userId)),
+    isLoading: false, // Since this depends on the users list, use that loading state
+  };
+};
+
+/**
  * Update user profile mutation
  * @returns {MutationResult}
  */

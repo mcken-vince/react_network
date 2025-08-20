@@ -1,61 +1,32 @@
-import { useState, useEffect } from "react";
+import { useState } from "react";
 import { Button, Stack, Text } from "../atoms";
-import { connectionAPI } from "../../utils/api";
 import { useNotifications } from "../../hooks/useNotificationsContext";
+import {
+  useSendConnectionRequest,
+  useAcceptConnectionRequest,
+  useRejectConnectionRequest,
+  useRemoveConnection,
+} from "../../hooks/useConnections";
 
 const ConnectionStatusButton = ({
   targetUserId,
   currentUserId,
+  connectionStatus, // Now passed as prop from parent
   onConnectionUpdate,
 }) => {
   const { refreshNotifications } = useNotifications();
-  const [connectionStatus, setConnectionStatus] = useState(null);
-  const [loading, setLoading] = useState(true);
   const [actionLoading, setActionLoading] = useState(false);
 
-  useEffect(() => {
-    const loadConnectionStatus = async () => {
-      if (targetUserId === currentUserId) {
-        setLoading(false);
-        return;
-      }
-
-      try {
-        const response = await connectionAPI.getConnectionStatus(targetUserId);
-        setConnectionStatus(response.status);
-      } catch (error) {
-        console.error("Error loading connection status:", error);
-        setConnectionStatus(null);
-      } finally {
-        setLoading(false);
-      }
-    };
-
-    loadConnectionStatus();
-  }, [targetUserId, currentUserId]);
-
-  const loadConnectionStatus = async () => {
-    if (targetUserId === currentUserId) {
-      setLoading(false);
-      return;
-    }
-
-    try {
-      const response = await connectionAPI.getConnectionStatus(targetUserId);
-      setConnectionStatus(response.status);
-    } catch (error) {
-      console.error("Error loading connection status:", error);
-      setConnectionStatus(null);
-    } finally {
-      setLoading(false);
-    }
-  };
+  // Use React Query mutation hooks
+  const sendRequestMutation = useSendConnectionRequest();
+  const acceptRequestMutation = useAcceptConnectionRequest();
+  const rejectRequestMutation = useRejectConnectionRequest();
+  const removeConnectionMutation = useRemoveConnection();
 
   const handleSendRequest = async () => {
     setActionLoading(true);
     try {
-      await connectionAPI.sendConnectionRequest(targetUserId);
-      await loadConnectionStatus();
+      await sendRequestMutation.mutateAsync(targetUserId);
       onConnectionUpdate?.();
       refreshNotifications();
     } catch (error) {
@@ -68,8 +39,7 @@ const ConnectionStatusButton = ({
   const handleAcceptRequest = async () => {
     setActionLoading(true);
     try {
-      await connectionAPI.acceptConnectionRequest(connectionStatus.id);
-      await loadConnectionStatus();
+      await acceptRequestMutation.mutateAsync(connectionStatus.id);
       onConnectionUpdate?.();
       refreshNotifications();
     } catch (error) {
@@ -82,8 +52,7 @@ const ConnectionStatusButton = ({
   const handleRejectRequest = async () => {
     setActionLoading(true);
     try {
-      await connectionAPI.rejectConnectionRequest(connectionStatus.id);
-      await loadConnectionStatus();
+      await rejectRequestMutation.mutateAsync(connectionStatus.id);
       onConnectionUpdate?.();
       refreshNotifications();
     } catch (error) {
@@ -96,8 +65,7 @@ const ConnectionStatusButton = ({
   const handleRemoveConnection = async () => {
     setActionLoading(true);
     try {
-      await connectionAPI.removeConnection(connectionStatus.id);
-      await loadConnectionStatus();
+      await removeConnectionMutation.mutateAsync(connectionStatus.id);
       onConnectionUpdate?.();
     } catch (error) {
       console.error("Error removing connection:", error);
@@ -106,14 +74,7 @@ const ConnectionStatusButton = ({
     }
   };
 
-  if (loading) {
-    return (
-      <Button variant="outline" size="sm" disabled>
-        Loading...
-      </Button>
-    );
-  }
-
+  // Don't render if it's the user's own profile
   if (targetUserId === currentUserId) {
     return null; // Don't show connection button for own profile
   }

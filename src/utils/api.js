@@ -140,10 +140,6 @@ export const connectionAPI = {
     return apiRequest('/connections/connections');
   },
 
-  async getConnectionStatus(userId) {
-    return apiRequest(`/connections/status/${userId}`);
-  },
-
   async removeConnection(connectionId) {
     return apiRequest(`/connections/${connectionId}`, {
       method: 'DELETE'
