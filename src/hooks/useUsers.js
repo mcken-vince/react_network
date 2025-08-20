@@ -1,7 +1,9 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { userAPI } from '../utils/api';
 
-// Query Keys
+// ================================
+// Query Keys Configuration
+// ================================
 export const userKeys = {
   all: ['users'],
   lists: () => [...userKeys.all, 'list'],
@@ -12,28 +14,52 @@ export const userKeys = {
   withConnectionStatus: () => [...userKeys.all, 'with-connection-status'],
 };
 
-// Get current user
+// ================================
+// Constants
+// ================================
+const STALE_TIMES = {
+  USER: 10 * 60 * 1000, // 10 minutes
+  USERS: 5 * 60 * 1000, // 5 minutes
+  CONNECTION_STATUS: 2 * 60 * 1000, // 2 minutes
+};
+
+// ================================
+// Query Hooks
+// ================================
+
+/**
+ * Get the current user
+ * @returns {QueryResult<User>} 
+ */
 export const useCurrentUser = () => {
   return useQuery({
     queryKey: userKeys.current(),
     queryFn: userAPI.getCurrentUser,
     retry: false, // Don't retry auth failures
     refetchOnWindowFocus: false,
-    staleTime: 10 * 60 * 1000, // 10 minutes - user data doesn't change often
+    staleTime: STALE_TIMES.USER
   });
 };
 
-// Get all users
+/**
+ * Get all users
+ * @returns {QueryResult<User[]>}
+ */
 export const useUsers = () => {
   return useQuery({
     queryKey: userKeys.lists(),
     queryFn: userAPI.getAllUsers,
-    staleTime: 5 * 60 * 1000, // 5 minutes
+    staleTime: STALE_TIMES.USERS,
     select: (data) => data.users || [],
   });
 };
 
-// Get users with connection status (for search)
+
+/**
+ * Get users with connection status (for search)
+ * @param {*} enabled - Whether the query is enabled
+ * @returns {QueryResult<User[]>}
+ */
 export const useUsersWithConnectionStatus = (enabled = true) => {
   return useQuery({
     queryKey: userKeys.withConnectionStatus(),
@@ -42,21 +68,29 @@ export const useUsersWithConnectionStatus = (enabled = true) => {
       return response.users || [];
     },
     enabled,
-    staleTime: 2 * 60 * 1000, // 2 minutes - connection status changes more frequently
+    staleTime: STALE_TIMES.CONNECTION_STATUS,
   });
 };
 
-// Get single user
+/**
+ * Get a single user
+ * @param {*} userId - The ID of the user
+ * @param {*} enabled - Whether the query is enabled
+ * @returns {QueryResult<User>}
+ */
 export const useUser = (userId, enabled = true) => {
   return useQuery({
     queryKey: userKeys.detail(userId),
     queryFn: () => userAPI.getUser(userId),
     enabled: enabled && !!userId,
-    staleTime: 10 * 60 * 1000, // 10 minutes
+    staleTime: STALE_TIMES.USER,
   });
 };
 
-// Update user profile mutation
+/**
+ * Update user profile mutation
+ * @returns {MutationResult}
+ */
 export const useUpdateProfile = () => {
   const queryClient = useQueryClient();
 
@@ -80,7 +114,10 @@ export const useUpdateProfile = () => {
   });
 };
 
-// Prefetch user data
+/**
+ * Prefetch user data
+ * @returns {void}
+ */
 export const usePrefetchUser = () => {
   const queryClient = useQueryClient();
 
@@ -90,7 +127,7 @@ export const usePrefetchUser = () => {
     queryClient.prefetchQuery({
       queryKey: userKeys.detail(userId),
       queryFn: () => userAPI.getUser(userId),
-      staleTime: 10 * 60 * 1000,
+      staleTime: STALE_TIMES.USER,
     });
   };
 };
