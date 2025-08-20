@@ -2,7 +2,7 @@ import { createFileRoute, Navigate } from "@tanstack/react-router";
 import Dashboard from "../components/Dashboard";
 import { AuthenticatedLayout } from "../components/layout";
 import { useAuth } from "../hooks/useAuth";
-import { useUsers } from "../hooks/useUsers";
+import { useUsersWithConnectionStatus } from "../hooks/useUsers";
 import Loading from "../components/Loading";
 
 export const Route = createFileRoute("/dashboard")({
@@ -11,7 +11,8 @@ export const Route = createFileRoute("/dashboard")({
 
 function DashboardRoute() {
   const { user, isLoading: authLoading } = useAuth();
-  const { data: users = [], isLoading: usersLoading } = useUsers();
+  const { data: users = [], isLoading: usersLoading } =
+    useUsersWithConnectionStatus();
 
   const isLoading = authLoading || usersLoading;
 
