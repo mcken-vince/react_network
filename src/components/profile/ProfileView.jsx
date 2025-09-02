@@ -2,112 +2,121 @@ import React from "react";
 import { MapPin, Calendar, UserPlus, Edit, Loader2 } from "lucide-react";
 import { ConnectionStatusButton } from "../connections";
 import { useUserWithConnectionStatus } from "../../hooks/useUsers";
+import { Button } from "../atoms";
+import { Card } from "../common";
 
-const ProfileView = ({ user, currentUser, isOwnProfile = false }) => {
-  // Get connection status for the user
+const ProfileView = ({ user, currentUser, isOwnProfile }) => {
   const { data: userWithStatus } = useUserWithConnectionStatus(
     user.id,
     !isOwnProfile
   );
   const connectionStatus = userWithStatus?.connectionStatus;
   return (
-    <div className="min-h-screen bg-gray-50">
-      {/* Header Section with Gradient Background */}
-      <div className="relative">
-        <div className="h-32 sm:h-40 bg-gradient-to-r from-blue-500 to-purple-600"></div>
+    <div className="min-h-screen bg-gradient-to-br from-slate-50 to-blue-50">
+      {/* Hero Section with better visual hierarchy */}
+      <div className="relative bg-gradient-to-r from-blue-600 via-purple-600 to-blue-800 text-white overflow-hidden">
+        {/* Background pattern */}
+        <div className="absolute inset-0 bg-black/10"></div>
 
-        {/* Profile Picture Placeholder */}
-        <div className="absolute left-1/2 transform -translate-x-1/2 -bottom-16">
-          <div className="w-32 h-32 bg-white rounded-full border-4 border-white shadow-lg flex items-center justify-center">
-            <div className="w-28 h-28 bg-gray-200 rounded-full flex items-center justify-center">
-              <span className="text-3xl font-semibold text-gray-600">
+        <div className="relative max-w-4xl mx-auto px-6 py-16">
+          <div className="text-center">
+            {/* Enhanced Avatar */}
+            <div className="relative inline-block">
+              <div className="w-32 h-32 bg-white/20 backdrop-blur-sm rounded-full flex items-center justify-center text-4xl font-bold shadow-2xl border-4 border-white/30">
                 {user.firstName?.[0]}
                 {user.lastName?.[0]}
-              </span>
+              </div>
+              {isOwnProfile && (
+                <button className="absolute bottom-2 right-2 w-8 h-8 bg-white text-gray-600 rounded-full flex items-center justify-center shadow-lg hover:bg-gray-50 transition-colors">
+                  <Edit size={16} />
+                </button>
+              )}
+            </div>
+
+            {/* User Info with better spacing */}
+            <div className="mt-6 space-y-2">
+              <h1 className="text-4xl font-bold">
+                {user.firstName} {user.lastName}
+              </h1>
+              <p className="text-xl text-white/80">@{user.username}</p>
+              {user.tag && (
+                <p className="text-lg text-white/70 max-w-2xl mx-auto">
+                  {user.tag}
+                </p>
+              )}
+            </div>
+
+            {/* Action buttons with better styling */}
+            <div className="mt-8">
+              {isOwnProfile ? (
+                <Button
+                  variant="secondary"
+                  size="large"
+                  className="bg-white/20 backdrop-blur-sm border-white/30 text-white hover:bg-white/30"
+                >
+                  <Edit size={20} />
+                  Edit Profile
+                </Button>
+              ) : (
+                <div className="bg-white/10 backdrop-blur-sm rounded-2xl p-6 inline-block">
+                  <ConnectionStatusButton
+                    targetUserId={user.id}
+                    currentUserId={currentUser.id}
+                    connectionStatus={connectionStatus}
+                  />
+                </div>
+              )}
             </div>
           </div>
         </div>
       </div>
 
-      {/* Main Content */}
-      <div className="px-4 pt-20 pb-8 max-w-2xl mx-auto">
-        {/* Name and Username Section */}
-        <div className="text-center mb-6">
-          <h1 className="text-2xl sm:text-3xl font-bold text-gray-900 mb-1">
-            {user.firstName} {user.lastName}
-          </h1>
-          <p className="text-lg text-gray-600">@{user.username}</p>
-          {user.tag && (
-            <p className="text-sm text-gray-500 mt-2 max-w-md mx-auto">
-              {user.tag}
-            </p>
-          )}
-        </div>
-
-        {/* Action Button */}
-        <div className="flex justify-center mb-8">
-          {isOwnProfile ? (
-            <button className="flex items-center gap-2 px-6 py-2 bg-gray-200 hover:bg-gray-300 text-gray-800 rounded-full font-medium transition-colors">
-              <Edit size={18} />
-              Edit Profile
-            </button>
-          ) : (
-            // <button className="flex items-center gap-2 px-6 py-2 bg-blue-500 hover:bg-blue-600 text-white rounded-full font-medium transition-colors shadow-md">
-            //   <UserPlus size={18} />
-            //   Connect
-            // </button>
-            <div className="mt-6 p-4 bg-gray-50 rounded-lg flex justify-center">
-              <ConnectionStatusButton
-                targetUserId={user.id}
-                currentUserId={currentUser.id}
-                connectionStatus={connectionStatus}
-              />
-            </div>
-          )}
-        </div>
-
-        {/* Info Cards Section */}
-        <div className="space-y-4">
-          {/* Personal Information Card */}
-          <div className="bg-white rounded-xl shadow-sm p-6">
-            <h2 className="text-lg font-semibold text-gray-900 mb-4">
-              Personal Information
-            </h2>
-            <div className="space-y-4">
-              <div className="flex items-start gap-3">
-                <div className="mt-1">
-                  <Calendar className="w-5 h-5 text-gray-400" />
-                </div>
-                <div>
-                  <p className="text-sm text-gray-500">Age</p>
-                  <p className="text-gray-900 font-medium">{user.age}</p>
-                </div>
-              </div>
-
-              {/* Location */}
-              <div className="flex items-start gap-3">
-                <div className="mt-1">
-                  <MapPin className="w-5 h-5 text-gray-400" />
-                </div>
-                <div>
-                  <p className="text-sm text-gray-500">Location</p>
-                  <p className="text-gray-900 font-medium">{user.location}</p>
-                </div>
-              </div>
-            </div>
+      {/* Content with better layout */}
+      <div className="max-w-4xl mx-auto px-6 py-12">
+        <div className="grid md:grid-cols-3 gap-8">
+          {/* Main info */}
+          <div className="md:col-span-2 space-y-6">
+            {user.bio && (
+              <Card padding="large" shadow="medium">
+                <h2 className="text-2xl font-bold text-gray-800 mb-4">About</h2>
+                <p className="text-gray-600 leading-relaxed text-lg">
+                  {user.bio}
+                </p>
+              </Card>
+            )}
           </div>
 
-          {/* About/Bio Section */}
-          {user.bio && (
-            <div className="bg-white rounded-xl shadow-sm p-6">
-              <h2 className="text-lg font-semibold text-gray-900 mb-4">
-                About
-              </h2>
-              <p className="text-gray-600 leading-relaxed whitespace-pre-wrap">
-                {user.bio}
-              </p>
-            </div>
-          )}
+          {/* Sidebar */}
+          <div className="space-y-6">
+            <Card padding="large" shadow="medium">
+              <h3 className="text-xl font-bold text-gray-800 mb-4">Details</h3>
+              <div className="space-y-4">
+                <div className="flex items-center gap-3">
+                  <div className="w-10 h-10 bg-blue-100 rounded-lg flex items-center justify-center">
+                    <Calendar className="w-5 h-5 text-blue-600" />
+                  </div>
+                  <div>
+                    <p className="text-sm text-gray-500">Age</p>
+                    <p className="font-semibold text-gray-800">
+                      {user.age} years old
+                    </p>
+                  </div>
+                </div>
+
+                <div className="flex items-center gap-3">
+                  <div className="w-10 h-10 bg-green-100 rounded-lg flex items-center justify-center">
+                    <MapPin className="w-5 h-5 text-green-600" />
+                  </div>
+                  <div>
+                    <p className="text-sm text-gray-500">Location</p>
+                    <p className="font-semibold text-gray-800">
+                      {user.location}
+                    </p>
+                  </div>
+                </div>
+              </div>
+            </Card>
+          </div>
         </div>
       </div>
     </div>

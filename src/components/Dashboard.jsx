@@ -2,6 +2,8 @@ import { useMemo } from "react";
 import { Link } from "@tanstack/react-router";
 import { ProfileSection, UsersSection } from "./dashboard/index";
 import { Container, Grid, Stack, Button } from "./atoms";
+import { Card } from "./common";
+import { UserCard } from "./dashboard/index";
 
 /**
  * Refactored Dashboard component using reusable components
@@ -9,50 +11,90 @@ import { Container, Grid, Stack, Button } from "./atoms";
  * @param {array} allUsers - Array of all users
  */
 function Dashboard({ user, allUsers }) {
-  // Memoize the filtered users list to avoid unnecessary recalculations
   const otherUsers = useMemo(() => {
     return allUsers.filter((u) => u.id !== user.id);
   }, [allUsers, user.id]);
 
   return (
-    <Container size="large" padding="medium">
-      <Grid cols={1} mdCols={3} gap="medium" className="min-h-screen">
-        <div className="md:col-span-1">
-          <Stack spacing="medium">
-            <ProfileSection user={user} />
-            <Stack spacing="sm">
-              <Link
-                to={`/profile/${user.id}`}
-                className="block text-center py-2 px-4 bg-primary-600 text-white rounded-lg hover:bg-primary-700 transition-colors duration-200"
+    <div className="space-y-8">
+      {/* Welcome Section */}
+      <div className="bg-gradient-to-r from-blue-600 to-purple-600 rounded-3xl text-white p-8 shadow-xl">
+        <div className="max-w-4xl">
+          <h1 className="text-3xl font-bold mb-2">
+            Welcome back, {user.firstName}! 👋
+          </h1>
+          <p className="text-blue-100 text-lg">
+            Ready to connect with your network?
+          </p>
+        </div>
+      </div>
+
+      {/* Quick Actions */}
+      <div className="grid md:grid-cols-4 gap-4">
+        {[
+          {
+            to: `/profile/${user.id}`,
+            icon: "👤",
+            label: "My Profile",
+            color: "blue",
+          },
+          {
+            to: "/connections",
+            icon: "🤝",
+            label: "Connections",
+            color: "green",
+          },
+          {
+            to: "/notifications",
+            icon: "🔔",
+            label: "Notifications",
+            color: "purple",
+          },
+          {
+            to: "/connections?tab=search",
+            icon: "🔍",
+            label: "Find People",
+            color: "orange",
+          },
+        ].map((action) => (
+          <Link key={action.to} to={action.to}>
+            <Card hoverable padding="medium" className="text-center group">
+              <div
+                className={`w-12 h-12 bg-${action.color}-100 rounded-xl flex items-center justify-center mx-auto mb-3 group-hover:scale-110 transition-transform`}
               >
-                View Full Profile
-              </Link>
-              <Link
-                to="/connections"
-                className="block text-center py-2 px-4 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors duration-200"
-              >
-                🤝 Connections
-              </Link>
-              <Link
-                to="/notifications"
-                className="block text-center py-2 px-4 bg-purple-600 text-white rounded-lg hover:bg-purple-700 transition-colors duration-200"
-              >
-                🔔 Notifications
-              </Link>
-            </Stack>
-          </Stack>
+                <span className="text-2xl">{action.icon}</span>
+              </div>
+              <p className="font-semibold text-gray-800">{action.label}</p>
+            </Card>
+          </Link>
+        ))}
+      </div>
+
+      {/* User Grid with better styling */}
+      <div>
+        <div className="flex items-center justify-between mb-6">
+          <h2 className="text-2xl font-bold text-gray-800">Discover People</h2>
+          <Link to="/connections?tab=search">
+            <Button variant="outline" size="medium">
+              View All
+            </Button>
+          </Link>
         </div>
 
-        <div className="md:col-span-2">
-          <UsersSection
-            users={otherUsers}
-            currentUser={user}
-            showConnectionStatus={true}
-            emptyMessage="No other users yet. Invite your friends!"
-          />
+        <div className="grid sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
+          {otherUsers.slice(0, 8).map((user) => (
+            <UserCard
+              key={user.id}
+              user={user}
+              currentUser={user}
+              hoverable
+              showConnectionStatus
+              className="h-full"
+            />
+          ))}
         </div>
-      </Grid>
-    </Container>
+      </div>
+    </div>
   );
 }
 
