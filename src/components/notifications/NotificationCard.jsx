@@ -2,6 +2,7 @@ import { useState } from "react";
 import { Button, Flex, Text, Stack } from "../atoms";
 import { Card } from "../common";
 import { useNotifications } from "../../hooks/useNotificationsContext";
+import { NOTIFICATION_CONFIG } from "../../../server/config/notificationTypes";
 
 const NotificationCard = ({ notification }) => {
   const { markAsRead, deleteNotification } = useNotifications();
@@ -22,31 +23,15 @@ const NotificationCard = ({ notification }) => {
   };
 
   const getNotificationIcon = () => {
-    switch (notification.type) {
-      case "connection_request":
-        return "🤝";
-      case "connection_accepted":
-        return "✅";
-      case "connection_rejected":
-        return "❌";
-      default:
-        return "📧";
-    }
+    const config = NOTIFICATION_CONFIG[notification.type];
+    return config ? config.icon : "📧";
   };
 
   const getNotificationColor = () => {
     if (notification.isRead) return "muted";
 
-    switch (notification.type) {
-      case "connection_request":
-        return "blue-600";
-      case "connection_accepted":
-        return "green-600";
-      case "connection_rejected":
-        return "red-600";
-      default:
-        return "gray-600";
-    }
+    const config = NOTIFICATION_CONFIG[notification.type];
+    return config ? config.color : "gray-600";
   };
 
   return (
