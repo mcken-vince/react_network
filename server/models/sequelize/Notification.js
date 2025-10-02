@@ -1,5 +1,6 @@
 import { DataTypes, Model } from 'sequelize';
 import sequelize from '../../config/sequelize.js';
+import { NOTIFICATION_TYPES } from '../../config/notificationTypes.js';
 
 class Notification extends Model {
   toJSON() {
@@ -31,11 +32,11 @@ Notification.init({
     }
   },
   type: {
-    type: DataTypes.ENUM('connection_request', 'connection_accepted', 'connection_rejected'),
+    type: DataTypes.STRING(50),
     allowNull: false,
     validate: {
       isIn: {
-        args: [['connection_request', 'connection_accepted', 'connection_rejected']],
+        args: [Object.values(NOTIFICATION_TYPES)],
         msg: 'Invalid notification type'
       }
     }
