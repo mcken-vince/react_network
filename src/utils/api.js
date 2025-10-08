@@ -184,3 +184,54 @@ export const notificationAPI = {
     });
   }
 };
+
+// Post API functions
+export const postAPI = {
+  async getFeed(options = {}) {
+    const queryParams = new URLSearchParams();
+    
+    if (options.limit) queryParams.append('limit', options.limit);
+    if (options.offset) queryParams.append('offset', options.offset);
+    
+    const queryString = queryParams.toString();
+    const url = queryString ? `/posts/feed?${queryString}` : '/posts/feed';
+    
+    return apiRequest(url);
+  },
+
+  async getUserPosts(userId, options = {}) {
+    const queryParams = new URLSearchParams();
+    
+    if (options.limit) queryParams.append('limit', options.limit);
+    if (options.offset) queryParams.append('offset', options.offset);
+    
+    const queryString = queryParams.toString();
+    const url = queryString ? `/posts/user/${userId}?${queryString}` : `/posts/user/${userId}`;
+    
+    return apiRequest(url);
+  },
+
+  async getPost(postId) {
+    return apiRequest(`/posts/${postId}`);
+  },
+
+  async createPost(postData) {
+    return apiRequest('/posts', {
+      method: 'POST',
+      body: JSON.stringify(postData)
+    });
+  },
+
+  async updatePost(postId, updateData) {
+    return apiRequest(`/posts/${postId}`, {
+      method: 'PUT',
+      body: JSON.stringify(updateData)
+    });
+  },
+
+  async deletePost(postId) {
+    return apiRequest(`/posts/${postId}`, {
+      method: 'DELETE'
+    });
+  }
+};

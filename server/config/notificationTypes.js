@@ -4,6 +4,9 @@ export const NOTIFICATION_TYPES = {
   CONNECTION_ACCEPTED: 'connection_accepted',
   CONNECTION_REJECTED: 'connection_rejected',
   
+  // Messaging notifications
+  NEW_MESSAGE: 'new_message',
+  
   // Post notifications
   POST_LIKE: 'post_like',
   POST_COMMENT: 'post_comment',
@@ -25,6 +28,24 @@ export const NOTIFICATION_CONFIG = {
     color: 'blue',
     actionable: true,
     category: 'connection'
+  },
+  [NOTIFICATION_TYPES.CONNECTION_ACCEPTED]: {
+    icon: '✅',
+    color: 'green',
+    actionable: false,
+    category: 'connection'
+  },
+  [NOTIFICATION_TYPES.CONNECTION_REJECTED]: {
+    icon: '❌',
+    color: 'red',
+    actionable: false,
+    category: 'connection'
+  },
+  [NOTIFICATION_TYPES.NEW_MESSAGE]: {
+    icon: '💬',
+    color: 'blue',
+    actionable: true,
+    category: 'messaging'
   },
   [NOTIFICATION_TYPES.POST_LIKE]: {
     icon: '❤️',

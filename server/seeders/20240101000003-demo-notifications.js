@@ -25,8 +25,10 @@ export default {
         title: 'New Connection Request',
         message: `${users[1].username} wants to connect with you.`,
         related_user_id: users[1].id,
-        connection_id: connections[0].id,
+        related_entity_type: 'connection',
+        related_entity_id: connections[0].id,
         is_read: false,
+        metadata: JSON.stringify({ actionable: true, category: 'connection' }),
         created_at: new Date(Date.now() - 1000 * 60 * 30), // 30 minutes ago
         updated_at: new Date(Date.now() - 1000 * 60 * 30)
       },
@@ -36,8 +38,10 @@ export default {
         title: 'Connection Request Accepted',
         message: `${users[0].username} accepted your connection request.`,
         related_user_id: users[0].id,
-        connection_id: connections[0].id,
+        related_entity_type: 'connection',
+        related_entity_id: connections[0].id,
         is_read: true,
+        metadata: JSON.stringify({ actionable: false, category: 'connection' }),
         created_at: new Date(Date.now() - 1000 * 60 * 60 * 2), // 2 hours ago
         updated_at: new Date(Date.now() - 1000 * 60 * 60 * 2)
       },
@@ -47,8 +51,10 @@ export default {
         title: 'New Connection Request',
         message: `${users[3].username} wants to connect with you.`,
         related_user_id: users[3].id,
-        connection_id: connections[1]?.id || connections[0].id,
+        related_entity_type: 'connection',
+        related_entity_id: connections[1]?.id || connections[0].id,
         is_read: false,
+        metadata: JSON.stringify({ actionable: true, category: 'connection' }),
         created_at: new Date(Date.now() - 1000 * 60 * 10), // 10 minutes ago
         updated_at: new Date(Date.now() - 1000 * 60 * 10)
       }

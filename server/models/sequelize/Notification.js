@@ -14,6 +14,34 @@ class Notification extends Model {
     }
     return values;
   }
+
+  /**
+   * Helper method to get the related entity dynamically
+   * This allows us to fetch the associated model based on the polymorphic type
+   */
+  async getRelatedEntity() {
+    if (!this.relatedEntityType || !this.relatedEntityId) {
+      return null;
+    }
+
+    const modelMap = {
+      'connection': 'Connection',
+      'conversation': 'Conversation',
+      'message': 'Message',
+      'post': 'Post',
+      'comment': 'Comment',
+      'like': 'Like',
+      'user': 'User'
+    };
+
+    const modelName = modelMap[this.relatedEntityType];
+    if (!modelName || !sequelize.models[modelName]) {
+      return null;
+    }
+
+    const Model = sequelize.models[modelName];
+    return await Model.findByPk(this.relatedEntityId);
+  }
 }
 
 Notification.init({
@@ -68,20 +96,35 @@ Notification.init({
       key: 'id'
     }
   },
-  connectionId: {
+  relatedEntityType: {
+    type: DataTypes.STRING(50),
+    allowNull: true,
+    field: 'related_entity_type',
+    comment: 'Type of the related entity (e.g., connection, conversation, message, post, comment, like)',
+    validate: {
+      isIn: {
+        args: [['connection', 'conversation', 'message', 'post', 'comment', 'like', 'user']],
+        msg: 'Invalid related entity type'
+      }
+    }
+  },
+  relatedEntityId: {
     type: DataTypes.INTEGER,
     allowNull: true,
-    field: 'connection_id',
-    references: {
-      model: 'connections',
-      key: 'id'
-    }
+    field: 'related_entity_id',
+    comment: 'ID of the related entity'
   },
   isRead: {
     type: DataTypes.BOOLEAN,
     allowNull: false,
     defaultValue: false,
     field: 'is_read'
+  },
+  metadata: {
+    type: DataTypes.JSONB,
+    allowNull: true,
+    defaultValue: {},
+    comment: 'Additional flexible metadata for future extensibility'
   }
 }, {
   sequelize,
@@ -103,6 +146,10 @@ Notification.init({
     },
     {
       fields: ['created_at']
+    },
+    {
+      fields: ['related_entity_type', 'related_entity_id'],
+      name: 'idx_notifications_polymorphic'
     }
   ]
 });
@@ -113,11 +160,14 @@ Notification.createNotification = async function(notificationData, transaction) 
 };
 
 Notification.getUserNotifications = async function(userId, options = {}) {
-  const { limit = 50, offset = 0, unreadOnly = false } = options;
+  const { limit = 50, offset = 0, unreadOnly = false, type = null } = options;
   
   const whereClause = { userId };
   if (unreadOnly) {
     whereClause.isRead = false;
+  }
+  if (type) {
+    whereClause.type = type;
   }
 
   return this.findAll({
@@ -188,6 +238,33 @@ Notification.deleteNotification = async function(notificationId, userId, transac
   }
 
   return notification.destroy({ transaction });
+};
+
+/**
+ * Get notifications by related entity
+ * Useful for cleaning up notifications when an entity is deleted
+ */
+Notification.getByRelatedEntity = async function(entityType, entityId) {
+  return this.findAll({
+    where: {
+      relatedEntityType: entityType,
+      relatedEntityId: entityId
+    }
+  });
+};
+
+/**
+ * Delete notifications by related entity
+ * Useful for cascade deletion when an entity is removed
+ */
+Notification.deleteByRelatedEntity = async function(entityType, entityId, transaction) {
+  return this.destroy({
+    where: {
+      relatedEntityType: entityType,
+      relatedEntityId: entityId
+    },
+    transaction
+  });
 };
 
 export default Notification;
