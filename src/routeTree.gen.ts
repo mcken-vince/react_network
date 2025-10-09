@@ -11,6 +11,7 @@
 import { Route as rootRouteImport } from './routes/__root'
 import { Route as SignupRouteImport } from './routes/signup'
 import { Route as NotificationsRouteImport } from './routes/notifications'
+import { Route as MessagesRouteImport } from './routes/messages'
 import { Route as LoginRouteImport } from './routes/login'
 import { Route as FeedRouteImport } from './routes/feed'
 import { Route as DashboardRouteImport } from './routes/dashboard'
@@ -28,6 +29,11 @@ const SignupRoute = SignupRouteImport.update({
 const NotificationsRoute = NotificationsRouteImport.update({
   id: '/notifications',
   path: '/notifications',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const MessagesRoute = MessagesRouteImport.update({
+  id: '/messages',
+  path: '/messages',
   getParentRoute: () => rootRouteImport,
 } as any)
 const LoginRoute = LoginRouteImport.update({
@@ -78,6 +84,7 @@ export interface FileRoutesByFullPath {
   '/dashboard': typeof DashboardRoute
   '/feed': typeof FeedRoute
   '/login': typeof LoginRoute
+  '/messages': typeof MessagesRoute
   '/notifications': typeof NotificationsRoute
   '/signup': typeof SignupRoute
   '/profile/$userId': typeof ProfileUserIdRoute
@@ -90,6 +97,7 @@ export interface FileRoutesByTo {
   '/dashboard': typeof DashboardRoute
   '/feed': typeof FeedRoute
   '/login': typeof LoginRoute
+  '/messages': typeof MessagesRoute
   '/notifications': typeof NotificationsRoute
   '/signup': typeof SignupRoute
   '/profile/$userId': typeof ProfileUserIdRoute
@@ -103,6 +111,7 @@ export interface FileRoutesById {
   '/dashboard': typeof DashboardRoute
   '/feed': typeof FeedRoute
   '/login': typeof LoginRoute
+  '/messages': typeof MessagesRoute
   '/notifications': typeof NotificationsRoute
   '/signup': typeof SignupRoute
   '/profile/$userId': typeof ProfileUserIdRoute
@@ -117,6 +126,7 @@ export interface FileRouteTypes {
     | '/dashboard'
     | '/feed'
     | '/login'
+    | '/messages'
     | '/notifications'
     | '/signup'
     | '/profile/$userId'
@@ -129,6 +139,7 @@ export interface FileRouteTypes {
     | '/dashboard'
     | '/feed'
     | '/login'
+    | '/messages'
     | '/notifications'
     | '/signup'
     | '/profile/$userId'
@@ -141,6 +152,7 @@ export interface FileRouteTypes {
     | '/dashboard'
     | '/feed'
     | '/login'
+    | '/messages'
     | '/notifications'
     | '/signup'
     | '/profile/$userId'
@@ -154,6 +166,7 @@ export interface RootRouteChildren {
   DashboardRoute: typeof DashboardRoute
   FeedRoute: typeof FeedRoute
   LoginRoute: typeof LoginRoute
+  MessagesRoute: typeof MessagesRoute
   NotificationsRoute: typeof NotificationsRoute
   SignupRoute: typeof SignupRoute
   ProfileUserIdRoute: typeof ProfileUserIdRoute
@@ -174,6 +187,13 @@ declare module '@tanstack/react-router' {
       path: '/notifications'
       fullPath: '/notifications'
       preLoaderRoute: typeof NotificationsRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/messages': {
+      id: '/messages'
+      path: '/messages'
+      fullPath: '/messages'
+      preLoaderRoute: typeof MessagesRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/login': {
@@ -242,6 +262,7 @@ const rootRouteChildren: RootRouteChildren = {
   DashboardRoute: DashboardRoute,
   FeedRoute: FeedRoute,
   LoginRoute: LoginRoute,
+  MessagesRoute: MessagesRoute,
   NotificationsRoute: NotificationsRoute,
   SignupRoute: SignupRoute,
   ProfileUserIdRoute: ProfileUserIdRoute,

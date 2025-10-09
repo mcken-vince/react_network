@@ -57,6 +57,7 @@ function AuthenticatedLayout({ children }) {
     { path: "/connections", label: "Connections", icon: "connections" },
     { path: "/notifications", label: "Notifications", icon: "notifications" },
     { path: `/profile/${user.id}`, label: "Profile", icon: "profile" },
+    // TO DO: add messaging and feed links here
   ];
 
   return (
