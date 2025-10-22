@@ -6,11 +6,11 @@ export default {
   up: async (queryInterface, Sequelize) => {
     // Get existing conversations and their participants
     const conversations = await queryInterface.sequelize.query(
-      `SELECT c.id, c.type, cp.user_id 
+      `SELECT c.id, c.type, cp.userId 
        FROM conversations c 
-       JOIN conversation_participants cp ON c.id = cp.conversation_id 
-       WHERE cp.is_active = true 
-       ORDER BY c.created_at, cp.user_id`,
+       JOIN conversationParticipants cp ON c.id = cp.conversationId 
+       WHERE cp.isActive = true 
+       ORDER BY c.createdAt, cp.userId`,
       { type: Sequelize.QueryTypes.SELECT }
     );
 
@@ -59,16 +59,16 @@ export default {
 
         messages.push({
           id: uuidv4(),
-          conversation_id: conversationId,
-          sender_id: senderId,
+          conversationId,
+          senderId,
           content: messageContents[messageIndex % messageContents.length],
-          message_type: 'text',
-          attachment_url: null,
-          reply_to_id: null,
-          is_edited: false,
-          edited_at: null,
-          created_at: new Date(now.getTime() - minutesAgo * 60 * 1000),
-          updated_at: new Date(now.getTime() - minutesAgo * 60 * 1000)
+          messageType: 'text',
+          attachmentUrl: null,
+          replyToId: null,
+          isEdited: false,
+          editedAt: null,
+          createdAt: new Date(now.getTime() - minutesAgo * 60 * 1000),
+          updatedAt: new Date(now.getTime() - minutesAgo * 60 * 1000)
         });
 
         messageIndex++;

@@ -64,3 +64,6 @@
   ```bash
   npm start
   ```
+
+## **Database Migrations**
+- Always create database migrations with working `up` and `down` scripts whenever tables are updated. Assume the database may need to be setup from scratch, so the post-migration tables should always match the corresponding sequelize entities.

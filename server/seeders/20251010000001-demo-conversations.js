@@ -32,9 +32,9 @@ export default {
         id: conversationId,
         type: 'direct',
         name: null,
-        created_by: users[i].id,
-        created_at: new Date(now.getTime() - (2 - i) * 24 * 60 * 60 * 1000),
-        updated_at: new Date(now.getTime() - (2 - i) * 60 * 60 * 1000)
+        createdBy: users[i].id,
+        createdAt: new Date(now.getTime() - (2 - i) * 24 * 60 * 60 * 1000),
+        updatedAt: new Date(now.getTime() - (2 - i) * 60 * 60 * 1000)
       });
     }
 
@@ -51,9 +51,9 @@ export default {
         id: groupId,
         type: 'group',
         name: 'Team Discussion',
-        created_by: users[0].id,
-        created_at: new Date(now.getTime() - 3 * 24 * 60 * 60 * 1000),
-        updated_at: new Date(now.getTime() - 30 * 60 * 1000)
+        createdBy: users[0].id,
+        createdAt: new Date(now.getTime() - 3 * 24 * 60 * 60 * 1000),
+        updatedAt: new Date(now.getTime() - 30 * 60 * 1000)
       });
     }
 
@@ -66,25 +66,25 @@ export default {
       conv.participants.forEach((userId, userIndex) => {
         participants.push({
           id: uuidv4(),
-          conversation_id: conv.id,
-          user_id: userId,
-          joined_at: new Date(now.getTime() - (3 - convIndex) * 24 * 60 * 60 * 1000),
-          last_read_at: userIndex === 0 ? new Date(now.getTime() - 60 * 60 * 1000) : null,
-          is_admin: conv.type === 'group' && userIndex === 0,
-          is_active: true,
-          created_at: new Date(now.getTime() - (3 - convIndex) * 24 * 60 * 60 * 1000),
-          updated_at: new Date(now.getTime() - (3 - convIndex) * 24 * 60 * 60 * 1000)
+          conversationId: conv.id,
+          userId: userId,
+          joinedAt: new Date(now.getTime() - (3 - convIndex) * 24 * 60 * 60 * 1000),
+          lastReadAt: userIndex === 0 ? new Date(now.getTime() - 60 * 60 * 1000) : null,
+          isAdmin: conv.type === 'group' && userIndex === 0,
+          isActive: true,
+          createdAt: new Date(now.getTime() - (3 - convIndex) * 24 * 60 * 60 * 1000),
+          updatedAt: new Date(now.getTime() - (3 - convIndex) * 24 * 60 * 60 * 1000)
         });
       });
     });
 
-    await queryInterface.bulkInsert('conversation_participants', participants);
+    await queryInterface.bulkInsert('conversationParticipants', participants);
 
     console.log(`Created ${conversations.length} conversations with ${participants.length} participants`);
   },
 
   down: async (queryInterface, _Sequelize) => {
-    await queryInterface.bulkDelete('conversation_participants', null, {});
+    await queryInterface.bulkDelete('conversationParticipants', null, {});
     await queryInterface.bulkDelete('conversations', null, {});
   }
 };

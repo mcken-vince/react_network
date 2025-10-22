@@ -15,39 +15,39 @@ export default {
 
     const connections = [
       {
-        requester_id: users[0].id, // John
-        recipient_id: users[1].id, // Jane
+        requesterId: users[0].id, // John
+        recipientId: users[1].id, // Jane
         status: 'accepted',
-        created_at: new Date(),
-        updated_at: new Date()
+        createdAt: new Date(),
+        updatedAt: new Date()
       },
       {
-        requester_id: users[0].id, // John
-        recipient_id: users[2].id, // Bob
+        requesterId: users[0].id, // John
+        recipientId: users[2].id, // Bob
         status: 'accepted',
-        created_at: new Date(),
-        updated_at: new Date()
+        createdAt: new Date(),
+        updatedAt: new Date()
       },
       {
-        requester_id: users[3].id, // Alice
-        recipient_id: users[0].id, // John
+        requesterId: users[3].id, // Alice
+        recipientId: users[0].id, // John
         status: 'pending',
-        created_at: new Date(),
-        updated_at: new Date()
+        createdAt: new Date(),
+        updatedAt: new Date()
       },
       {
-        requester_id: users[1].id, // Jane
-        recipient_id: users[2].id, // Bob
+        requesterId: users[1].id, // Jane
+        recipientId: users[2].id, // Bob
         status: 'accepted',
-        created_at: new Date(),
-        updated_at: new Date()
+        createdAt: new Date(),
+        updatedAt: new Date()
       },
       {
-        requester_id: users[4].id, // Charlie
-        recipient_id: users[0].id, // John
+        requesterId: users[4].id, // Charlie
+        recipientId: users[0].id, // John
         status: 'rejected',
-        created_at: new Date(),
-        updated_at: new Date()
+        createdAt: new Date(),
+        updatedAt: new Date()
       }
     ];
 

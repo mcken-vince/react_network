@@ -54,10 +54,11 @@ function AuthenticatedLayout({ children }) {
 
   const menuItems = [
     { path: "/dashboard", label: "Dashboard", icon: "dashboard" },
+    { path: "/feed", label: "Feed", icon: "feed" },
     { path: "/connections", label: "Connections", icon: "connections" },
+    { path: "/messages", label: "Messages", icon: "messages" },
     { path: "/notifications", label: "Notifications", icon: "notifications" },
-    { path: `/profile/${user.id}`, label: "Profile", icon: "profile" },
-    // TO DO: add messaging and feed links here
+    { path: `/profile/${user?.id}`, label: "Profile", icon: "profile" },
   ];
 
   return (
@@ -146,11 +147,15 @@ function AuthenticatedLayout({ children }) {
                         <span className="text-base">
                           {item.icon === "dashboard"
                             ? "📊"
-                            : item.icon === "connections"
-                              ? "🔗"
-                              : item.icon === "notifications"
-                                ? "🔔"
-                                : "👤"}
+                            : item.icon === "feed"
+                              ? "📰"
+                              : item.icon === "connections"
+                                ? "🔗"
+                                : item.icon === "messages"
+                                  ? "💬"
+                                  : item.icon === "notifications"
+                                    ? "🔔"
+                                    : "👤"}
                         </span>
                         <span>{item.label}</span>
                       </Flex>

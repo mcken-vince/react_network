@@ -9,6 +9,7 @@
 // Additionally, you should also exclude this file from your linter and/or formatter to prevent it from being checked or modified.
 
 import { Route as rootRouteImport } from './routes/__root'
+import { Route as TestErrorRouteImport } from './routes/test-error'
 import { Route as SignupRouteImport } from './routes/signup'
 import { Route as NotificationsRouteImport } from './routes/notifications'
 import { Route as MessagesRouteImport } from './routes/messages'
@@ -16,11 +17,17 @@ import { Route as LoginRouteImport } from './routes/login'
 import { Route as FeedRouteImport } from './routes/feed'
 import { Route as DashboardRouteImport } from './routes/dashboard'
 import { Route as ConnectionsRouteImport } from './routes/connections'
+import { Route as R404RouteImport } from './routes/404'
 import { Route as SplatRouteImport } from './routes/$'
 import { Route as IndexRouteImport } from './routes/index'
 import { Route as ProfileIndexRouteImport } from './routes/profile/index'
 import { Route as ProfileUserIdRouteImport } from './routes/profile/$userId'
 
+const TestErrorRoute = TestErrorRouteImport.update({
+  id: '/test-error',
+  path: '/test-error',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const SignupRoute = SignupRouteImport.update({
   id: '/signup',
   path: '/signup',
@@ -56,6 +63,11 @@ const ConnectionsRoute = ConnectionsRouteImport.update({
   path: '/connections',
   getParentRoute: () => rootRouteImport,
 } as any)
+const R404Route = R404RouteImport.update({
+  id: '/404',
+  path: '/404',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const SplatRoute = SplatRouteImport.update({
   id: '/$',
   path: '/$',
@@ -80,6 +92,7 @@ const ProfileUserIdRoute = ProfileUserIdRouteImport.update({
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
   '/$': typeof SplatRoute
+  '/404': typeof R404Route
   '/connections': typeof ConnectionsRoute
   '/dashboard': typeof DashboardRoute
   '/feed': typeof FeedRoute
@@ -87,12 +100,14 @@ export interface FileRoutesByFullPath {
   '/messages': typeof MessagesRoute
   '/notifications': typeof NotificationsRoute
   '/signup': typeof SignupRoute
+  '/test-error': typeof TestErrorRoute
   '/profile/$userId': typeof ProfileUserIdRoute
   '/profile': typeof ProfileIndexRoute
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
   '/$': typeof SplatRoute
+  '/404': typeof R404Route
   '/connections': typeof ConnectionsRoute
   '/dashboard': typeof DashboardRoute
   '/feed': typeof FeedRoute
@@ -100,6 +115,7 @@ export interface FileRoutesByTo {
   '/messages': typeof MessagesRoute
   '/notifications': typeof NotificationsRoute
   '/signup': typeof SignupRoute
+  '/test-error': typeof TestErrorRoute
   '/profile/$userId': typeof ProfileUserIdRoute
   '/profile': typeof ProfileIndexRoute
 }
@@ -107,6 +123,7 @@ export interface FileRoutesById {
   __root__: typeof rootRouteImport
   '/': typeof IndexRoute
   '/$': typeof SplatRoute
+  '/404': typeof R404Route
   '/connections': typeof ConnectionsRoute
   '/dashboard': typeof DashboardRoute
   '/feed': typeof FeedRoute
@@ -114,6 +131,7 @@ export interface FileRoutesById {
   '/messages': typeof MessagesRoute
   '/notifications': typeof NotificationsRoute
   '/signup': typeof SignupRoute
+  '/test-error': typeof TestErrorRoute
   '/profile/$userId': typeof ProfileUserIdRoute
   '/profile/': typeof ProfileIndexRoute
 }
@@ -122,6 +140,7 @@ export interface FileRouteTypes {
   fullPaths:
     | '/'
     | '/$'
+    | '/404'
     | '/connections'
     | '/dashboard'
     | '/feed'
@@ -129,12 +148,14 @@ export interface FileRouteTypes {
     | '/messages'
     | '/notifications'
     | '/signup'
+    | '/test-error'
     | '/profile/$userId'
     | '/profile'
   fileRoutesByTo: FileRoutesByTo
   to:
     | '/'
     | '/$'
+    | '/404'
     | '/connections'
     | '/dashboard'
     | '/feed'
@@ -142,12 +163,14 @@ export interface FileRouteTypes {
     | '/messages'
     | '/notifications'
     | '/signup'
+    | '/test-error'
     | '/profile/$userId'
     | '/profile'
   id:
     | '__root__'
     | '/'
     | '/$'
+    | '/404'
     | '/connections'
     | '/dashboard'
     | '/feed'
@@ -155,6 +178,7 @@ export interface FileRouteTypes {
     | '/messages'
     | '/notifications'
     | '/signup'
+    | '/test-error'
     | '/profile/$userId'
     | '/profile/'
   fileRoutesById: FileRoutesById
@@ -162,6 +186,7 @@ export interface FileRouteTypes {
 export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
   SplatRoute: typeof SplatRoute
+  R404Route: typeof R404Route
   ConnectionsRoute: typeof ConnectionsRoute
   DashboardRoute: typeof DashboardRoute
   FeedRoute: typeof FeedRoute
@@ -169,12 +194,20 @@ export interface RootRouteChildren {
   MessagesRoute: typeof MessagesRoute
   NotificationsRoute: typeof NotificationsRoute
   SignupRoute: typeof SignupRoute
+  TestErrorRoute: typeof TestErrorRoute
   ProfileUserIdRoute: typeof ProfileUserIdRoute
   ProfileIndexRoute: typeof ProfileIndexRoute
 }
 
 declare module '@tanstack/react-router' {
   interface FileRoutesByPath {
+    '/test-error': {
+      id: '/test-error'
+      path: '/test-error'
+      fullPath: '/test-error'
+      preLoaderRoute: typeof TestErrorRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/signup': {
       id: '/signup'
       path: '/signup'
@@ -224,6 +257,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof ConnectionsRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/404': {
+      id: '/404'
+      path: '/404'
+      fullPath: '/404'
+      preLoaderRoute: typeof R404RouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/$': {
       id: '/$'
       path: '/$'
@@ -258,6 +298,7 @@ declare module '@tanstack/react-router' {
 const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
   SplatRoute: SplatRoute,
+  R404Route: R404Route,
   ConnectionsRoute: ConnectionsRoute,
   DashboardRoute: DashboardRoute,
   FeedRoute: FeedRoute,
@@ -265,6 +306,7 @@ const rootRouteChildren: RootRouteChildren = {
   MessagesRoute: MessagesRoute,
   NotificationsRoute: NotificationsRoute,
   SignupRoute: SignupRoute,
+  TestErrorRoute: TestErrorRoute,
   ProfileUserIdRoute: ProfileUserIdRoute,
   ProfileIndexRoute: ProfileIndexRoute,
 }

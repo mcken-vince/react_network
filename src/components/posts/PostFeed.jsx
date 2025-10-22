@@ -1,5 +1,6 @@
-import PostCard from './PostCard'
-import Loading from '../Loading'
+import PostCard from "./PostCard";
+import Loading from "../Loading";
+import AuthenticatedLayout from "../layout/AuthenticatedLayout";
 
 export default function PostFeed({
   posts,
@@ -9,14 +10,14 @@ export default function PostFeed({
   onEdit,
   onDelete,
   currentUserId,
-  error
+  error,
 }) {
   if (error) {
     return (
       <div className="bg-red-50 border border-red-200 rounded-lg p-4 text-center">
         <p className="text-red-600">{error}</p>
       </div>
-    )
+    );
   }
 
   if (loading && posts.length === 0) {
@@ -24,7 +25,7 @@ export default function PostFeed({
       <div className="flex justify-center items-center py-12">
         <Loading />
       </div>
-    )
+    );
   }
 
   if (!loading && posts.length === 0) {
@@ -48,15 +49,15 @@ export default function PostFeed({
           Be the first to share something with your friends!
         </p>
       </div>
-    )
+    );
   }
 
   return (
     <div>
       {/* Posts List */}
-      {posts.map((post) => (
+      {posts?.map((post) => (
         <PostCard
-          key={post.id}
+          key={post?.id}
           post={post}
           currentUserId={currentUserId}
           onEdit={onEdit}
@@ -72,7 +73,7 @@ export default function PostFeed({
             disabled={loading}
             className="px-6 py-3 text-sm font-medium text-white bg-blue-600 rounded-lg hover:bg-blue-700 disabled:bg-gray-300 disabled:cursor-not-allowed transition-colors"
           >
-            {loading ? 'Loading...' : 'Load More'}
+            {loading ? "Loading..." : "Load More"}
           </button>
         </div>
       )}
@@ -84,5 +85,5 @@ export default function PostFeed({
         </div>
       )}
     </div>
-  )
+  );
 }

@@ -5,6 +5,7 @@ import CreatePostForm from "../components/posts/CreatePostForm";
 import PostFeed from "../components/posts/PostFeed";
 import EditPostModal from "../components/posts/EditPostModal";
 import usePostFeed from "../hooks/usePostFeed";
+import AuthenticatedLayout from "../components/layout/AuthenticatedLayout";
 
 export const Route = createFileRoute("/feed")({
   component: FeedPage,
@@ -70,39 +71,41 @@ function FeedPage() {
   };
 
   return (
-    <div className="min-h-screen bg-gray-50">
-      <div className="max-w-2xl mx-auto px-4 py-8">
-        {/* Page Header */}
-        <div className="mb-6">
-          <h1 className="text-3xl font-bold text-gray-900">Feed</h1>
-          <p className="mt-1 text-sm text-gray-500">
-            See what your friends are sharing
-          </p>
+    <AuthenticatedLayout>
+      <div className="min-h-screen bg-gray-50">
+        <div className="max-w-2xl mx-auto px-4 py-8">
+          {/* Page Header */}
+          <div className="mb-6">
+            <h1 className="text-3xl font-bold text-gray-900">Feed</h1>
+            <p className="mt-1 text-sm text-gray-500">
+              See what your friends are sharing
+            </p>
+          </div>
+
+          {/* Create Post Form */}
+          <CreatePostForm onPostCreated={handleCreatePost} currentUser={user} />
+
+          {/* Posts Feed */}
+          <PostFeed
+            posts={posts}
+            loading={loading}
+            error={error}
+            hasMore={hasMore}
+            onLoadMore={loadMore}
+            onEdit={handleEditPost}
+            onDelete={handleDeletePost}
+            currentUserId={user?.id}
+          />
+
+          {/* Edit Post Modal */}
+          <EditPostModal
+            post={editingPost}
+            isOpen={showEditModal}
+            onClose={handleCloseEdit}
+            onSave={handleSaveEdit}
+          />
         </div>
-
-        {/* Create Post Form */}
-        <CreatePostForm onPostCreated={handleCreatePost} currentUser={user} />
-
-        {/* Posts Feed */}
-        <PostFeed
-          posts={posts}
-          loading={loading}
-          error={error}
-          hasMore={hasMore}
-          onLoadMore={loadMore}
-          onEdit={handleEditPost}
-          onDelete={handleDeletePost}
-          currentUserId={user?.id}
-        />
-
-        {/* Edit Post Modal */}
-        <EditPostModal
-          post={editingPost}
-          isOpen={showEditModal}
-          onClose={handleCloseEdit}
-          onSave={handleSaveEdit}
-        />
       </div>
-    </div>
+    </AuthenticatedLayout>
   );
 }

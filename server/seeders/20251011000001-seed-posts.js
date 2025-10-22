@@ -47,12 +47,12 @@ export default {
 
         posts.push({
           id: uuidv4(),
-          user_id: user.id,
+          userId: user.id,
           content: samplePosts[Math.floor(Math.random() * samplePosts.length)],
-          image_url: null,
+          imageUrl: null,
           visibility: visibilityOptions[Math.floor(Math.random() * visibilityOptions.length)],
-          created_at: postDate,
-          updated_at: postDate
+          createdAt: postDate,
+          updatedAt: postDate
         });
       }
     });

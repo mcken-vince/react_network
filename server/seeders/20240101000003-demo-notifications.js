@@ -9,7 +9,7 @@ export default {
     );
 
     const connections = await queryInterface.sequelize.query(
-      `SELECT id, requester_id, recipient_id FROM connections LIMIT 3`,
+      `SELECT id, requesterId, recipientId FROM connections LIMIT 3`,
       { type: queryInterface.sequelize.QueryTypes.SELECT }
     );
 
@@ -24,39 +24,39 @@ export default {
         type: 'connection_request',
         title: 'New Connection Request',
         message: `${users[1].username} wants to connect with you.`,
-        related_user_id: users[1].id,
-        related_entity_type: 'connection',
-        related_entity_id: connections[0].id,
-        is_read: false,
+        relatedUserId: users[1].id,
+        relatedEntityType: 'connection',
+        relatedEntityId: connections[0].id,
+        isRead: false,
         metadata: JSON.stringify({ actionable: true, category: 'connection' }),
-        created_at: new Date(Date.now() - 1000 * 60 * 30), // 30 minutes ago
-        updated_at: new Date(Date.now() - 1000 * 60 * 30)
+        createdAt: new Date(Date.now() - 1000 * 60 * 30), // 30 minutes ago
+        updatedAt: new Date(Date.now() - 1000 * 60 * 30)
       },
       {
-        user_id: users[1].id, // Jane gets a notification
+        userId: users[1].id, // Jane gets a notification
         type: 'connection_accepted',
         title: 'Connection Request Accepted',
         message: `${users[0].username} accepted your connection request.`,
-        related_user_id: users[0].id,
-        related_entity_type: 'connection',
-        related_entity_id: connections[0].id,
-        is_read: true,
+        relatedUserId: users[0].id,
+        relatedEntityType: 'connection',
+        relatedEntityId: connections[0].id,
+        isRead: true,
         metadata: JSON.stringify({ actionable: false, category: 'connection' }),
-        created_at: new Date(Date.now() - 1000 * 60 * 60 * 2), // 2 hours ago
-        updated_at: new Date(Date.now() - 1000 * 60 * 60 * 2)
+        createdAt: new Date(Date.now() - 1000 * 60 * 60 * 2), // 2 hours ago
+        updatedAt: new Date(Date.now() - 1000 * 60 * 60 * 2)
       },
       {
-        user_id: users[2].id, // Bob gets a notification
+        userId: users[2].id, // Bob gets a notification
         type: 'connection_request',
         title: 'New Connection Request',
         message: `${users[3].username} wants to connect with you.`,
-        related_user_id: users[3].id,
-        related_entity_type: 'connection',
-        related_entity_id: connections[1]?.id || connections[0].id,
-        is_read: false,
+        relatedUserId: users[3].id,
+        relatedEntityType: 'connection',
+        relatedEntityId: connections[1]?.id || connections[0].id,
+        isRead: false,
         metadata: JSON.stringify({ actionable: true, category: 'connection' }),
-        created_at: new Date(Date.now() - 1000 * 60 * 10), // 10 minutes ago
-        updated_at: new Date(Date.now() - 1000 * 60 * 10)
+        createdAt: new Date(Date.now() - 1000 * 60 * 10), // 10 minutes ago
+        updatedAt: new Date(Date.now() - 1000 * 60 * 10)
       }
     ];
 
