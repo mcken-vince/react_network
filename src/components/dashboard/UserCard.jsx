@@ -36,7 +36,7 @@ function UserCard({
         </Flex>
 
         {showConnectionStatus && currentUser && (
-          <Flex justify="center">
+          <Flex justify="center" onClick={(e) => e.stopPropagation()}>
             <ConnectionStatusButton
               targetUserId={user.id}
               currentUserId={currentUser.id}

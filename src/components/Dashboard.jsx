@@ -11,6 +11,7 @@ import { UserCard } from "./dashboard/index";
  * @param {array} allUsers - Array of all users
  */
 function Dashboard({ user, allUsers }) {
+  const navigate = useNavigate();
   const otherUsers = useMemo(() => {
     return allUsers.filter((u) => u.id !== user.id);
   }, [allUsers, user.id]);
@@ -82,14 +83,14 @@ function Dashboard({ user, allUsers }) {
         </div>
 
         <div className="grid sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
-          {otherUsers.slice(0, 8).map((user) => (
+          {otherUsers.slice(0, 8).map((otherUser) => (
             <UserCard
-              key={user.id}
-              user={user}
+              key={otherUser.id}
+              user={otherUser}
               currentUser={user}
               hoverable
               showConnectionStatus
-              className="h-full"
+              onClick={() => navigate({ to: `/profile/${otherUser.id}` })}
             />
           ))}
         </div>

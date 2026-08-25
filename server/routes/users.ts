@@ -1,9 +1,10 @@
 import express from "express";
-import { User } from "../models";
+import { Connection, User } from "../models";
 import { authenticateToken } from "../middleware/auth.js";
 import { validateProfileUpdate } from "../utils/validation.js";
 import type { Response } from "express";
 import type { AuthRequest } from "../types";
+import { Op } from "sequelize";
 
 const router = express.Router();
 
@@ -13,22 +14,34 @@ router.get(
   authenticateToken,
   async (req: AuthRequest, res: Response): Promise<void> => {
     try {
-      const { includeConnectionStatus } = req.query;
-      let users;
-
-      if (includeConnectionStatus === "true") {
-        // Use getAllUsers for now since getUsersWithConnectionStatus doesn't exist
-        users = await User.getAllUsers();
-      } else {
-        users = await User.getAllUsers();
+      const users = await User.getAllUsers();
+      if (req.query.includeConnectionStatus === "true") {
+        const userId = req.userId!;
+        const connections = await Connection.findAll({
+          where: {
+            [Op.or]: [{ requesterId: userId }, { recipientId: userId }],
+          },
+        });
+        const statusByUser = new Map(
+          connections.map((c) => [
+            c.requesterId === userId ? c.recipientId : c.requesterId,
+            { ...c.toJSON(), isRequester: c.requesterId === userId },
+          ]),
+        );
+        res.json({
+          users: users.map((u) => ({
+            ...u.toJSON(),
+            connectionStatus: statusByUser.get(u.id) || null,
+          })),
+        });
+        return;
       }
-
       res.json({ users });
     } catch (error) {
       console.error("Get users error:", error);
       res.status(500).json({ error: "Internal server error" });
     }
-  }
+  },
 );
 
 // Get current user (protected route)
@@ -47,7 +60,7 @@ router.get(
       console.error("Get current user error:", error);
       res.status(500).json({ error: "Internal server error" });
     }
-  }
+  },
 );
 
 // Get user by ID (protected route)
@@ -72,7 +85,7 @@ router.get(
       console.error("Get user error:", error);
       res.status(500).json({ error: "Internal server error" });
     }
-  }
+  },
 );
 
 // Update user profile (protected route)
@@ -129,7 +142,7 @@ router.put(
       console.error("Update user error:", error);
       res.status(500).json({ error: "Internal server error" });
     }
-  }
+  },
 );
 
 export default router;

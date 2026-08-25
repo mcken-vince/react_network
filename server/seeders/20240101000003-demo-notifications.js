@@ -9,7 +9,7 @@ export default {
     );
 
     const connections = await queryInterface.sequelize.query(
-      `SELECT id, requesterId, recipientId FROM connections LIMIT 3`,
+      `SELECT id, "requesterId", "recipientId" FROM connections LIMIT 3`,
       { type: queryInterface.sequelize.QueryTypes.SELECT }
     );
 
@@ -20,7 +20,7 @@ export default {
 
     const notifications = [
       {
-        user_id: users[0].id, // John gets a notification
+        userId: users[0].id, // John gets a notification
         type: 'connection_request',
         title: 'New Connection Request',
         message: `${users[1].username} wants to connect with you.`,

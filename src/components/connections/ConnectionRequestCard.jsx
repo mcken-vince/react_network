@@ -1,5 +1,6 @@
 import { Card } from "../common";
 import { Button, Flex, Text, Stack } from "../atoms";
+import { Link } from "@tanstack/react-router";
 
 const ConnectionRequestCard = ({
   request,
@@ -32,6 +33,11 @@ const ConnectionRequestCard = ({
         </Stack>
 
         <Flex gap="sm">
+          <Link to="/profile/$userId" params={{ userId: user.id.toString() }}>
+            <Button variant="outline" size="sm">
+              View Profile
+            </Button>
+          </Link>
           {isSentRequest ? (
             <Button
               variant="outline"

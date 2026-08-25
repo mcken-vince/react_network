@@ -6,11 +6,11 @@ export default {
   up: async (queryInterface, Sequelize) => {
     // Get existing conversations and their participants
     const conversations = await queryInterface.sequelize.query(
-      `SELECT c.id, c.type, cp.userId 
-       FROM conversations c 
-       JOIN conversationParticipants cp ON c.id = cp.conversationId 
-       WHERE cp.isActive = true 
-       ORDER BY c.createdAt, cp.userId`,
+      `SELECT c.id, c.type, cp."userId"
+       FROM conversations c
+       JOIN "conversationParticipants" cp ON c.id = cp."conversationId"
+       WHERE cp."isActive" = true
+       ORDER BY c."createdAt", cp."userId"`,
       { type: Sequelize.QueryTypes.SELECT }
     );
 
@@ -28,7 +28,7 @@ export default {
           participants: []
         };
       }
-      conversationMap[conv.id].participants.push(conv.user_id);
+      conversationMap[conv.id].participants.push(conv.userId);
     });
 
     const now = new Date();
