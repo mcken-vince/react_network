@@ -11,75 +11,58 @@ import {
 import { Op } from "sequelize";
 import { BaseUuidModel } from "./BaseUuidModel";
 import User from "./User.model";
+import Connection from "./Connection.model";
 import { PostAttributes } from "./types";
 
+export type PostVisibility = PostAttributes["visibility"];
+
+const ALL_VISIBILITIES: PostVisibility[] = ["public", "friends", "private"];
+const CONNECTION_VISIBILITIES: PostVisibility[] = ["public", "friends"];
+const STRANGER_VISIBILITIES: PostVisibility[] = ["public"];
+
+// Function (not a constant) so `User` is resolved at call time, not module load time.
+const authorInclude = () => ({
+  model: User,
+  as: "author",
+  attributes: ["id", "firstName", "lastName", "username", "location"],
+});
+
+interface ListOptions {
+  limit?: number;
+  offset?: number;
+  order?: any;
+  includeAuthor?: boolean;
+}
+
 @Scopes(() => ({
-  public: {
-    where: { visibility: "public" },
-  },
-  friends: {
-    where: { visibility: "friends" },
-  },
-  private: {
-    where: { visibility: "private" },
-  },
-  withAuthor: {
-    include: [
-      {
-        model: User,
-        as: "author",
-        attributes: ["id", "firstName", "lastName", "username", "location"],
-      },
-    ],
-  },
-  recent: {
-    order: [["createdAt", "DESC"]],
-    limit: 10,
-  },
+  public: { where: { visibility: "public" } },
+  friends: { where: { visibility: "friends" } },
+  private: { where: { visibility: "private" } },
+  withAuthor: { include: [authorInclude()] },
+  recent: { order: [["createdAt", "DESC"]], limit: 10 },
 }))
 @Table({
   tableName: "posts",
   timestamps: true,
   indexes: [
-    {
-      fields: ["userId"],
-      name: "idx_posts_user",
-    },
-    {
-      fields: ["visibility"],
-      name: "idx_posts_visibility",
-    },
-    {
-      fields: ["createdAt"],
-      name: "idx_posts_created_at",
-    },
-    {
-      fields: ["userId", "createdAt"],
-      name: "idx_posts_user_timeline",
-    },
-    {
-      fields: ["visibility", "createdAt"],
-      name: "idx_posts_feed",
-    },
+    { fields: ["userId"], name: "idx_posts_user" },
+    { fields: ["visibility"], name: "idx_posts_visibility" },
+    { fields: ["createdAt"], name: "idx_posts_created_at" },
+    { fields: ["userId", "createdAt"], name: "idx_posts_user_timeline" },
+    { fields: ["visibility", "createdAt"], name: "idx_posts_feed" },
   ],
 })
 export default class Post extends BaseUuidModel<PostAttributes> {
-
   @AllowNull(false)
   @ForeignKey(() => User)
-  @Column({
-    type: DataType.INTEGER,
-    onDelete: "CASCADE",
-  })
+  @Column({ type: DataType.INTEGER, onDelete: "CASCADE" })
   userId!: number;
 
   @AllowNull(false)
   @Column({
     type: DataType.TEXT,
     validate: {
-      notEmpty: {
-        msg: "Post content cannot be empty",
-      },
+      notEmpty: { msg: "Post content cannot be empty" },
       len: {
         args: [1, 5000],
         msg: "Post content must be between 1 and 5000 characters",
@@ -91,11 +74,7 @@ export default class Post extends BaseUuidModel<PostAttributes> {
   @AllowNull(true)
   @Column({
     type: DataType.STRING,
-    validate: {
-      isUrl: {
-        msg: "Image URL must be a valid URL",
-      },
-    },
+    validate: { isUrl: { msg: "Image URL must be a valid URL" } },
   })
   imageUrl?: string;
 
@@ -110,19 +89,51 @@ export default class Post extends BaseUuidModel<PostAttributes> {
       },
     },
   })
-  visibility!: "public" | "friends" | "private";
+  visibility!: PostVisibility;
 
   // Associations
-  @BelongsTo(() => User, {
-    foreignKey: "userId",
-    as: "author",
-  })
+  @BelongsTo(() => User, { foreignKey: "userId", as: "author" })
   author!: User;
 
-  // Static methods
+  // ---------------------------------------------------------------------------
+  // Visibility policy — the single source of truth for who can see what
+  // ---------------------------------------------------------------------------
+
+  /**
+   * Which visibility levels of `authorId`'s posts may `viewerId` see?
+   *  - self          → public, friends, private
+   *  - connected     → public, friends
+   *  - everyone else → public
+   */
+  static async visibleVisibilitiesFor(
+    viewerId: number,
+    authorId: number,
+  ): Promise<PostVisibility[]> {
+    if (viewerId === authorId) return ALL_VISIBILITIES;
+    const connected = await Connection.areConnected(viewerId, authorId);
+    return connected ? CONNECTION_VISIBILITIES : STRANGER_VISIBILITIES;
+  }
+
+  static async canUserAccessPost(
+    postId: string,
+    userId: number,
+  ): Promise<boolean> {
+    const post = await this.findByPk(postId, {
+      attributes: ["userId", "visibility"],
+    });
+    if (!post) return false;
+
+    const allowed = await this.visibleVisibilitiesFor(userId, post.userId);
+    return allowed.includes(post.visibility);
+  }
+
+  // ---------------------------------------------------------------------------
+  // CRUD
+  // ---------------------------------------------------------------------------
+
   static async createPost(
     postData: Partial<PostAttributes>,
-    transaction?: any
+    transaction?: any,
   ) {
     return this.create(postData as PostAttributes, { transaction });
   }
@@ -134,68 +145,63 @@ export default class Post extends BaseUuidModel<PostAttributes> {
   static async updatePost(
     postId: string,
     updateData: Partial<PostAttributes>,
-    transaction?: any
+    transaction?: any,
   ) {
     const post = await this.findByPk(postId);
-    if (!post) {
-      return null;
-    }
+    if (!post) return null;
     return post.update(updateData, { transaction });
   }
 
   static async deletePost(postId: string, transaction?: any) {
     const post = await this.findByPk(postId);
-    if (!post) {
-      return null;
-    }
+    if (!post) return null;
     await post.destroy({ transaction });
     return post;
   }
 
+  // ---------------------------------------------------------------------------
+  // Listing
+  // ---------------------------------------------------------------------------
+
+  /**
+   * Posts by a single author. Pass `visibility` (from `visibleVisibilitiesFor`)
+   * to restrict what the caller is allowed to see; omit for unrestricted
+   * internal use.
+   */
   static async getUserPosts(
     userId: number,
-    options: {
-      limit?: number;
-      offset?: number;
-      order?: any;
-      includeAuthor?: boolean;
-    } = {}
+    options: ListOptions & { visibility?: PostVisibility[] } = {},
   ) {
     const {
       limit = 50,
       offset = 0,
       order = [["createdAt", "DESC"]],
       includeAuthor = false,
+      visibility,
     } = options;
 
-    const queryOptions: any = {
-      where: { userId },
+    const where: any = { userId };
+    if (visibility) {
+      where.visibility = { [Op.in]: visibility };
+    }
+
+    return this.findAll({
+      where,
       limit,
       offset,
       order,
-    };
-
-    if (includeAuthor) {
-      queryOptions.include = [
-        {
-          model: User,
-          as: "author",
-          attributes: ["id", "firstName", "lastName", "username", "location"],
-        },
-      ];
-    }
-
-    return this.findAll(queryOptions);
+      ...(includeAuthor && { include: [authorInclude()] }),
+    });
   }
 
+  /**
+   * Feed for `viewerId`: all of their own posts plus public/friends posts
+   * from their accepted connections.
+   */
   static async getFeedPosts(
-    userIds: number[],
-    options: {
-      limit?: number;
-      offset?: number;
-      order?: any;
-      includeAuthor?: boolean;
-    } = {}
+    viewerId: number,
+    connectedUserIds: number[],
+    options: ListOptions = {},
   ) {
     const {
       limit = 50,
@@ -204,66 +210,39 @@ export default class Post extends BaseUuidModel<PostAttributes> {
       includeAuthor = true,
     } = options;
 
-    const queryOptions: any = {
-      where: {
-        userId: userIds,
-        visibility: ["friends", "public"],
-      },
+    const ownPosts = { userId: viewerId };
+    const where =
+      connectedUserIds.length > 0
+        ? {
+            [Op.or]: [
+              ownPosts,
+              {
+                userId: { [Op.in]: connectedUserIds },
+                visibility: { [Op.in]: CONNECTION_VISIBILITIES },
+              },
+            ],
+          }
+        : ownPosts;
+
+    return this.findAll({
+      where,
       limit,
       offset,
       order,
-    };
-
-    if (includeAuthor) {
-      queryOptions.include = [
-        {
-          model: User,
-          as: "author",
-          attributes: ["id", "firstName", "lastName", "username", "location"],
-        },
-      ];
-    }
-
-    return this.findAll(queryOptions);
+      ...(includeAuthor && { include: [authorInclude()] }),
+    });
   }
 
-  static async canUserAccessPost(postId: string, userId: number) {
-    const post = await this.findByPk(postId);
-    if (!post) {
-      return false;
-    }
-    return post.userId === userId || post.visibility === "public";
-  }
+  static async getPublicPosts(options: ListOptions = {}) {
+    const { limit = 50, offset = 0, includeAuthor = true } = options;
 
-  static async getPublicPosts(options: {
-    limit?: number;
-    offset?: number;
-    includeAuthor?: boolean;
-  } = {}) {
-    const {
-      limit = 50,
-      offset = 0,
-      includeAuthor = true,
-    } = options;
-
-    const queryOptions: any = {
+    return this.findAll({
       where: { visibility: "public" },
       order: [["createdAt", "DESC"]],
       limit,
       offset,
-    };
-
-    if (includeAuthor) {
-      queryOptions.include = [
-        {
-          model: User,
-          as: "author",
-          attributes: ["id", "firstName", "lastName", "username", "location"],
-        },
-      ];
-    }
-
-    return this.findAll(queryOptions);
+      ...(includeAuthor && { include: [authorInclude()] }),
+    });
   }
 
   static async searchPosts(
@@ -271,38 +250,21 @@ export default class Post extends BaseUuidModel<PostAttributes> {
     options: {
       limit?: number;
       offset?: number;
-      visibility?: "public" | "friends" | "private";
+      visibility?: PostVisibility;
       userId?: number;
-    } = {}
+    } = {},
   ) {
-    const {
-      limit = 20,
-      offset = 0,
-      visibility = "public",
-      userId,
-    } = options;
+    const { limit = 20, offset = 0, visibility = "public", userId } = options;
 
     const whereClause: any = {
       content: { [Op.iLike]: `%${searchTerm}%` },
     };
-
-    if (visibility) {
-      whereClause.visibility = visibility;
-    }
-
-    if (userId) {
-      whereClause.userId = userId;
-    }
+    if (visibility) whereClause.visibility = visibility;
+    if (userId) whereClause.userId = userId;
 
     return this.findAll({
       where: whereClause,
-      include: [
-        {
-          model: User,
-          as: "author",
-          attributes: ["id", "firstName", "lastName", "username", "location"],
-        },
-      ],
+      include: [authorInclude()],
       order: [["createdAt", "DESC"]],
       limit,
       offset,
@@ -310,18 +272,14 @@ export default class Post extends BaseUuidModel<PostAttributes> {
   }
 
   static async getPostStats(userId: number) {
-    const [totalCount, publicCount, friendsCount, privateCount] = await Promise.all([
-      this.count({ where: { userId } }),
-      this.count({ where: { userId, visibility: "public" } }),
-      this.count({ where: { userId, visibility: "friends" } }),
-      this.count({ where: { userId, visibility: "private" } }),
-    ]);
+    const [totalCount, publicCount, friendsCount, privateCount] =
+      await Promise.all([
+        this.count({ where: { userId } }),
+        this.count({ where: { userId, visibility: "public" } }),
+        this.count({ where: { userId, visibility: "friends" } }),
+        this.count({ where: { userId, visibility: "private" } }),
+      ]);
 
-    return {
-      totalCount,
-      publicCount,
-      friendsCount,
-      privateCount,
-    };
+    return { totalCount, publicCount, friendsCount, privateCount };
   }
 }

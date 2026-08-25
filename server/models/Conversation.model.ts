@@ -100,7 +100,6 @@ import { ConversationAttributes } from "./types";
   ],
 })
 export default class Conversation extends BaseUuidModel<ConversationAttributes> {
-
   @AllowNull(false)
   @Default("direct")
   @Column({
@@ -246,7 +245,7 @@ export default class Conversation extends BaseUuidModel<ConversationAttributes> 
   // Static methods
   static async createConversation(
     conversationData: Partial<ConversationAttributes>,
-    transaction?: any
+    transaction?: any,
   ) {
     return this.create(conversationData as ConversationAttributes, {
       transaction,
@@ -357,7 +356,7 @@ export default class Conversation extends BaseUuidModel<ConversationAttributes> 
 
     for (const conversation of conversations) {
       const participantIds = (conversation.participants || []).map(
-        (p: ConversationParticipant) => p.userId
+        (p: ConversationParticipant) => p.userId,
       );
       if (
         participantIds.length === 2 &&
@@ -374,7 +373,7 @@ export default class Conversation extends BaseUuidModel<ConversationAttributes> 
   static async findOrCreateDirectConversation(
     userId1: number,
     userId2: number,
-    transaction?: any
+    transaction?: any,
   ) {
     // Check if conversation already exists
     const existing = await this.findDirectConversation(userId1, userId2);
@@ -385,7 +384,7 @@ export default class Conversation extends BaseUuidModel<ConversationAttributes> 
     const conversation = await this.createDirectConversation(
       userId1,
       userId2,
-      transaction
+      transaction,
     );
     return { created: true, conversation };
   }
@@ -393,7 +392,7 @@ export default class Conversation extends BaseUuidModel<ConversationAttributes> 
   static async createDirectConversation(
     userId1: number,
     userId2: number,
-    transaction?: any
+    transaction?: any,
   ) {
     // Check if conversation already exists
     const existing = await this.findDirectConversation(userId1, userId2);
@@ -407,7 +406,7 @@ export default class Conversation extends BaseUuidModel<ConversationAttributes> 
         type: "direct",
         createdBy: userId1,
       } as ConversationAttributes,
-      { transaction }
+      { transaction },
     );
 
     // Add participants
@@ -418,7 +417,7 @@ export default class Conversation extends BaseUuidModel<ConversationAttributes> 
           userId: userId1,
           isActive: true,
         } as any,
-        { transaction }
+        { transaction },
       ),
       ConversationParticipant.create(
         {
@@ -426,7 +425,7 @@ export default class Conversation extends BaseUuidModel<ConversationAttributes> 
           userId: userId2,
           isActive: true,
         } as any,
-        { transaction }
+        { transaction },
       ),
     ]);
 
@@ -437,7 +436,7 @@ export default class Conversation extends BaseUuidModel<ConversationAttributes> 
     name: string,
     creatorId: number,
     participantIds: number[],
-    transaction?: any
+    transaction?: any,
   ) {
     // Create conversation
     const conversation = await this.create(
@@ -446,7 +445,7 @@ export default class Conversation extends BaseUuidModel<ConversationAttributes> 
         name,
         createdBy: creatorId,
       } as ConversationAttributes,
-      { transaction }
+      { transaction },
     );
 
     // Add participants (including creator)
@@ -460,9 +459,9 @@ export default class Conversation extends BaseUuidModel<ConversationAttributes> 
             isActive: true,
             isAdmin: userId === creatorId,
           } as any,
-          { transaction }
-        )
-      )
+          { transaction },
+        ),
+      ),
     );
 
     return conversation;
@@ -472,7 +471,7 @@ export default class Conversation extends BaseUuidModel<ConversationAttributes> 
     conversationId: string,
     userId: number,
     addedBy: number,
-    transaction?: any
+    transaction?: any,
   ) {
     const conversation = await this.findByPk(conversationId);
     if (!conversation) {
@@ -504,7 +503,7 @@ export default class Conversation extends BaseUuidModel<ConversationAttributes> 
         userId,
         isActive: true,
       } as any,
-      { transaction }
+      { transaction },
     );
   }
 
@@ -512,7 +511,7 @@ export default class Conversation extends BaseUuidModel<ConversationAttributes> 
     conversationId: string,
     userId: number,
     removedBy: number,
-    transaction?: any
+    transaction?: any,
   ) {
     const conversation = await this.findByPk(conversationId);
     if (!conversation) {
@@ -540,7 +539,7 @@ export default class Conversation extends BaseUuidModel<ConversationAttributes> 
     conversationId: string,
     updateData: Partial<ConversationAttributes>,
     userId: number,
-    transaction?: any
+    transaction?: any,
   ) {
     const conversation = await this.findByPk(conversationId);
     if (!conversation) {

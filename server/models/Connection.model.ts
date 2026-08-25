@@ -42,28 +42,15 @@ import { ConnectionAttributes } from "./types";
   tableName: "connections",
   timestamps: true,
   indexes: [
-    {
-      fields: ["requesterId"],
-      name: "idx_connections_requester",
-    },
-    {
-      fields: ["recipientId"],
-      name: "idx_connections_recipient",
-    },
-    {
-      fields: ["status"],
-      name: "idx_connections_status",
-    },
-    {
-      fields: ["createdAt"],
-      name: "idx_connections_created_at",
-    },
+    { fields: ["requesterId"], name: "idx_connections_requester" },
+    { fields: ["recipientId"], name: "idx_connections_recipient" },
+    { fields: ["status"], name: "idx_connections_status" },
+    { fields: ["createdAt"], name: "idx_connections_created_at" },
     {
       unique: true,
       fields: ["requesterId", "recipientId"],
       name: "unique_connection_pair",
     },
-    // Add index for reverse lookup efficiency
     {
       fields: ["recipientId", "requesterId"],
       name: "idx_connections_reverse",
@@ -80,18 +67,12 @@ import { ConnectionAttributes } from "./types";
 export default class Connection extends BaseModel<ConnectionAttributes> {
   @AllowNull(false)
   @ForeignKey(() => User)
-  @Column({
-    type: DataType.INTEGER,
-    onDelete: "CASCADE",
-  })
+  @Column({ type: DataType.INTEGER, onDelete: "CASCADE" })
   requesterId!: number;
 
   @AllowNull(false)
   @ForeignKey(() => User)
-  @Column({
-    type: DataType.INTEGER,
-    onDelete: "CASCADE",
-  })
+  @Column({ type: DataType.INTEGER, onDelete: "CASCADE" })
   recipientId!: number;
 
   @AllowNull(false)
@@ -108,36 +89,66 @@ export default class Connection extends BaseModel<ConnectionAttributes> {
   status!: "pending" | "accepted" | "rejected";
 
   // Associations
-  @BelongsTo(() => User, {
-    foreignKey: "requesterId",
-    as: "requester",
-  })
+  @BelongsTo(() => User, { foreignKey: "requesterId", as: "requester" })
   requester!: User;
 
-  @BelongsTo(() => User, {
-    foreignKey: "recipientId",
-    as: "recipient",
-  })
+  @BelongsTo(() => User, { foreignKey: "recipientId", as: "recipient" })
   recipient!: User;
 
-  // Static methods
+  // ---------------------------------------------------------------------------
+  // Relationship helpers (used by post visibility rules)
+  // ---------------------------------------------------------------------------
+
+  /**
+   * True if the two users have an accepted connection (in either direction).
+   */
+  static async areConnected(
+    userId1: number,
+    userId2: number,
+  ): Promise<boolean> {
+    const count = await this.count({
+      where: {
+        status: "accepted",
+        [Op.or]: [
+          { requesterId: userId1, recipientId: userId2 },
+          { requesterId: userId2, recipientId: userId1 },
+        ],
+      },
+    });
+    return count > 0;
+  }
+
+  /**
+   * IDs of every user that `userId` has an accepted connection with.
+   */
+  static async getConnectedUserIds(userId: number): Promise<number[]> {
+    const connections = await this.findAll({
+      where: {
+        status: "accepted",
+        [Op.or]: [{ requesterId: userId }, { recipientId: userId }],
+      },
+      attributes: ["requesterId", "recipientId"],
+    });
+
+    return connections.map((c) =>
+      c.requesterId === userId ? c.recipientId : c.requesterId,
+    );
+  }
+
+  // ---------------------------------------------------------------------------
+  // Existing static methods
+  // ---------------------------------------------------------------------------
+
   static async sendConnectionRequest(
     requesterId: number,
     recipientId: number,
-    transaction?: any
+    transaction?: any,
   ) {
-    // Check if connection already exists (in either direction)
     const existingConnection = await this.findOne({
       where: {
         [Op.or]: [
-          {
-            requesterId: requesterId,
-            recipientId: recipientId,
-          },
-          {
-            requesterId: recipientId,
-            recipientId: requesterId,
-          },
+          { requesterId: requesterId, recipientId: recipientId },
+          { requesterId: recipientId, recipientId: requesterId },
         ],
       },
       transaction,
@@ -147,64 +158,44 @@ export default class Connection extends BaseModel<ConnectionAttributes> {
       throw new Error("Connection request already exists");
     }
 
-    return this.create(
-      {
-        requesterId,
-        recipientId,
-        status: "pending",
-      } as any,
-      { transaction }
-    );
+    return this.create({ requesterId, recipientId, status: "pending" } as any, {
+      transaction,
+    });
   }
 
   static async acceptConnectionRequest(
     connectionId: number,
     userId: number,
-    transaction?: any
+    transaction?: any,
   ) {
     const connection = await this.findOne({
-      where: {
-        id: connectionId,
-        recipientId: userId,
-        status: "pending",
-      },
+      where: { id: connectionId, recipientId: userId, status: "pending" },
       transaction,
     });
-
     if (!connection) {
       throw new Error("Connection request not found or not authorized");
     }
-
     return connection.update({ status: "accepted" }, { transaction });
   }
 
   static async rejectConnectionRequest(
     connectionId: number,
     userId: number,
-    transaction?: any
+    transaction?: any,
   ) {
     const connection = await this.findOne({
-      where: {
-        id: connectionId,
-        recipientId: userId,
-        status: "pending",
-      },
+      where: { id: connectionId, recipientId: userId, status: "pending" },
       transaction,
     });
-
     if (!connection) {
       throw new Error("Connection request not found or not authorized");
     }
-
     return connection.update({ status: "rejected" }, { transaction });
   }
 
   static async getPendingRequests(userId: number) {
     return this.findAll({
-      where: {
-        recipientId: userId,
-        status: "pending",
-      },
+      where: { recipientId: userId, status: "pending" },
       include: [
         {
           model: User,
@@ -218,10 +209,7 @@ export default class Connection extends BaseModel<ConnectionAttributes> {
 
   static async getSentRequests(userId: number) {
     return this.findAll({
-      where: {
-        requesterId: userId,
-        status: "pending",
-      },
+      where: { requesterId: userId, status: "pending" },
       include: [
         {
           model: User,
@@ -237,9 +225,7 @@ export default class Connection extends BaseModel<ConnectionAttributes> {
     return this.findAll({
       where: {
         [Op.and]: [
-          {
-            [Op.or]: [{ requesterId: userId }, { recipientId: userId }],
-          },
+          { [Op.or]: [{ requesterId: userId }, { recipientId: userId }] },
           { status: "accepted" },
         ],
       },
@@ -263,14 +249,8 @@ export default class Connection extends BaseModel<ConnectionAttributes> {
     const connection = await this.findOne({
       where: {
         [Op.or]: [
-          {
-            requesterId: userId1,
-            recipientId: userId2,
-          },
-          {
-            requesterId: userId2,
-            recipientId: userId1,
-          },
+          { requesterId: userId1, recipientId: userId2 },
+          { requesterId: userId2, recipientId: userId1 },
         ],
       },
     });
@@ -288,7 +268,7 @@ export default class Connection extends BaseModel<ConnectionAttributes> {
   static async removeConnection(
     connectionId: number,
     userId: number,
-    transaction?: any
+    transaction?: any,
   ) {
     const connection = await this.findOne({
       where: {
@@ -297,11 +277,9 @@ export default class Connection extends BaseModel<ConnectionAttributes> {
       },
       transaction,
     });
-
     if (!connection) {
       throw new Error("Connection not found or not authorized");
     }
-
     await connection.destroy({ transaction });
     return connection;
   }

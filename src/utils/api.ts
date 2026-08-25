@@ -41,7 +41,7 @@ const tokenManager = {
 // Base API request handler
 async function apiRequest<T = any>(
   endpoint: string,
-  options: RequestInit = {}
+  options: RequestInit = {},
 ): Promise<T> {
   const token = tokenManager.getToken();
 
@@ -63,7 +63,7 @@ async function apiRequest<T = any>(
       throw new ApiError(
         data?.error || `Request failed with status ${response.status}`,
         response.status,
-        data
+        data,
       );
     }
 
@@ -113,11 +113,21 @@ export const userAPI = {
 
   async updateProfile(
     userId: string,
-    updateData: Partial<User>
+    updateData: Partial<User>,
   ): Promise<User> {
     return apiRequest<User>(`/users/${userId}`, {
       method: "PUT",
       body: JSON.stringify(updateData),
+    });
+  },
+
+  async changePassword(data: {
+    currentPassword: string;
+    newPassword: string;
+  }): Promise<{ message: string }> {
+    return apiRequest<{ message: string }>("/users/me/password", {
+      method: "PUT",
+      body: JSON.stringify(data),
     });
   },
 
@@ -129,7 +139,7 @@ export const userAPI = {
     (User & { connectionStatus?: string })[]
   > {
     return apiRequest<(User & { connectionStatus?: string })[]>(
-      "/users?includeConnectionStatus=true"
+      "/users?includeConnectionStatus=true",
     );
   },
 
@@ -189,7 +199,7 @@ interface UnreadCountResponse {
 
 export const notificationAPI = {
   async getNotifications(
-    options: NotificationFilters = {}
+    options: NotificationFilters = {},
   ): Promise<NotificationsResponse> {
     const queryParams = new URLSearchParams();
 
@@ -255,7 +265,7 @@ export const postAPI = {
 
   async getUserPosts(
     userId: string,
-    options: PostFilters = {}
+    options: PostFilters = {},
   ): Promise<PostsResponse> {
     const queryParams = new URLSearchParams();
 
@@ -306,7 +316,7 @@ export const messageAPI = {
       offset: offset.toString(),
     });
     const result = await apiRequest<ConversationsResponse>(
-      `/conversations?${params}`
+      `/conversations?${params}`,
     );
     return result.data;
   },
@@ -321,48 +331,48 @@ export const messageAPI = {
 
   async createGroupConversation(
     name: string,
-    participantIds: string[]
+    participantIds: string[],
   ): Promise<Conversation> {
     const result = await apiRequest<ConversationResponse>(
       "/conversations/group",
       {
         method: "POST",
         body: JSON.stringify({ name, participantIds }),
-      }
+      },
     );
     return result.data;
   },
 
   async getConversationDetails(conversationId: string): Promise<Conversation> {
     const result = await apiRequest<ConversationResponse>(
-      `/conversations/${conversationId}`
+      `/conversations/${conversationId}`,
     );
     return result.data;
   },
 
   async addParticipants(
     conversationId: string,
-    userIds: string[]
+    userIds: string[],
   ): Promise<Conversation> {
     const result = await apiRequest<ConversationResponse>(
       `/conversations/${conversationId}/participants`,
       {
         method: "POST",
         body: JSON.stringify({ userIds }),
-      }
+      },
     );
     return result.data;
   },
 
   async removeParticipant(
     conversationId: string,
-    userId: string
+    userId: string,
   ): Promise<void> {
     await apiRequest<void>(
       `/conversations/${conversationId}/participants/${userId}`,
       {
         method: "DELETE",
-      }
+      },
     );
   },
 
@@ -376,14 +386,14 @@ export const messageAPI = {
   async getMessages(
     conversationId: string,
     limit = 50,
-    offset = 0
+    offset = 0,
   ): Promise<Message[]> {
     const params = new URLSearchParams({
       limit: limit.toString(),
       offset: offset.toString(),
     });
     const result = await apiRequest<MessagesResponse>(
-      `/conversations/${conversationId}/messages?${params}`
+      `/conversations/${conversationId}/messages?${params}`,
     );
     return result.data;
   },
@@ -391,7 +401,7 @@ export const messageAPI = {
   async sendMessage(
     conversationId: string,
     content: string,
-    replyToId?: string
+    replyToId?: string,
   ): Promise<Message> {
     const body: any = { content };
     if (replyToId) {
@@ -403,7 +413,7 @@ export const messageAPI = {
       {
         method: "POST",
         body: JSON.stringify(body),
-      }
+      },
     );
     return result.data;
   },
@@ -432,7 +442,7 @@ export const messageAPI = {
   async searchConversations(query: string): Promise<Conversation[]> {
     const params = new URLSearchParams({ q: query });
     const result = await apiRequest<ConversationsResponse>(
-      `/conversations/search?${params}`
+      `/conversations/search?${params}`,
     );
     return result.data;
   },

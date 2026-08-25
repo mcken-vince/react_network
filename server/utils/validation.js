@@ -41,6 +41,26 @@ export const validateLogin = (data) => {
   return { error: null, data };
 };
 
+export const validatePasswordChange = (data) => {
+  const errors = {};
+
+  if (!data.currentPassword) {
+    errors.currentPassword = 'Current password is required';
+  }
+
+  const newPasswordError = validatePassword(data.newPassword);
+  if (newPasswordError) {
+    errors.newPassword = newPasswordError;
+  } else if (data.newPassword === data.currentPassword) {
+    errors.newPassword = 'New password must be different from current password';
+  }
+
+  if (Object.keys(errors).length > 0) {
+    return { error: { message: 'Validation failed', errors }, data: null };
+  }
+
+  return { error: null, data };
+};
 
 /**
  * Messaging validation utilities
@@ -460,12 +480,6 @@ export const validateProfileUpdate = (data) => {
   if (data.username !== undefined) {
     const usernameError = validateUsername(data.username);
     if (usernameError) errors.username = usernameError;
-  }
-  
-  // Password is optional for profile update
-  if (data.password !== undefined && data.password !== "") {
-    const passwordError = validatePassword(data.password, false);
-    if (passwordError) errors.password = passwordError;
   }
   
   // Optional fields

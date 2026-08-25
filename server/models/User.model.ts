@@ -242,28 +242,16 @@ export default class User extends BaseModel<UserAttributes> {
 
   // Instance methods
   async comparePassword(candidatePassword: string): Promise<boolean> {
-    try {
-      // If password is not loaded (due to default scope), reload the user with password
-      if (!this.password) {
-        const userWithPassword = await User.scope("withPassword").findByPk(
-          this.id
-        );
-        console.log(userWithPassword);
-        if (!userWithPassword?.getDataValue("password")) {
-          throw new Error("User password not found");
-        }
-        return await bcrypt.compare(
-          candidatePassword,
-          userWithPassword.getDataValue("password")
-        );
-      }
-
-      console.log("Comparing password:", candidatePassword, this.password);
-      return await bcrypt.compare(candidatePassword, this.password);
-    } catch (error) {
-      console.log(error);
-      throw new Error("Password comparison failed");
+    // Default scope strips the password; reload it if it wasn't selected.
+    let hash: string | undefined = this.getDataValue("password");
+    if (!hash) {
+      const withPassword = await User.scope("withPassword").findByPk(this.id);
+      hash = withPassword?.getDataValue("password");
     }
+    if (!hash) {
+      throw new Error("User password not found");
+    }
+    return bcrypt.compare(candidatePassword, hash);
   }
 
   getFullName(): string {
@@ -316,7 +304,7 @@ export default class User extends BaseModel<UserAttributes> {
 
   static async createUser(
     userData: Partial<UserAttributes>,
-    transaction?: any
+    transaction?: any,
   ) {
     try {
       // Validate required fields
@@ -365,7 +353,7 @@ export default class User extends BaseModel<UserAttributes> {
   static async updateUser(
     id: number,
     userData: Partial<UserAttributes>,
-    transaction?: any
+    transaction?: any,
   ) {
     try {
       const user = await this.findByPk(id);
@@ -392,7 +380,7 @@ export default class User extends BaseModel<UserAttributes> {
 
   static async searchUsers(
     searchTerm: string,
-    options: { limit?: number; offset?: number } = {}
+    options: { limit?: number; offset?: number } = {},
   ) {
     try {
       const { limit = 20, offset = 0 } = options;

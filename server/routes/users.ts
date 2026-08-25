@@ -1,20 +1,24 @@
 import express from "express";
 import { Connection, User } from "../models";
 import { authenticateToken } from "../middleware/auth.js";
-import { validateProfileUpdate } from "../utils/validation.js";
+import {
+  validateProfileUpdate,
+  validatePasswordChange,
+} from "../utils/validation.js";
 import type { Response } from "express";
 import type { AuthRequest } from "../types";
 import { Op } from "sequelize";
 
 const router = express.Router();
 
-// Get all users (protected route)
+// Get all users
 router.get(
   "/",
   authenticateToken,
   async (req: AuthRequest, res: Response): Promise<void> => {
     try {
       const users = await User.getAllUsers();
+
       if (req.query.includeConnectionStatus === "true") {
         const userId = req.userId!;
         const connections = await Connection.findAll({
@@ -36,6 +40,7 @@ router.get(
         });
         return;
       }
+
       res.json({ users });
     } catch (error) {
       console.error("Get users error:", error);
@@ -44,7 +49,7 @@ router.get(
   },
 );
 
-// Get current user (protected route)
+// Get current user
 router.get(
   "/me",
   authenticateToken,
@@ -63,7 +68,49 @@ router.get(
   },
 );
 
-// Get user by ID (protected route)
+// Change current user's password.
+// Registered before "/:userId" so "me" is never treated as an id.
+router.put(
+  "/me/password",
+  authenticateToken,
+  async (req: AuthRequest, res: Response): Promise<void> => {
+    try {
+      const { currentPassword, newPassword } = req.body;
+
+      const { error } = validatePasswordChange({
+        currentPassword,
+        newPassword,
+      });
+      if (error) {
+        res.status(400).json({ error: error.message, errors: error.errors });
+        return;
+      }
+
+      // Default scope excludes the password hash; we need it to compare.
+      const user = await User.scope("withPassword").findByPk(req.userId!);
+      if (!user) {
+        res.status(404).json({ error: "User not found" });
+        return;
+      }
+
+      const isCurrentValid = await user.comparePassword(currentPassword);
+      if (!isCurrentValid) {
+        res.status(401).json({ error: "Current password is incorrect" });
+        return;
+      }
+
+      user.password = newPassword; // @BeforeUpdate hook hashes it
+      await user.save();
+
+      res.json({ message: "Password updated successfully" });
+    } catch (error) {
+      console.error("Change password error:", error);
+      res.status(500).json({ error: "Internal server error" });
+    }
+  },
+);
+
+// Get user by ID
 router.get(
   "/:userId",
   authenticateToken,
@@ -80,6 +127,7 @@ router.get(
         res.status(404).json({ error: "User not found" });
         return;
       }
+
       res.json({ user: user.toJSON() });
     } catch (error) {
       console.error("Get user error:", error);
@@ -88,7 +136,7 @@ router.get(
   },
 );
 
-// Update user profile (protected route)
+// Update own profile (password changes are NOT accepted here — see /me/password)
 router.put(
   "/:userId",
   authenticateToken,
@@ -100,7 +148,6 @@ router.put(
         return;
       }
 
-      // Only allow users to update their own profile
       if (req.userId !== parseInt(userId)) {
         res.status(403).json({ error: "Unauthorized" });
         return;
@@ -118,7 +165,6 @@ router.put(
         return;
       }
 
-      // Check if username is being changed and if it's already taken
       if (data.username && data.username !== user.username) {
         const existingUser = await User.findByUsername(data.username);
         if (existingUser && existingUser.id !== user.id) {
@@ -127,7 +173,7 @@ router.put(
         }
       }
 
-      // Update user
+      // User.updateUser strips `password` defensively.
       const updatedUser = await User.updateUser(parseInt(userId), data);
       if (!updatedUser) {
         res.status(500).json({ error: "Failed to update user" });

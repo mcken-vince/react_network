@@ -1,6 +1,5 @@
 import PostCard from "./PostCard";
 import Loading from "../Loading";
-import AuthenticatedLayout from "../layout/AuthenticatedLayout";
 
 export default function PostFeed({
   posts,
@@ -11,6 +10,8 @@ export default function PostFeed({
   onDelete,
   currentUserId,
   error,
+  emptyTitle = "No posts yet",
+  emptyMessage = "Be the first to share something with your friends!",
 }) {
   if (error) {
     return (
@@ -44,20 +45,17 @@ export default function PostFeed({
             d="M19 20H5a2 2 0 01-2-2V6a2 2 0 012-2h10a2 2 0 012 2v1m2 13a2 2 0 01-2-2V7m2 13a2 2 0 002-2V9a2 2 0 00-2-2h-2m-4-3H9M7 16h6M7 8h6v4H7V8z"
           />
         </svg>
-        <h3 className="mt-4 text-lg font-medium text-gray-900">No posts yet</h3>
-        <p className="mt-2 text-sm text-gray-500">
-          Be the first to share something with your friends!
-        </p>
+        <h3 className="mt-4 text-lg font-medium text-gray-900">{emptyTitle}</h3>
+        <p className="mt-2 text-sm text-gray-500">{emptyMessage}</p>
       </div>
     );
   }
 
   return (
     <div>
-      {/* Posts List */}
-      {posts?.map((post) => (
+      {posts.map((post) => (
         <PostCard
-          key={post?.id}
+          key={post.id}
           post={post}
           currentUserId={currentUserId}
           onEdit={onEdit}
@@ -65,7 +63,6 @@ export default function PostFeed({
         />
       ))}
 
-      {/* Load More Button */}
       {hasMore && (
         <div className="text-center mt-6">
           <button
@@ -78,7 +75,6 @@ export default function PostFeed({
         </div>
       )}
 
-      {/* Loading Indicator */}
       {loading && posts.length > 0 && (
         <div className="flex justify-center py-4">
           <Loading />

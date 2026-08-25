@@ -1,5 +1,5 @@
 import { useMemo } from "react";
-import { Link } from "@tanstack/react-router";
+import { Link, useNavigate } from "@tanstack/react-router";
 import { ProfileSection, UsersSection } from "./dashboard/index";
 import { Container, Grid, Stack, Button } from "./atoms";
 import { Card } from "./common";
