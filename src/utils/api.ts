@@ -22,13 +22,31 @@ const API_BASE_URL =
 export class ApiError extends Error {
   status: number;
   data: any;
+  /** Field-level errors from the server, when provided. */
+  errors?: Record<string, string>;
 
   constructor(message: string, status: number, data?: any) {
     super(message);
     this.name = "ApiError";
     this.status = status;
     this.data = data;
+    this.errors =
+      data?.errors && typeof data.errors === "object" ? data.errors : undefined;
   }
+}
+
+/**
+ * Standard envelope is { error: string, errors?: {...} }. Messaging routes
+ * still send { success, error: { message } } until they're rewritten, so both
+ * are tolerated here.
+ */
+function extractErrorMessage(data: any, status: number): string {
+  if (data) {
+    if (typeof data.error === "string") return data.error;
+    if (typeof data.error?.message === "string") return data.error.message;
+    if (typeof data.message === "string") return data.message;
+  }
+  return `Request failed with status ${status}`;
 }
 
 // Token management
@@ -54,26 +72,24 @@ async function apiRequest<T = any>(
     },
   };
 
+  let response: globalThis.Response;
   try {
-    const response = await fetch(`${API_BASE_URL}${endpoint}`, config);
-
-    const data = await response.json().catch(() => null);
-
-    if (!response.ok) {
-      throw new ApiError(
-        data?.error || `Request failed with status ${response.status}`,
-        response.status,
-        data,
-      );
-    }
-
-    return data;
-  } catch (error) {
-    if (error instanceof ApiError) {
-      throw error;
-    }
+    response = await fetch(`${API_BASE_URL}${endpoint}`, config);
+  } catch {
     throw new ApiError("Network error occurred", 0, null);
   }
+
+  const data = await response.json().catch(() => null);
+
+  if (!response.ok) {
+    throw new ApiError(
+      extractErrorMessage(data, response.status),
+      response.status,
+      data,
+    );
+  }
+
+  return data;
 }
 
 // Auth API functions

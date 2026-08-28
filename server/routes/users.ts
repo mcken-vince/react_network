@@ -8,6 +8,7 @@ import {
 import type { Response } from "express";
 import type { AuthRequest } from "../types";
 import { Op } from "sequelize";
+import { sendValidationError } from "../utils/responses";
 
 const router = express.Router();
 
@@ -82,7 +83,7 @@ router.put(
         newPassword,
       });
       if (error) {
-        res.status(400).json({ error: error.message, errors: error.errors });
+        sendValidationError(res, error);
         return;
       }
 
@@ -155,7 +156,7 @@ router.put(
 
       const { error, data } = validateProfileUpdate(req.body);
       if (error) {
-        res.status(400).json({ error: error.message });
+        sendValidationError(res, error);
         return;
       }
 
@@ -168,7 +169,10 @@ router.put(
       if (data.username && data.username !== user.username) {
         const existingUser = await User.findByUsername(data.username);
         if (existingUser && existingUser.id !== user.id) {
-          res.status(400).json({ error: "Username already exists" });
+          res.status(400).json({
+            error: "Username already exists",
+            errors: { username: "Username already exists" },
+          });
           return;
         }
       }

@@ -25,6 +25,7 @@ interface LoginCredentials {
 interface AuthResult {
   success: boolean;
   message?: string;
+  errors?: Record<string, string>;
 }
 
 interface AuthContextValue {
@@ -36,7 +37,7 @@ interface AuthContextValue {
   handleLogout: () => void;
   updateUserProfile: (
     userId: number,
-    updateData: Partial<User>
+    updateData: Partial<User>,
   ) => Promise<AuthResult>;
   refetchCurrentUser: () => Promise<any>;
 }
@@ -78,12 +79,12 @@ export function AuthProvider({ children }: AuthProviderProps) {
     } catch (err: any) {
       const message = err.message || "Signup failed";
       setError(message);
-      return { success: false, message };
+      return { success: false, message, errors: err.errors };
     }
   };
 
   const handleLogin = async (
-    credentials: LoginCredentials
+    credentials: LoginCredentials,
   ): Promise<AuthResult> => {
     setError(null);
     try {
@@ -98,7 +99,7 @@ export function AuthProvider({ children }: AuthProviderProps) {
     } catch (err: any) {
       const message = err.message || "Invalid username or password";
       setError(message);
-      return { success: false, message };
+      return { success: false, message, errors: err.errors };
     }
   };
 
@@ -114,7 +115,7 @@ export function AuthProvider({ children }: AuthProviderProps) {
 
   const updateUserProfile = async (
     userId: number,
-    updateData: Partial<User>
+    updateData: Partial<User>,
   ): Promise<AuthResult> => {
     setError(null);
     try {
@@ -132,7 +133,7 @@ export function AuthProvider({ children }: AuthProviderProps) {
     } catch (err: any) {
       const message = err.message || "Failed to update profile";
       setError(message);
-      return { success: false, message };
+      return { success: false, message, errors: err.errors };
     }
   };
 

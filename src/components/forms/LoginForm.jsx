@@ -37,7 +37,8 @@ function LoginForm({ onLogin }) {
 
     const result = await onLogin(formData);
     if (!result.success) {
-      setErrors({ general: result.message });
+      // Field-level errors land on their inputs; anything else goes to the banner.
+      setErrors({ ...(result.errors ?? {}), general: result.message });
     }
     setIsSubmitting(false);
   };

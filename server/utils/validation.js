@@ -385,7 +385,7 @@ export const validateUpdatePost = (data) => {
  * User validation utilities
  */
 const validateRequired = (value, fieldName) => {
-  if (!value || !value.trim()) {
+  if (!String(value ?? '').trim()) {
     return `${fieldName} is required`;
   }
   return null;

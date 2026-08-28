@@ -44,7 +44,8 @@ function SignupForm({ onSignup }) {
 
     const result = await onSignup(formData);
     if (!result.success) {
-      setErrors({ general: result.message });
+      // Field-level errors land on their inputs; anything else goes to the banner.
+      setErrors({ ...(result.errors ?? {}), general: result.message });
     }
     setIsSubmitting(false);
   };

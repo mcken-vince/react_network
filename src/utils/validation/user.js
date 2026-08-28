@@ -2,10 +2,10 @@
  * User validation utilities
  */
 
-import { validateUsername, validatePassword } from './auth.js'
+import { validateUsername, validatePassword, validatePasswordMatch   } from './auth.js'
 
 export const validateRequired = (value, fieldName) => {
-  if (!value || !value.trim()) {
+  if (!String(value ?? '').trim()) {
     return `${fieldName} is required`
   }
   return null
@@ -39,32 +39,27 @@ export const validateBio = (bio) => {
 
 export const validateSignupForm = (formData) => {
   const errors = {}
-  
   const firstNameError = validateRequired(formData.firstName, 'First name')
   if (firstNameError) errors.firstName = firstNameError
-  
   const lastNameError = validateRequired(formData.lastName, 'Last name')
   if (lastNameError) errors.lastName = lastNameError
-  
   const ageError = validateAge(formData.age)
   if (ageError) errors.age = ageError
-  
   const locationError = validateRequired(formData.location, 'Location')
   if (locationError) errors.location = locationError
-  
   const usernameError = validateUsername(formData.username)
   if (usernameError) errors.username = usernameError
-  
   const passwordError = validatePassword(formData.password)
-  if (passwordError) errors.password = passwordError
-  
-  // Optional fields
+  if (passwordError) {
+    errors.password = passwordError
+  } else {
+    const matchError = validatePasswordMatch(formData.password, formData.confirmPassword)
+    if (matchError) errors.confirmPassword = matchError
+  }
   const emailError = validateEmail(formData.email)
   if (emailError) errors.email = emailError
-  
   const bioError = validateBio(formData.bio)
   if (bioError) errors.bio = bioError
-  
   return errors
 }
 

@@ -1,69 +1,76 @@
-import { useState } from 'react'
-import { validateCreatePost, getRemainingCharacters, isContentTooLong } from '../../utils/validation/post'
+import { useState } from "react";
+import {
+  validateCreatePost,
+  getRemainingCharacters,
+  isContentTooLong,
+} from "../../utils/validation/post";
 
 export default function CreatePostForm({ onPostCreated, currentUser }) {
-  const [content, setContent] = useState('')
-  const [visibility, setVisibility] = useState('friends')
-  const [imageUrl, setImageUrl] = useState('')
-  const [errors, setErrors] = useState({})
-  const [isSubmitting, setIsSubmitting] = useState(false)
-  const [showImageInput, setShowImageInput] = useState(false)
+  const [content, setContent] = useState("");
+  const [visibility, setVisibility] = useState("friends");
+  const [imageUrl, setImageUrl] = useState("");
+  const [errors, setErrors] = useState({});
+  const [isSubmitting, setIsSubmitting] = useState(false);
+  const [showImageInput, setShowImageInput] = useState(false);
 
-  const remainingChars = getRemainingCharacters(content)
-  const isTooLong = isContentTooLong(content)
-  const isNearLimit = remainingChars < 100
+  const remainingChars = getRemainingCharacters(content);
+  const isTooLong = isContentTooLong(content);
+  const isNearLimit = remainingChars < 100;
 
   const handleSubmit = async (e) => {
-    e.preventDefault()
+    e.preventDefault();
 
     // Client-side validation
-    const validationErrors = validateCreatePost({ content, imageUrl, visibility })
+    const validationErrors = validateCreatePost({
+      content,
+      imageUrl,
+      visibility,
+    });
     if (Object.keys(validationErrors).length > 0) {
-      setErrors(validationErrors)
-      return
+      setErrors(validationErrors);
+      return;
     }
 
-    setIsSubmitting(true)
-    setErrors({})
+    setIsSubmitting(true);
+    setErrors({});
 
     try {
       const postData = {
         content: content.trim(),
-        visibility
-      }
+        visibility,
+      };
 
       if (imageUrl.trim()) {
-        postData.imageUrl = imageUrl.trim()
+        postData.imageUrl = imageUrl.trim();
       }
 
-      await onPostCreated(postData)
+      await onPostCreated(postData);
 
       // Clear form on success
-      setContent('')
-      setImageUrl('')
-      setVisibility('friends')
-      setShowImageInput(false)
+      setContent("");
+      setImageUrl("");
+      setVisibility("friends");
+      setShowImageInput(false);
     } catch (error) {
-      console.error('Error creating post:', error)
-      
-      // Handle validation errors from server
-      if (error.data?.error?.errors) {
-        setErrors(error.data.error.errors)
-      } else {
-        setErrors({ general: error.message || 'Failed to create post. Please try again.' })
-      }
+      console.error("Error creating post:", error);
+      setErrors({
+        ...(error.errors ?? {}),
+        general: error.errors
+          ? undefined
+          : error.message || "Failed to save post. Please try again.",
+      });
     } finally {
-      setIsSubmitting(false)
+      setIsSubmitting(false);
     }
-  }
+  };
 
   const handleCancel = () => {
-    setContent('')
-    setImageUrl('')
-    setVisibility('friends')
-    setShowImageInput(false)
-    setErrors({})
-  }
+    setContent("");
+    setImageUrl("");
+    setVisibility("friends");
+    setShowImageInput(false);
+    setErrors({});
+  };
 
   return (
     <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-4 mb-4">
@@ -73,7 +80,8 @@ export default function CreatePostForm({ onPostCreated, currentUser }) {
           {/* Avatar */}
           <div className="flex-shrink-0">
             <div className="w-10 h-10 bg-gradient-to-br from-blue-500 to-purple-600 rounded-full flex items-center justify-center text-white font-semibold">
-              {currentUser?.firstName?.[0]}{currentUser?.lastName?.[0]}
+              {currentUser?.firstName?.[0]}
+              {currentUser?.lastName?.[0]}
             </div>
           </div>
 
@@ -84,7 +92,7 @@ export default function CreatePostForm({ onPostCreated, currentUser }) {
               onChange={(e) => setContent(e.target.value)}
               placeholder="What's on your mind?"
               className={`w-full px-3 py-2 border rounded-lg resize-none focus:outline-none focus:ring-2 focus:ring-blue-500 ${
-                errors.content ? 'border-red-500' : 'border-gray-300'
+                errors.content ? "border-red-500" : "border-gray-300"
               }`}
               rows={3}
               maxLength={2100} // Allow slightly over for better UX
@@ -95,11 +103,15 @@ export default function CreatePostForm({ onPostCreated, currentUser }) {
 
             {/* Character Counter */}
             <div className="flex justify-end mt-1">
-              <span className={`text-sm ${
-                isTooLong ? 'text-red-600 font-semibold' :
-                isNearLimit ? 'text-yellow-600' :
-                'text-gray-400'
-              }`}>
+              <span
+                className={`text-sm ${
+                  isTooLong
+                    ? "text-red-600 font-semibold"
+                    : isNearLimit
+                      ? "text-yellow-600"
+                      : "text-gray-400"
+                }`}
+              >
                 {remainingChars} characters remaining
               </span>
             </div>
@@ -115,7 +127,7 @@ export default function CreatePostForm({ onPostCreated, currentUser }) {
               onChange={(e) => setImageUrl(e.target.value)}
               placeholder="Image URL (optional)"
               className={`w-full px-3 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 ${
-                errors.imageUrl ? 'border-red-500' : 'border-gray-300'
+                errors.imageUrl ? "border-red-500" : "border-gray-300"
               }`}
             />
             {errors.imageUrl && (
@@ -140,12 +152,22 @@ export default function CreatePostForm({ onPostCreated, currentUser }) {
               type="button"
               onClick={() => setShowImageInput(!showImageInput)}
               className={`p-2 rounded-full hover:bg-gray-100 transition-colors ${
-                showImageInput ? 'text-blue-600' : 'text-gray-500'
+                showImageInput ? "text-blue-600" : "text-gray-500"
               }`}
               title="Add image URL"
             >
-              <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z" />
+              <svg
+                className="w-5 h-5"
+                fill="none"
+                stroke="currentColor"
+                viewBox="0 0 24 24"
+              >
+                <path
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                  strokeWidth={2}
+                  d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z"
+                />
               </svg>
             </button>
 
@@ -177,11 +199,11 @@ export default function CreatePostForm({ onPostCreated, currentUser }) {
               disabled={isSubmitting || !content.trim() || isTooLong}
               className="px-4 py-2 text-sm font-medium text-white bg-blue-600 rounded-lg hover:bg-blue-700 disabled:bg-gray-300 disabled:cursor-not-allowed transition-colors"
             >
-              {isSubmitting ? 'Posting...' : 'Post'}
+              {isSubmitting ? "Posting..." : "Post"}
             </button>
           </div>
         </div>
       </form>
     </div>
-  )
+  );
 }

@@ -1,6 +1,6 @@
 import { useMemo } from "react";
 import { Link, useNavigate } from "@tanstack/react-router";
-import { UserCard } from "./dashboard/index";
+import UserCard from "./dashboard/UserCard";
 import { Button } from "./atoms";
 import { Card } from "./common";
 

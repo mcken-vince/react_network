@@ -60,7 +60,10 @@ function ProfileEdit({ user, onSave, onCancel }) {
     if (result.success) {
       onSave();
     } else {
-      setErrors({ general: result.message || "Failed to update profile" });
+      setErrors({
+        ...(result.errors ?? {}),
+        general: result.message || "Failed to update profile",
+      });
     }
 
     setIsSubmitting(false);

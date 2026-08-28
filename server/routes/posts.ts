@@ -4,6 +4,10 @@ import { Connection, Post, User } from "../models";
 import { validateCreatePost, validateUpdatePost } from "../utils/validation.js";
 import type { Response } from "express";
 import type { AuthRequest } from "../types";
+import {
+  sendValidationError,
+  sendSequelizeValidationError,
+} from "../utils/responses";
 
 const router = express.Router();
 
@@ -155,7 +159,7 @@ router.post(
 
       const validation = validateCreatePost({ content, imageUrl, visibility });
       if (validation.error) {
-        res.status(400).json(validation.error);
+        sendValidationError(res, validation.error);
         return;
       }
 
@@ -173,13 +177,7 @@ router.post(
     } catch (error: any) {
       console.error("Create post error:", error);
       if (error.name === "SequelizeValidationError") {
-        const errors: Record<string, string> = {};
-        error.errors.forEach((err: any) => {
-          errors[err.path] = err.message;
-        });
-        res
-          .status(400)
-          .json({ error: { message: "Validation failed", errors } });
+        sendSequelizeValidationError(res, error);
         return;
       }
       res.status(500).json({ error: "Internal server error" });
@@ -206,7 +204,7 @@ router.put(
 
       const validation = validateUpdatePost({ content, imageUrl, visibility });
       if (validation.error) {
-        res.status(400).json(validation.error);
+        sendValidationError(res, validation.error);
         return;
       }
 
@@ -235,13 +233,7 @@ router.put(
     } catch (error: any) {
       console.error("Update post error:", error);
       if (error.name === "SequelizeValidationError") {
-        const errors: Record<string, string> = {};
-        error.errors.forEach((err: any) => {
-          errors[err.path] = err.message;
-        });
-        res
-          .status(400)
-          .json({ error: { message: "Validation failed", errors } });
+        sendSequelizeValidationError(res, error);
         return;
       }
       res.status(500).json({ error: "Internal server error" });
