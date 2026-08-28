@@ -1,24 +1,55 @@
 import { useMemo } from "react";
 import { Link, useNavigate } from "@tanstack/react-router";
-import { ProfileSection, UsersSection } from "./dashboard/index";
-import { Container, Grid, Stack, Button } from "./atoms";
-import { Card } from "./common";
 import { UserCard } from "./dashboard/index";
+import { Button } from "./atoms";
+import { Card } from "./common";
+
+// Literal class names so Tailwind's scanner can see them (no `bg-${x}-100`).
+const QUICK_ACTIONS = [
+  { key: "profile", icon: "👤", label: "My Profile", iconBg: "bg-blue-100" },
+  {
+    key: "connections",
+    icon: "🤝",
+    label: "Connections",
+    iconBg: "bg-green-100",
+  },
+  {
+    key: "notifications",
+    icon: "🔔",
+    label: "Notifications",
+    iconBg: "bg-purple-100",
+  },
+  { key: "find", icon: "🔍", label: "Find People", iconBg: "bg-orange-100" },
+];
 
 /**
- * Refactored Dashboard component using reusable components
  * @param {object} user - Current logged-in user
- * @param {array} allUsers - Array of all users
+ * @param {array} allUsers - Users with connection status
  */
 function Dashboard({ user, allUsers }) {
   const navigate = useNavigate();
-  const otherUsers = useMemo(() => {
-    return allUsers.filter((u) => u.id !== user.id);
-  }, [allUsers, user.id]);
+
+  const otherUsers = useMemo(
+    () => allUsers.filter((u) => u.id !== user.id),
+    [allUsers, user.id],
+  );
+
+  const linkPropsFor = (key) => {
+    switch (key) {
+      case "profile":
+        return { to: "/profile/$userId", params: { userId: String(user.id) } };
+      case "notifications":
+        return { to: "/notifications" };
+      default:
+        // "connections" and "find" both land on the Connections page,
+        // whose default tab is "Find Users".
+        return { to: "/connections" };
+    }
+  };
 
   return (
-    <div className="space-y-8">
-      {/* Welcome Section */}
+    <div className="space-y-8 p-6">
+      {/* Welcome */}
       <div className="bg-gradient-to-r from-blue-600 to-purple-600 rounded-3xl text-white p-8 shadow-xl">
         <div className="max-w-4xl">
           <h1 className="text-3xl font-bold mb-2">
@@ -30,38 +61,13 @@ function Dashboard({ user, allUsers }) {
         </div>
       </div>
 
-      {/* Quick Actions */}
+      {/* Quick actions */}
       <div className="grid md:grid-cols-4 gap-4">
-        {[
-          {
-            to: `/profile/${user.id}`,
-            icon: "👤",
-            label: "My Profile",
-            color: "blue",
-          },
-          {
-            to: "/connections",
-            icon: "🤝",
-            label: "Connections",
-            color: "green",
-          },
-          {
-            to: "/notifications",
-            icon: "🔔",
-            label: "Notifications",
-            color: "purple",
-          },
-          {
-            to: "/connections?tab=search",
-            icon: "🔍",
-            label: "Find People",
-            color: "orange",
-          },
-        ].map((action) => (
-          <Link key={action.to} to={action.to}>
+        {QUICK_ACTIONS.map((action) => (
+          <Link key={action.key} {...linkPropsFor(action.key)}>
             <Card hoverable padding="medium" className="text-center group">
               <div
-                className={`w-12 h-12 bg-${action.color}-100 rounded-xl flex items-center justify-center mx-auto mb-3 group-hover:scale-110 transition-transform`}
+                className={`w-12 h-12 ${action.iconBg} rounded-xl flex items-center justify-center mx-auto mb-3 group-hover:scale-110 transition-transform`}
               >
                 <span className="text-2xl">{action.icon}</span>
               </div>
@@ -71,29 +77,40 @@ function Dashboard({ user, allUsers }) {
         ))}
       </div>
 
-      {/* User Grid with better styling */}
+      {/* Discover people */}
       <div>
         <div className="flex items-center justify-between mb-6">
           <h2 className="text-2xl font-bold text-gray-800">Discover People</h2>
-          <Link to="/connections?tab=search">
+          <Link to="/connections">
             <Button variant="outline" size="medium">
               View All
             </Button>
           </Link>
         </div>
 
-        <div className="grid sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
-          {otherUsers.slice(0, 8).map((otherUser) => (
-            <UserCard
-              key={otherUser.id}
-              user={otherUser}
-              currentUser={user}
-              hoverable
-              showConnectionStatus
-              onClick={() => navigate({ to: `/profile/${otherUser.id}` })}
-            />
-          ))}
-        </div>
+        {otherUsers.length === 0 ? (
+          <Card padding="large" className="text-center text-gray-500">
+            No other users yet. Invite your friends!
+          </Card>
+        ) : (
+          <div className="grid sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
+            {otherUsers.slice(0, 8).map((otherUser) => (
+              <UserCard
+                key={otherUser.id}
+                user={otherUser}
+                currentUser={user}
+                hoverable
+                showConnectionStatus
+                onClick={() =>
+                  navigate({
+                    to: "/profile/$userId",
+                    params: { userId: String(otherUser.id) },
+                  })
+                }
+              />
+            ))}
+          </div>
+        )}
       </div>
     </div>
   );

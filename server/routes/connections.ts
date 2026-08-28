@@ -1,6 +1,6 @@
 import express from "express";
 import { authenticateToken } from "../middleware/auth.js";
-import { Connection, Notification } from "../models";
+import { Connection, Notification, User } from "../models";
 import type { Response } from "express";
 import type { AuthRequest } from "../types";
 
@@ -13,31 +13,43 @@ router.post(
   async (req: AuthRequest, res: Response): Promise<void> => {
     try {
       const requesterId = req.userId!;
-      const { recipientId } = req.body;
+      const recipientId = parseInt(req.body.recipientId);
 
-      if (!recipientId) {
-        res.status(400).json({ error: "Recipient ID is required" });
+      if (isNaN(recipientId)) {
+        res.status(400).json({ error: "A valid recipient ID is required" });
+        return;
+      }
+      if (recipientId === requesterId) {
+        res
+          .status(400)
+          .json({ error: "Cannot send connection request to yourself" });
+        return;
+      }
+
+      const recipient = await User.findByPk(recipientId, {
+        attributes: ["id"],
+      });
+      if (!recipient) {
+        res.status(404).json({ error: "Recipient not found" });
         return;
       }
 
       const connection = await Connection.sendConnectionRequest(
         requesterId,
-        recipientId
+        recipientId,
       );
 
-      // Create notification for the recipient
       try {
         await Notification.createConnectionRequestNotification(
           recipientId,
           requesterId,
-          connection.id
+          connection.id,
         );
       } catch (notificationError) {
         console.error(
           "Error creating connection request notification:",
-          notificationError
+          notificationError,
         );
-        // Don't fail the request if notification fails
       }
 
       res.status(201).json({
@@ -55,7 +67,7 @@ router.post(
       }
       res.status(500).json({ error: "Internal server error" });
     }
-  }
+  },
 );
 
 // Accept a connection request
@@ -69,7 +81,7 @@ router.put(
 
       const connection = await Connection.acceptConnectionRequest(
         parseInt(connectionId!),
-        userId
+        userId,
       );
 
       // Create notification for the requester
@@ -77,12 +89,12 @@ router.put(
         await Notification.createConnectionAcceptedNotification(
           connection.requesterId,
           userId,
-          connection.id
+          connection.id,
         );
       } catch (notificationError) {
         console.error(
           "Error creating connection accepted notification:",
-          notificationError
+          notificationError,
         );
         // Don't fail the request if notification fails
       }
@@ -102,7 +114,7 @@ router.put(
       }
       res.status(500).json({ error: "Internal server error" });
     }
-  }
+  },
 );
 
 // Reject a connection request
@@ -116,7 +128,7 @@ router.put(
 
       const connection = await Connection.rejectConnectionRequest(
         parseInt(connectionId!),
-        userId
+        userId,
       );
 
       // Create notification for the requester
@@ -124,12 +136,12 @@ router.put(
         await Notification.createConnectionRejectedNotification(
           connection.requesterId,
           userId,
-          connection.id
+          connection.id,
         );
       } catch (notificationError) {
         console.error(
           "Error creating connection rejected notification:",
-          notificationError
+          notificationError,
         );
         // Don't fail the request if notification fails
       }
@@ -149,7 +161,7 @@ router.put(
       }
       res.status(500).json({ error: "Internal server error" });
     }
-  }
+  },
 );
 
 // Get pending connection requests (incoming)
@@ -165,7 +177,7 @@ router.get(
       console.error("Get pending requests error:", error);
       res.status(500).json({ error: "Internal server error" });
     }
-  }
+  },
 );
 
 // Get sent connection requests (outgoing)
@@ -181,7 +193,7 @@ router.get(
       console.error("Get sent requests error:", error);
       res.status(500).json({ error: "Internal server error" });
     }
-  }
+  },
 );
 
 // Get user's connections (accepted)
@@ -197,7 +209,7 @@ router.get(
       console.error("Get connections error:", error);
       res.status(500).json({ error: "Internal server error" });
     }
-  }
+  },
 );
 
 // Remove/cancel a connection
@@ -222,7 +234,7 @@ router.delete(
       }
       res.status(500).json({ error: "Internal server error" });
     }
-  }
+  },
 );
 
 export default router;

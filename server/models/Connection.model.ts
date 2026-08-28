@@ -147,7 +147,7 @@ export default class Connection extends BaseModel<ConnectionAttributes> {
     const existingConnection = await this.findOne({
       where: {
         [Op.or]: [
-          { requesterId: requesterId, recipientId: recipientId },
+          { requesterId, recipientId },
           { requesterId: recipientId, recipientId: requesterId },
         ],
       },
@@ -155,6 +155,14 @@ export default class Connection extends BaseModel<ConnectionAttributes> {
     });
 
     if (existingConnection) {
+      if (existingConnection.status === "rejected") {
+        // Allow a fresh request after a rejection; the unique pair index is
+        // unaffected because we're updating the single existing row.
+        return existingConnection.update(
+          { requesterId, recipientId, status: "pending" },
+          { transaction },
+        );
+      }
       throw new Error("Connection request already exists");
     }
 

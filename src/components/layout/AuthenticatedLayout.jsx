@@ -1,72 +1,72 @@
-import { Link, useLocation } from "@tanstack/react-router";
+import { Link, Navigate, useLocation } from "@tanstack/react-router";
 import { useState, useRef, useEffect } from "react";
 import { Button, Flex, Heading, Text, IconButton } from "../atoms";
 import { NotificationBell } from "../notifications";
 import { useAuth } from "../../hooks/useAuth";
+import Loading from "../Loading";
 
 /**
- * Layout component for authenticated users with persistent navigation
- * @param {React.ReactNode} children - The page content to render
+ * Layout for authenticated pages. Owns the auth guard: renders Loading while
+ * the session resolves and redirects to /login when there is no user.
  */
 function AuthenticatedLayout({ children }) {
-  const { user, handleLogout } = useAuth();
+  const { user, isLoading, handleLogout } = useAuth();
   const location = useLocation();
   const [isMenuOpen, setIsMenuOpen] = useState(false);
   const menuRef = useRef(null);
 
-  const isActiveRoute = (path) => {
-    if (path === "/dashboard") {
-      return location.pathname === "/dashboard";
-    }
-    return location.pathname.startsWith(path);
-  };
-
-  const getLinkClassName = (path) => {
-    const baseClasses =
-      "block px-4 py-3 text-left font-medium transition-colors duration-200 w-full border-none bg-transparent";
-    return isActiveRoute(path)
-      ? `${baseClasses} text-primary-600 bg-primary-50`
-      : `${baseClasses} text-gray-700 hover:text-primary-600 hover:bg-gray-50`;
-  };
-
-  // Close menu when clicking outside
+  // Close menu on outside click
   useEffect(() => {
     const handleClickOutside = (event) => {
       if (menuRef.current && !menuRef.current.contains(event.target)) {
         setIsMenuOpen(false);
       }
     };
-
     document.addEventListener("mousedown", handleClickOutside);
-    return () => {
-      document.removeEventListener("mousedown", handleClickOutside);
-    };
+    return () => document.removeEventListener("mousedown", handleClickOutside);
   }, []);
 
-  // Close menu when route changes
+  // Close menu on route change
   useEffect(() => {
     setIsMenuOpen(false);
   }, [location.pathname]);
 
-  const toggleMenu = () => {
-    setIsMenuOpen(!isMenuOpen);
-  };
+  // ---- Guard (after all hooks) ----
+  if (isLoading) return <Loading />;
+  if (!user) return <Navigate to="/login" />;
 
   const menuItems = [
-    { path: "/dashboard", label: "Dashboard", icon: "dashboard" },
-    { path: "/feed", label: "Feed", icon: "feed" },
-    { path: "/connections", label: "Connections", icon: "connections" },
-    { path: "/messages", label: "Messages", icon: "messages" },
-    { path: "/notifications", label: "Notifications", icon: "notifications" },
-    { path: `/profile/${user?.id}`, label: "Profile", icon: "profile" },
+    { path: "/dashboard", label: "Dashboard", emoji: "📊" },
+    { path: "/feed", label: "Feed", emoji: "📰" },
+    { path: "/connections", label: "Connections", emoji: "🔗" },
+    { path: "/messages", label: "Messages", emoji: "💬" },
+    { path: "/notifications", label: "Notifications", emoji: "🔔" },
+    { path: `/profile/${user.id}`, label: "Profile", emoji: "👤" },
   ];
+
+  const isActiveRoute = (path) =>
+    path === "/dashboard"
+      ? location.pathname === "/dashboard"
+      : location.pathname.startsWith(path);
+
+  const mobileLinkClass = (path) =>
+    `block px-4 py-3 text-left font-medium transition-colors duration-200 w-full ${
+      isActiveRoute(path)
+        ? "text-primary-600 bg-primary-50"
+        : "text-gray-700 hover:text-primary-600 hover:bg-gray-50"
+    }`;
+
+  const desktopLinkClass = (path) =>
+    `px-3 py-2 rounded-md font-medium transition-colors duration-200 ${
+      isActiveRoute(path)
+        ? "text-primary-600 bg-primary-50"
+        : "text-gray-600 hover:text-primary-600"
+    }`;
 
   return (
     <div className="min-h-screen bg-slate-50">
-      {/* Top Navigation Bar */}
       <header className="bg-white px-4 py-3 shadow-sm sticky top-0 z-50">
         <Flex justify="between" align="center">
-          {/* Logo/Brand */}
           <Link to="/dashboard" className="no-underline">
             <Heading
               level={2}
@@ -77,18 +77,14 @@ function AuthenticatedLayout({ children }) {
             </Heading>
           </Link>
 
-          {/* Desktop Navigation - Hidden on mobile */}
+          {/* Desktop nav */}
           <nav className="hidden lg:flex">
             <Flex align="center" gap="medium">
               {menuItems.map((item) => (
                 <Link
                   key={item.path}
                   to={item.path}
-                  className={`px-3 py-2 rounded-md font-medium transition-colors duration-200 ${
-                    isActiveRoute(item.path)
-                      ? "text-primary-600 bg-primary-50"
-                      : "text-gray-600 hover:text-primary-600"
-                  }`}
+                  className={desktopLinkClass(item.path)}
                 >
                   {item.label}
                 </Link>
@@ -96,7 +92,7 @@ function AuthenticatedLayout({ children }) {
             </Flex>
           </nav>
 
-          {/* Desktop User Actions - Hidden on mobile */}
+          {/* Desktop user actions */}
           <Flex align="center" gap="medium" className="hidden lg:flex">
             <Text weight="semibold" className="text-sm">
               Welcome, {user.firstName}!
@@ -112,58 +108,42 @@ function AuthenticatedLayout({ children }) {
             </Button>
           </Flex>
 
-          {/* Mobile Menu Button */}
+          {/* Mobile menu */}
           <div className="lg:hidden relative" ref={menuRef}>
             <IconButton
               icon={isMenuOpen ? "close" : "menu"}
-              onClick={toggleMenu}
+              onClick={() => setIsMenuOpen((open) => !open)}
               size="medium"
               ariaLabel={isMenuOpen ? "Close menu" : "Open menu"}
               className="relative z-50"
             />
 
-            {/* Mobile Dropdown Menu */}
             {isMenuOpen && (
               <div className="absolute right-0 top-full mt-2 w-64 bg-white rounded-lg shadow-lg border border-gray-200 py-2 z-40">
-                {/* User Info */}
                 <div className="px-4 py-3 border-b border-gray-200">
                   <Text weight="semibold" className="text-sm text-gray-900">
                     Welcome, {user.firstName}!
                   </Text>
                   <Text className="text-xs text-gray-500 mt-1">
-                    {user.email}
+                    @{user.username}
                   </Text>
                 </div>
 
-                {/* Navigation Links */}
                 <nav className="py-2">
                   {menuItems.map((item) => (
                     <Link
                       key={item.path}
                       to={item.path}
-                      className={getLinkClassName(item.path)}
+                      className={mobileLinkClass(item.path)}
                     >
                       <Flex align="center" gap="small">
-                        <span className="text-base">
-                          {item.icon === "dashboard"
-                            ? "📊"
-                            : item.icon === "feed"
-                              ? "📰"
-                              : item.icon === "connections"
-                                ? "🔗"
-                                : item.icon === "messages"
-                                  ? "💬"
-                                  : item.icon === "notifications"
-                                    ? "🔔"
-                                    : "👤"}
-                        </span>
+                        <span className="text-base">{item.emoji}</span>
                         <span>{item.label}</span>
                       </Flex>
                     </Link>
                   ))}
                 </nav>
 
-                {/* Notifications Section */}
                 <div className="px-4 py-3 border-t border-gray-200">
                   <Flex align="center" justify="between">
                     <Text weight="semibold" className="text-sm text-gray-900">
@@ -173,7 +153,6 @@ function AuthenticatedLayout({ children }) {
                   </Flex>
                 </div>
 
-                {/* Logout Button */}
                 <div className="px-4 py-3 border-t border-gray-200">
                   <Button
                     onClick={handleLogout}
@@ -182,10 +161,7 @@ function AuthenticatedLayout({ children }) {
                     className="w-full"
                     aria-label="Logout"
                   >
-                    <Flex align="center" gap="small" justify="center">
-                      <span>🚪</span>
-                      <span>Logout</span>
-                    </Flex>
+                    🚪 Logout
                   </Button>
                 </div>
               </div>
@@ -194,7 +170,6 @@ function AuthenticatedLayout({ children }) {
         </Flex>
       </header>
 
-      {/* Overlay for mobile menu */}
       {isMenuOpen && (
         <div
           className="fixed inset-0 bg-black bg-opacity-25 z-30 lg:hidden"
@@ -202,7 +177,6 @@ function AuthenticatedLayout({ children }) {
         />
       )}
 
-      {/* Page Content */}
       <main className="min-h-screen">{children}</main>
     </div>
   );
