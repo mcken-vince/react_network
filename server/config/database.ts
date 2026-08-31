@@ -3,54 +3,35 @@ import type { Options } from "sequelize";
 
 dotenv.config();
 
-interface DatabaseConfig {
-  development: Options;
-  test: Options;
-  production: Options;
-}
+export type Env = "development" | "test" | "production";
 
-const config: DatabaseConfig = {
+const common: Options = {
+  host: process.env.DB_HOST || "localhost",
+  dialect: "postgres",
+  logging: false,
+};
+
+const config: Record<Env, Options> = {
   development: {
+    ...common,
     username: process.env.DB_USER || "postgres",
     password: process.env.DB_PASSWORD || "postgres",
     database: process.env.DB_NAME || "react_network",
-    host: process.env.DB_HOST || "localhost",
-    port: parseInt(process.env.DB_PORT || "5433"),
-    dialect: "postgres",
-    logging: false,
-    define: {
-      timestamps: true,
-    },
+    port: parseInt(process.env.DB_PORT || "5433", 10),
   },
   test: {
+    ...common,
     username: process.env.DB_USER || "postgres",
     password: process.env.DB_PASSWORD || "postgres",
     database: process.env.DB_NAME_TEST || "react_network_test",
-    host: process.env.DB_HOST || "localhost",
-    port: parseInt(process.env.DB_PORT || "5433"),
-    dialect: "postgres",
-    logging: false,
-    define: {
-      timestamps: true,
-      underscored: true,
-      createdAt: "created_at",
-      updatedAt: "updated_at",
-    },
+    port: parseInt(process.env.DB_PORT || "5433", 10),
   },
   production: {
+    ...common,
     username: process.env.DB_USER,
     password: process.env.DB_PASSWORD,
     database: process.env.DB_NAME,
-    host: process.env.DB_HOST,
-    port: parseInt(process.env.DB_PORT || "5432"),
-    dialect: "postgres",
-    logging: false,
-    define: {
-      timestamps: true,
-      underscored: true,
-      createdAt: "created_at",
-      updatedAt: "updated_at",
-    },
+    port: parseInt(process.env.DB_PORT || "5432", 10),
   },
 };
 

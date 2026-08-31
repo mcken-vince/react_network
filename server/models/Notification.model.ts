@@ -11,7 +11,7 @@ import {
 import { Op } from "sequelize";
 import { BaseModel } from "./BaseModel";
 import User from "./User.model";
-import { NOTIFICATION_TYPES } from "../config/notificationTypes";
+import { NOTIFICATION_TYPES } from "../../shared/notificationTypes";
 import { NotificationAttributes } from "./types";
 
 @Scopes(() => ({
