@@ -43,7 +43,7 @@ export interface NotificationAttributes {
   isRead: boolean;
   relatedUserId?: number;
   relatedEntityType?: string;
-  relatedEntityId?: string | number;
+  relatedEntityId?: string;
   metadata?: any;
   createdAt?: Date;
   updatedAt?: Date;

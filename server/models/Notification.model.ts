@@ -167,7 +167,7 @@ export default class Notification extends BaseModel<NotificationAttributes> {
   // Static methods
   static async createNotification(
     notificationData: Partial<NotificationAttributes>,
-    transaction?: any
+    transaction?: any,
   ) {
     return this.create(notificationData as NotificationAttributes, {
       transaction,
@@ -181,7 +181,7 @@ export default class Notification extends BaseModel<NotificationAttributes> {
       offset?: number;
       unreadOnly?: boolean;
       type?: string | null;
-    } = {}
+    } = {},
   ) {
     const { limit = 50, offset = 0, unreadOnly = false, type = null } = options;
 
@@ -212,7 +212,7 @@ export default class Notification extends BaseModel<NotificationAttributes> {
   static async markAsRead(
     notificationId: number,
     userId: number,
-    transaction?: any
+    transaction?: any,
   ) {
     const notification = await this.findOne({
       where: {
@@ -238,14 +238,14 @@ export default class Notification extends BaseModel<NotificationAttributes> {
           isRead: false,
         },
         transaction,
-      }
+      },
     );
   }
 
   static async markMultipleAsRead(
     notificationIds: number[],
     userId: number,
-    transaction?: any
+    transaction?: any,
   ) {
     return this.update(
       { isRead: true },
@@ -256,7 +256,7 @@ export default class Notification extends BaseModel<NotificationAttributes> {
           isRead: false,
         },
         transaction,
-      }
+      },
     );
   }
 
@@ -287,7 +287,7 @@ export default class Notification extends BaseModel<NotificationAttributes> {
   static async deleteNotification(
     notificationId: number,
     userId: number,
-    transaction?: any
+    transaction?: any,
   ) {
     const notification = await this.findOne({
       where: {
@@ -335,7 +335,7 @@ export default class Notification extends BaseModel<NotificationAttributes> {
     userId: number,
     fromUserId: number,
     connectionId: number,
-    transaction?: any
+    transaction?: any,
   ) {
     return this.create(
       {
@@ -345,10 +345,10 @@ export default class Notification extends BaseModel<NotificationAttributes> {
         message: "You have a new connection request",
         relatedUserId: fromUserId,
         relatedEntityType: "connection",
-        relatedEntityId: connectionId,
+        relatedEntityId: String(connectionId),
         isRead: false,
       },
-      { transaction }
+      { transaction },
     );
   }
 
@@ -359,13 +359,13 @@ export default class Notification extends BaseModel<NotificationAttributes> {
     userId: number,
     fromUserId: number,
     connectionId: number,
-    transaction?: any
+    transaction?: any,
   ) {
     return this.createConnectionNotification(
       userId,
       fromUserId,
       connectionId,
-      transaction
+      transaction,
     );
   }
 
@@ -376,7 +376,7 @@ export default class Notification extends BaseModel<NotificationAttributes> {
     userId: number,
     fromUserId: number,
     connectionId: number,
-    transaction?: any
+    transaction?: any,
   ) {
     return this.create(
       {
@@ -386,10 +386,10 @@ export default class Notification extends BaseModel<NotificationAttributes> {
         message: "Your connection request has been accepted",
         relatedUserId: fromUserId,
         relatedEntityType: "connection",
-        relatedEntityId: connectionId,
+        relatedEntityId: String(connectionId),
         isRead: false,
       },
-      { transaction }
+      { transaction },
     );
   }
 
@@ -400,7 +400,7 @@ export default class Notification extends BaseModel<NotificationAttributes> {
     userId: number,
     fromUserId: number,
     connectionId: number,
-    transaction?: any
+    transaction?: any,
   ) {
     return this.create(
       {
@@ -410,10 +410,10 @@ export default class Notification extends BaseModel<NotificationAttributes> {
         message: "Your connection request has been rejected",
         relatedUserId: fromUserId,
         relatedEntityType: "connection",
-        relatedEntityId: connectionId,
+        relatedEntityId: String(connectionId),
         isRead: false,
       } as NotificationAttributes,
-      { transaction }
+      { transaction },
     );
   }
 
@@ -426,7 +426,7 @@ export default class Notification extends BaseModel<NotificationAttributes> {
     messageId: string,
     conversationId: string,
     messagePreview: string,
-    transaction?: any
+    transaction?: any,
   ) {
     return this.create(
       {
@@ -440,7 +440,7 @@ export default class Notification extends BaseModel<NotificationAttributes> {
         metadata: { conversationId },
         isRead: false,
       } as NotificationAttributes,
-      { transaction }
+      { transaction },
     );
   }
 
@@ -453,7 +453,7 @@ export default class Notification extends BaseModel<NotificationAttributes> {
     postId: string,
     postPreview: string,
     notificationType: "like" | "comment" | "share" = "like",
-    transaction?: any
+    transaction?: any,
   ) {
     const typeMap = {
       like: NOTIFICATION_TYPES.POST_LIKE,
@@ -478,7 +478,7 @@ export default class Notification extends BaseModel<NotificationAttributes> {
         relatedEntityId: postId,
         isRead: false,
       } as NotificationAttributes,
-      { transaction }
+      { transaction },
     );
   }
 }

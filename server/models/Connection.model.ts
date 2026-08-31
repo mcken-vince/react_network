@@ -139,12 +139,21 @@ export default class Connection extends BaseModel<ConnectionAttributes> {
   // Existing static methods
   // ---------------------------------------------------------------------------
 
+  /**
+   * Create a pending request from `requesterId` to `recipientId`.
+   *  - no existing row          → create pending
+   *  - existing rejected        → reuse the row as a fresh pending request
+   *  - existing pending, theirs → they already asked us: accept it
+   *  - existing pending, ours   → error
+   *  - existing accepted        → error
+   * Callers can inspect the returned `status` to decide which notification to send.
+   */
   static async sendConnectionRequest(
     requesterId: number,
     recipientId: number,
     transaction?: any,
   ) {
-    const existingConnection = await this.findOne({
+    const existing = await this.findOne({
       where: {
         [Op.or]: [
           { requesterId, recipientId },
@@ -154,21 +163,32 @@ export default class Connection extends BaseModel<ConnectionAttributes> {
       transaction,
     });
 
-    if (existingConnection) {
-      if (existingConnection.status === "rejected") {
-        // Allow a fresh request after a rejection; the unique pair index is
-        // unaffected because we're updating the single existing row.
-        return existingConnection.update(
+    if (!existing) {
+      return this.create(
+        { requesterId, recipientId, status: "pending" } as any,
+        { transaction },
+      );
+    }
+
+    switch (existing.status) {
+      case "rejected":
+        return existing.update(
           { requesterId, recipientId, status: "pending" },
           { transaction },
         );
-      }
-      throw new Error("Connection request already exists");
-    }
 
-    return this.create({ requesterId, recipientId, status: "pending" } as any, {
-      transaction,
-    });
+      case "pending":
+        if (existing.recipientId === requesterId) {
+          return existing.update({ status: "accepted" }, { transaction });
+        }
+        throw new Error("You already sent this user a connection request");
+
+      case "accepted":
+        throw new Error("You are already connected with this user");
+
+      default:
+        throw new Error(`Unexpected connection status: ${existing.status}`);
+    }
   }
 
   static async acceptConnectionRequest(

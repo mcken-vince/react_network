@@ -38,31 +38,40 @@ router.post(
         requesterId,
         recipientId,
       );
+      const wasAutoAccepted = connection.status === "accepted";
 
       try {
-        await Notification.createConnectionRequestNotification(
-          recipientId,
-          requesterId,
-          connection.id,
-        );
+        if (wasAutoAccepted) {
+          // They had asked us first; our "Connect" accepted it.
+          await Notification.createConnectionAcceptedNotification(
+            connection.requesterId,
+            requesterId,
+            connection.id,
+          );
+        } else {
+          await Notification.createConnectionRequestNotification(
+            recipientId,
+            requesterId,
+            connection.id,
+          );
+        }
       } catch (notificationError) {
         console.error(
-          "Error creating connection request notification:",
+          "Error creating connection notification:",
           notificationError,
         );
       }
 
-      res.status(201).json({
-        message: "Connection request sent successfully",
+      res.status(wasAutoAccepted ? 200 : 201).json({
+        message: wasAutoAccepted
+          ? "Connection request accepted"
+          : "Connection request sent successfully",
         connection: connection.toJSON(),
       });
     } catch (error: any) {
       console.error("Send connection request error:", error);
-      if (
-        error.message.includes("already exists") ||
-        error.message.includes("Cannot send")
-      ) {
-        res.status(400).json({ error: error.message });
+      if (/already/i.test(error.message)) {
+        res.status(409).json({ error: error.message });
         return;
       }
       res.status(500).json({ error: "Internal server error" });
