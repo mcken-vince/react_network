@@ -11,7 +11,8 @@
     "lint": "eslint .",
     "preview": "vite preview",
     "typecheck": "tsc --noEmit",
-    "install:server": "cd server && npm install"
+    "install:server": "cd server && npm install",
+    "knip": "knip"
   },
   "dependencies": {
     "@tanstack/react-query": "^5.84.2",
@@ -36,6 +37,7 @@
     "eslint-plugin-react-hooks": "^5.2.0",
     "eslint-plugin-react-refresh": "^0.4.20",
     "globals": "^16.3.0",
+    "knip": "^6.33.0",
     "postcss": "^8.4.32",
     "tailwindcss": "^3.4.0",
     "typescript": "^5.6.0",
