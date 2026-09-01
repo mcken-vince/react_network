@@ -1,16 +1,15 @@
 import {
-  Table,
-  Column,
-  DataType,
-  Unique,
   AllowNull,
   BeforeCreate,
   BeforeUpdate,
+  Column,
+  DataType,
+  DefaultScope,
   HasMany,
   Scopes,
-  DefaultScope,
+  Table,
 } from "sequelize-typescript";
-import { Op } from "sequelize";
+import { Op, UniqueConstraintError } from "sequelize";
 import bcrypt from "bcryptjs";
 import { BaseModel } from "./BaseModel";
 import Connection from "./Connection.model";
@@ -19,77 +18,77 @@ import Conversation from "./Conversation.model";
 import ConversationParticipant from "./ConversationParticipant.model";
 import Message from "./Message.model";
 import Post from "./Post.model";
-import { UserAttributes } from "./types";
+import { ConflictError, NotFoundError } from "../lib/errors";
+import { LIMITS } from "../../shared/limits";
+import type { UserAttributes, UserCreationAttributes } from "./types";
+
+const BCRYPT_ROUNDS = 12;
+
+const PUBLIC_ATTRIBUTES = [
+  "id",
+  "firstName",
+  "lastName",
+  "username",
+  "location",
+  "bio",
+  "createdAt",
+];
+
+/** What a User serializes to (never includes the password hash). */
+export type PublicUser = Omit<UserAttributes, "password"> & {
+  fullName: string;
+  isProfileComplete: boolean;
+};
+
+/** Postgres reports the violated column in `errors[].path`. */
+function translateUniqueError(error: unknown): unknown {
+  if (error instanceof UniqueConstraintError) {
+    const field = error.errors[0]?.path ?? "";
+    if (field.includes("username"))
+      return new ConflictError("Username already exists");
+    if (field.includes("email"))
+      return new ConflictError("Email already exists");
+  }
+  return error;
+}
 
 @DefaultScope(() => ({
   attributes: { exclude: ["password"] },
 }))
 @Scopes(() => ({
-  withPassword: {
-    // Include password in results
-  },
-  public: {
-    attributes: [
-      "id",
-      "firstName",
-      "lastName",
-      "username",
-      "location",
-      "bio",
-      "createdAt",
-    ],
-  },
-  minimal: {
-    attributes: ["id", "firstName", "lastName", "username"],
-  },
-  active: {
-    where: {
-      // Add any active user conditions here if needed
-    },
-  },
+  // An empty scope *replaces* the default scope, so the password is selected.
+  withPassword: {},
+  public: { attributes: PUBLIC_ATTRIBUTES },
 }))
 @Table({
   tableName: "users",
   timestamps: true,
   indexes: [
-    {
-      fields: ["username"],
-      unique: true,
-    },
+    { fields: ["username"], unique: true, name: "users_username_unique" },
     {
       fields: ["email"],
       unique: true,
-      where: {
-        email: {
-          [Op.ne]: null,
-        },
-      },
+      name: "users_email_unique",
+      where: { email: { [Op.ne]: null } },
     },
-    {
-      fields: ["createdAt"],
-    },
+    { fields: ["createdAt"], name: "users_createdAt_idx" },
   ],
 })
-export default class User extends BaseModel<UserAttributes> {
+export default class User extends BaseModel<
+  UserAttributes,
+  UserCreationAttributes
+> {
   @AllowNull(false)
   @Column({
     type: DataType.STRING,
-    validate: {
-      notEmpty: {
-        msg: "First name is required",
-      },
-    },
+    validate: { notEmpty: { msg: "First name is required" } },
   })
   firstName!: string;
 
   @AllowNull(false)
   @Column({
     type: DataType.STRING,
-    validate: {
-      notEmpty: {
-        msg: "Last name is required",
-      },
-    },
+    validate: { notEmpty: { msg: "Last name is required" } },
   })
   lastName!: string;
 
@@ -97,12 +96,14 @@ export default class User extends BaseModel<UserAttributes> {
   @Column({
     type: DataType.INTEGER,
     validate: {
+      isInt: { msg: "Age must be a valid integer" },
       min: {
-        args: [1] as const,
-        msg: "Age must be greater than 0",
+        args: [LIMITS.AGE_MIN],
+        msg: `Age must be at least ${LIMITS.AGE_MIN}`,
       },
-      isInt: {
-        msg: "Age must be a valid integer",
+      max: {
+        args: [LIMITS.AGE_MAX],
+        msg: `Age must be at most ${LIMITS.AGE_MAX}`,
       },
     },
   })
@@ -111,28 +112,18 @@ export default class User extends BaseModel<UserAttributes> {
   @AllowNull(false)
   @Column({
     type: DataType.STRING,
-    validate: {
-      notEmpty: {
-        msg: "Location is required",
-      },
-    },
+    validate: { notEmpty: { msg: "Location is required" } },
   })
   location!: string;
 
   @AllowNull(false)
-  @Unique({
-    name: "unique_username",
-    msg: "Username already exists",
-  })
   @Column({
     type: DataType.STRING,
     validate: {
-      notEmpty: {
-        msg: "Username is required",
-      },
+      notEmpty: { msg: "Username is required" },
       len: {
-        args: [3, 30],
-        msg: "Username must be between 3 and 30 characters",
+        args: [LIMITS.USERNAME_MIN, LIMITS.USERNAME_MAX],
+        msg: `Username must be between ${LIMITS.USERNAME_MIN} and ${LIMITS.USERNAME_MAX} characters`,
       },
     },
   })
@@ -141,46 +132,34 @@ export default class User extends BaseModel<UserAttributes> {
   @AllowNull(false)
   @Column({
     type: DataType.STRING,
-    validate: {
-      notEmpty: {
-        msg: "Password is required",
-      },
-      len: {
-        args: [6, 100] as const,
-        msg: "Password must be at least 6 characters long",
-      },
-    },
+    validate: { notEmpty: { msg: "Password is required" } },
   })
   password!: string;
 
   @AllowNull(true)
   @Column({
     type: DataType.STRING,
-    validate: {
-      isEmail: {
-        msg: "Must be a valid email address",
-      },
-    },
+    validate: { isEmail: { msg: "Must be a valid email address" } },
   })
-  email?: string;
+  email!: string | null;
 
   @AllowNull(true)
   @Column({
     type: DataType.TEXT,
     validate: {
       len: {
-        args: [0, 500],
-        msg: "Bio must be less than 500 characters",
+        args: [0, LIMITS.BIO_MAX],
+        msg: `Bio must be less than ${LIMITS.BIO_MAX} characters`,
       },
     },
   })
-  bio?: string;
+  bio!: string | null;
 
+  // --------------------------------------------------------------------------
   // Associations
-  @HasMany(() => Connection, {
-    foreignKey: "requesterId",
-    as: "sentRequests",
-  })
+  // --------------------------------------------------------------------------
+
+  @HasMany(() => Connection, { foreignKey: "requesterId", as: "sentRequests" })
   sentRequests!: Connection[];
 
   @HasMany(() => Connection, {
@@ -189,10 +168,7 @@ export default class User extends BaseModel<UserAttributes> {
   })
   receivedRequests!: Connection[];
 
-  @HasMany(() => Notification, {
-    foreignKey: "userId",
-    as: "notifications",
-  })
+  @HasMany(() => Notification, { foreignKey: "userId", as: "notifications" })
   notifications!: Notification[];
 
   @HasMany(() => Notification, {
@@ -213,36 +189,36 @@ export default class User extends BaseModel<UserAttributes> {
   })
   participantConversations!: ConversationParticipant[];
 
-  @HasMany(() => Message, {
-    foreignKey: "senderId",
-    as: "sentMessages",
-  })
+  @HasMany(() => Message, { foreignKey: "senderId", as: "sentMessages" })
   sentMessages!: Message[];
 
-  @HasMany(() => Post, {
-    foreignKey: "userId",
-    as: "posts",
-  })
+  @HasMany(() => Post, { foreignKey: "userId", as: "posts" })
   posts!: Post[];
 
+  // --------------------------------------------------------------------------
   // Hooks
+  // --------------------------------------------------------------------------
+
   @BeforeCreate
-  static async hashPasswordBeforeCreate(user: User) {
+  static async hashPasswordBeforeCreate(user: User): Promise<void> {
     if (user.password) {
-      user.password = await bcrypt.hash(user.password, 12);
+      user.password = await bcrypt.hash(user.password, BCRYPT_ROUNDS);
     }
   }
 
   @BeforeUpdate
-  static async hashPasswordBeforeUpdate(user: User) {
+  static async hashPasswordBeforeUpdate(user: User): Promise<void> {
     if (user.changed("password")) {
-      user.password = await bcrypt.hash(user.password, 12);
+      user.password = await bcrypt.hash(user.password, BCRYPT_ROUNDS);
     }
   }
 
+  // --------------------------------------------------------------------------
   // Instance methods
+  // --------------------------------------------------------------------------
+
   async comparePassword(candidatePassword: string): Promise<boolean> {
-    // Default scope strips the password; reload it if it wasn't selected.
+    // The default scope strips the hash; reload it if this instance lacks it.
     let hash: string | undefined = this.getDataValue("password");
     if (!hash) {
       const withPassword = await User.scope("withPassword").findByPk(this.id);
@@ -259,146 +235,102 @@ export default class User extends BaseModel<UserAttributes> {
   }
 
   isProfileComplete(): boolean {
-    return !!(
+    return Boolean(
       this.firstName &&
-      this.lastName &&
-      this.username &&
-      this.email &&
-      this.location
+        this.lastName &&
+        this.username &&
+        this.email &&
+        this.location,
     );
   }
 
-  override toJSON() {
-    const values = super.toJSON();
-    delete values.password;
-    // Add computed fields
-    values.fullName = this.getFullName();
-    values.isProfileComplete = this.isProfileComplete();
-    return values;
+  toPublic(): PublicUser {
+    const { password: _password, ...values } = this.get({ plain: true });
+    return {
+      ...values,
+      fullName: this.getFullName(),
+      isProfileComplete: this.isProfileComplete(),
+    };
   }
 
+  // Sequelize declares `toJSON<T extends Attributes>(): T`; an override must
+  // keep that shape, so we delegate to toPublic() and cast.
+  override toJSON<T extends UserAttributes>(): T {
+    return this.toPublic() as unknown as T;
+  }
+
+  // --------------------------------------------------------------------------
   // Static methods
-  static async findByUsername(username: string) {
+  // --------------------------------------------------------------------------
+
+  /** Includes the password hash — for authentication only. */
+  static findByUsername(username: string): Promise<User | null> {
+    return this.scope("withPassword").findOne({ where: { username } });
+  }
+
+  static findById(id: number): Promise<User | null> {
+    return this.findByPk(id);
+  }
+
+  /** @throws ConflictError on a duplicate username/email */
+  static async createUser(data: UserCreationAttributes): Promise<User> {
     try {
-      return await this.scope("withPassword").findOne({ where: { username } });
+      return await this.create(data);
     } catch (error) {
-      throw new Error(`Failed to find user by username: ${error}`);
+      throw translateUniqueError(error);
     }
   }
 
-  static async findByEmail(email: string) {
-    try {
-      return await this.scope("withPassword").findOne({ where: { email } });
-    } catch (error) {
-      throw new Error(`Failed to find user by email: ${error}`);
-    }
+  static getAllUsers(
+    options: { limit?: number; offset?: number } = {},
+  ): Promise<User[]> {
+    const { limit = LIMITS.PAGE_LIMIT_DEFAULT, offset = 0 } = options;
+    return this.scope("public").findAll({
+      order: [["createdAt", "DESC"]],
+      limit,
+      offset,
+    });
   }
 
-  static async findById(id: number) {
-    try {
-      return await this.findByPk(id);
-    } catch (error) {
-      throw new Error(`Failed to find user by ID: ${error}`);
-    }
-  }
-
-  static async createUser(
-    userData: Partial<UserAttributes>,
-    transaction?: any,
-  ) {
-    try {
-      // Validate required fields
-      const requiredFields = [
-        "username",
-        "password",
-        "firstName",
-        "lastName",
-        "age",
-        "location",
-      ];
-      for (const field of requiredFields) {
-        if (!userData[field as keyof UserAttributes]) {
-          throw new Error(`Required field missing: ${field}`);
-        }
-      }
-
-      return await this.create(userData as UserAttributes, { transaction });
-    } catch (error) {
-      if (error instanceof Error) {
-        // Handle unique constraint violations
-        if (error.message.includes("username")) {
-          throw new Error("Username already exists");
-        }
-        if (error.message.includes("email")) {
-          throw new Error("Email already exists");
-        }
-      }
-      throw error;
-    }
-  }
-
-  static async getAllUsers(options: { limit?: number; offset?: number } = {}) {
-    try {
-      const { limit = 50, offset = 0 } = options;
-      return await this.scope("public").findAll({
-        order: [["createdAt", "DESC"]],
-        limit,
-        offset,
-      });
-    } catch (error) {
-      throw new Error(`Failed to get users: ${error}`);
-    }
-  }
-
+  /**
+   * Update profile fields. `password` is always stripped — use the instance
+   * setter + save() so the BeforeUpdate hook hashes it.
+   * @throws NotFoundError, ConflictError
+   */
   static async updateUser(
     id: number,
-    userData: Partial<UserAttributes>,
-    transaction?: any,
-  ) {
+    data: Partial<UserAttributes>,
+  ): Promise<User> {
+    const user = await this.findByPk(id);
+    if (!user) {
+      throw new NotFoundError("User not found");
+    }
+    const { password: _password, ...safeData } = data;
     try {
-      const user = await this.findByPk(id);
-      if (!user) {
-        return null;
-      }
-
-      delete userData.password; // Prevent password updates here
-
-      return await user.update(userData, { transaction });
+      return await user.update(safeData);
     } catch (error) {
-      if (error instanceof Error) {
-        // Handle unique constraint violations
-        if (error.message.includes("username")) {
-          throw new Error("Username already exists");
-        }
-        if (error.message.includes("email")) {
-          throw new Error("Email already exists");
-        }
-      }
-      throw error;
+      throw translateUniqueError(error);
     }
   }
 
-  static async searchUsers(
+  static searchUsers(
     searchTerm: string,
     options: { limit?: number; offset?: number } = {},
-  ) {
-    try {
-      const { limit = 20, offset = 0 } = options;
-      return await this.scope("public").findAll({
-        where: {
-          [Op.or]: [
-            { username: { [Op.iLike]: `%${searchTerm}%` } },
-            { firstName: { [Op.iLike]: `%${searchTerm}%` } },
-            { lastName: { [Op.iLike]: `%${searchTerm}%` } },
-            { location: { [Op.iLike]: `%${searchTerm}%` } },
-          ],
-        },
-        order: [["createdAt", "DESC"]],
-        limit,
-        offset,
-      });
-    } catch (error) {
-      throw new Error(`Failed to search users: ${error}`);
-    }
+  ): Promise<User[]> {
+    const { limit = 20, offset = 0 } = options;
+    const pattern = `%${searchTerm}%`;
+    return this.scope("public").findAll({
+      where: {
+        [Op.or]: [
+          { username: { [Op.iLike]: pattern } },
+          { firstName: { [Op.iLike]: pattern } },
+          { lastName: { [Op.iLike]: pattern } },
+          { location: { [Op.iLike]: pattern } },
+        ],
+      },
+      order: [["createdAt", "DESC"]],
+      limit,
+      offset,
+    });
   }
 }

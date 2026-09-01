@@ -1,32 +1,26 @@
 import {
-  Model,
-  Column,
-  PrimaryKey,
   AutoIncrement,
+  Column,
+  CreatedAt,
   DataType,
+  Model,
+  PrimaryKey,
+  UpdatedAt,
 } from "sequelize-typescript";
 
-/**
- * Abstract base model for tables with integer primary keys and timestamps
- * All models with auto-incrementing integer IDs should extend this class
- */
-export abstract class BaseModel<T = unknown> extends Model<T> {
+/** Base for tables with an auto-incrementing integer primary key. */
+export abstract class BaseModel<
+  TAttrs extends object,
+  TCreate extends object = TAttrs,
+> extends Model<TAttrs, TCreate> {
   @PrimaryKey
   @AutoIncrement
   @Column(DataType.INTEGER)
   declare id: number;
 
-  @Column(DataType.DATE)
+  @CreatedAt
   declare createdAt: Date;
 
-  @Column(DataType.DATE)
+  @UpdatedAt
   declare updatedAt: Date;
-
-  /**
-   * Override toJSON to ensure camelCase fields for frontend
-   */
-  override toJSON(): any {
-    const values = { ...this.get() };
-    return values;
-  }
 }

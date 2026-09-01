@@ -23,7 +23,8 @@
     "resolveJsonModule": true,
     "sourceMap": true,
     "experimentalDecorators": true,
-    "emitDecoratorMetadata": true
+    "emitDecoratorMetadata": true,
+    "useDefineForClassFields": false
   },
   "include": ["**/*.ts", "../shared/**/*.ts"],
   "exclude": ["node_modules", "dist", "migrations", "seeders"]

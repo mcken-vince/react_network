@@ -1,74 +1,52 @@
 import {
-  Table,
+  AfterCreate,
+  AllowNull,
+  BelongsTo,
   Column,
   DataType,
-  AllowNull,
-  ForeignKey,
-  BelongsTo,
-  HasMany,
   Default,
-  Scopes,
-  BeforeCreate,
+  ForeignKey,
+  HasMany,
+  Table,
 } from "sequelize-typescript";
-import { Op } from "sequelize";
+import { Op, col, fn, literal } from "sequelize";
+import type {
+  CreateOptions,
+  IncludeOptions,
+  Transaction,
+  WhereAttributeHash,
+} from "sequelize";
 import { BaseUuidModel } from "./BaseUuidModel";
 import User from "./User.model";
 import Conversation from "./Conversation.model";
-import { MessageAttributes } from "./types";
+import { includeUser } from "./includes";
+import { ForbiddenError, NotFoundError } from "../lib/errors";
+import { LIMITS } from "../../shared/limits";
+import type { MessageType } from "../../shared/types";
+import type { MessageAttributes, MessageCreationAttributes } from "./types";
 
-@Scopes(() => ({
-  withSender: {
-    include: [
-      {
-        model: User,
-        as: "sender",
-        attributes: ["id", "firstName", "lastName", "username"],
-      },
-    ],
-  },
-  withReplyTo: {
-    include: [
-      {
-        model: Message,
-        as: "replyTo",
-        include: [
-          {
-            model: User,
-            as: "sender",
-            attributes: ["id", "firstName", "lastName", "username"],
-          },
-        ],
-      },
-    ],
-  },
-  notDeleted: {
-    where: {
-      deletedAt: null,
-    },
-  },
-  edited: {
-    where: {
-      isEdited: true,
-    },
-  },
-}))
+const MESSAGE_TYPES: readonly MessageType[] = [
+  "text",
+  "image",
+  "file",
+  "system",
+];
+
+const includeReplyTo = (): IncludeOptions => ({
+  model: Message,
+  as: "replyTo",
+  required: false,
+  include: [includeUser("sender")],
+});
+
 @Table({
   tableName: "messages",
   timestamps: true,
   paranoid: true,
   indexes: [
-    {
-      fields: ["conversationId"],
-      name: "idx_messages_conversation",
-    },
-    {
-      fields: ["senderId"],
-      name: "idx_messages_sender",
-    },
-    {
-      fields: ["createdAt"],
-      name: "idx_messages_created_at",
-    },
+    { fields: ["conversationId"], name: "idx_messages_conversation" },
+    { fields: ["senderId"], name: "idx_messages_sender" },
+    { fields: ["createdAt"], name: "idx_messages_created_at" },
     {
       fields: ["conversationId", "createdAt"],
       name: "idx_messages_conversation_timeline",
@@ -76,78 +54,56 @@ import { MessageAttributes } from "./types";
     {
       fields: ["replyToId"],
       name: "idx_messages_reply_to",
-      where: {
-        replyToId: {
-          [Op.ne]: null,
-        },
-      },
+      where: { replyToId: { [Op.ne]: null } },
     },
   ],
 })
-export default class Message extends BaseUuidModel<MessageAttributes> {
-
+export default class Message extends BaseUuidModel<
+  MessageAttributes,
+  MessageCreationAttributes
+> {
   @AllowNull(false)
   @ForeignKey(() => Conversation)
-  @Column({
-    type: DataType.UUID,
-    onDelete: "CASCADE",
-  })
+  @Column({ type: DataType.UUID, onDelete: "CASCADE" })
   conversationId!: string;
 
   @AllowNull(false)
   @ForeignKey(() => User)
-  @Column({
-    type: DataType.INTEGER,
-    onDelete: "CASCADE",
-  })
+  @Column({ type: DataType.INTEGER, onDelete: "CASCADE" })
   senderId!: number;
 
   @AllowNull(false)
   @Column({
     type: DataType.TEXT,
     validate: {
-      notEmpty: {
-        msg: "Message content cannot be empty",
-      },
+      notEmpty: { msg: "Message content cannot be empty" },
       len: {
-        args: [1, 10000],
-        msg: "Message content must be between 1 and 10000 characters",
+        args: [1, LIMITS.MESSAGE_CONTENT_MAX],
+        msg: `Message content must be between 1 and ${LIMITS.MESSAGE_CONTENT_MAX} characters`,
       },
     },
   })
   content!: string;
 
-  @AllowNull(true)
+  @AllowNull(false)
   @Default("text")
   @Column({
     type: DataType.STRING,
-    validate: {
-      isIn: {
-        args: [["text", "image", "file", "system"]],
-        msg: "Invalid message type",
-      },
-    },
+    validate: { isIn: { args: [MESSAGE_TYPES], msg: "Invalid message type" } },
   })
-  messageType?: string;
+  messageType!: MessageType;
 
   @AllowNull(true)
   @Column({
     type: DataType.STRING,
-    validate: {
-      isUrl: {
-        msg: "Attachment URL must be a valid URL",
-      },
-    },
+    validate: { isUrl: { msg: "Attachment URL must be a valid URL" } },
   })
-  attachmentUrl?: string;
+  attachmentUrl!: string | null;
 
   @AllowNull(true)
   @ForeignKey(() => Message)
-  @Column({
-    type: DataType.UUID,
-    onDelete: "SET NULL",
-  })
-  replyToId?: string;
+  @Column({ type: DataType.UUID, onDelete: "SET NULL" })
+  replyToId!: string | null;
 
   @AllowNull(false)
   @Default(false)
@@ -156,305 +112,163 @@ export default class Message extends BaseUuidModel<MessageAttributes> {
 
   @AllowNull(true)
   @Column(DataType.DATE)
-  editedAt?: Date;
+  editedAt!: Date | null;
 
   @AllowNull(true)
   @Default([])
   @Column(DataType.ARRAY(DataType.INTEGER))
-  readBy?: number[] | null;
+  readBy!: number[] | null;
 
   @AllowNull(true)
   @Column(DataType.DATE)
-  declare deletedAt?: Date | null;
+  declare deletedAt: Date | null;
 
-  // Associations
   @BelongsTo(() => Conversation, {
     foreignKey: "conversationId",
     as: "conversation",
   })
-  conversation!: Conversation;
+  conversation?: Conversation;
 
-  @BelongsTo(() => User, {
-    foreignKey: "senderId",
-    as: "sender",
-  })
-  sender!: User;
+  @BelongsTo(() => User, { foreignKey: "senderId", as: "sender" })
+  sender?: User;
 
-  @BelongsTo(() => Message, {
-    foreignKey: "replyToId",
-    as: "replyTo",
-  })
+  @BelongsTo(() => Message, { foreignKey: "replyToId", as: "replyTo" })
   replyTo?: Message;
 
-  @HasMany(() => Message, {
-    foreignKey: "replyToId",
-    as: "replies",
-  })
-  replies!: Message[];
+  @HasMany(() => Message, { foreignKey: "replyToId", as: "replies" })
+  replies?: Message[];
 
+  // --------------------------------------------------------------------------
   // Hooks
-  @BeforeCreate
-  static async updateConversationTimestamp(message: Message) {
-    // Update conversation's lastMessageAt timestamp
+  // --------------------------------------------------------------------------
+
+  /** The one place a conversation's lastMessageAt is updated. */
+  @AfterCreate
+  static async touchConversation(
+    message: Message,
+    options: CreateOptions<MessageAttributes>,
+  ): Promise<void> {
     await Conversation.update(
-      { lastMessageAt: new Date() },
-      { where: { id: message.conversationId } }
+      { lastMessageAt: message.createdAt ?? new Date() },
+      {
+        where: { id: message.conversationId },
+        transaction: options.transaction,
+      },
     );
   }
 
-  /**
-   * Check if a user can edit/delete this message
-   */
+  // --------------------------------------------------------------------------
+  // Instance helpers
+  // --------------------------------------------------------------------------
+
   canModify(userId: number): boolean {
     return this.senderId === userId;
   }
 
-  /**
-   * Edit message content
-   */
-  async editContent(newContent: string, transaction?: any) {
-    this.content = newContent;
-    this.isEdited = true;
-    this.editedAt = new Date();
-    return this.save({ transaction });
-  }
+  // --------------------------------------------------------------------------
+  // Queries
+  // --------------------------------------------------------------------------
 
   /**
-   * Mark message as read by a user
+   * Newest-first page of a conversation's messages. Prefer the cursor
+   * (`beforeMessageId`); `offset` is supported for simple callers.
    */
-  async markAsReadBy(userId: number, transaction?: any) {
-    if (!this.readBy) {
-      this.readBy = [];
-    }
-    if (!this.readBy.includes(userId)) {
-      this.readBy.push(userId);
-      await this.save({ transaction });
-    }
-    return this;
-  }
-
-  // Static methods
-  static async createMessage(
-    messageData: Partial<MessageAttributes>,
-    transaction?: any
-  ) {
-    // Update conversation's lastMessageAt timestamp
-    const conversation = await Conversation.findByPk(
-      messageData.conversationId,
-      { transaction }
-    );
-
-    if (conversation) {
-      await conversation.update({ lastMessageAt: new Date() }, { transaction });
-    }
-
-    return this.create(messageData as MessageAttributes, { transaction });
-  }
-
   static async getConversationMessages(
     conversationId: string,
     options: {
       limit?: number;
       offset?: number;
       beforeMessageId?: string | null;
-    } = {}
-  ) {
-    const { limit = 50, offset = 0, beforeMessageId = null } = options;
+    } = {},
+  ): Promise<Message[]> {
+    const {
+      limit = LIMITS.PAGE_LIMIT_DEFAULT,
+      offset = 0,
+      beforeMessageId = null,
+    } = options;
 
-    const whereClause: any = { conversationId };
-
-    // Cursor-based pagination
+    const where: WhereAttributeHash<MessageAttributes> = { conversationId };
     if (beforeMessageId) {
-      const beforeMessage = await this.findByPk(beforeMessageId);
-      if (beforeMessage) {
-        whereClause.createdAt = {
-          [Op.lt]: beforeMessage.createdAt,
-        };
-      }
+      const cursor = await this.findByPk(beforeMessageId, {
+        attributes: ["createdAt"],
+      });
+      if (cursor) where.createdAt = { [Op.lt]: cursor.createdAt };
     }
 
     return this.findAll({
-      where: whereClause,
-      include: [
-        {
-          model: User,
-          as: "sender",
-          attributes: ["id", "firstName", "lastName", "username"],
-        },
-        {
-          model: Message,
-          as: "replyTo",
-          required: false,
-          include: [
-            {
-              model: User,
-              as: "sender",
-              attributes: ["id", "firstName", "lastName", "username"],
-            },
-          ],
-        },
-      ],
+      where,
+      include: [includeUser("sender"), includeReplyTo()],
       order: [["createdAt", "DESC"]],
-      limit,
-      offset,
+      limit: Math.min(limit, LIMITS.PAGE_LIMIT_MAX),
+      offset: beforeMessageId ? 0 : offset,
     });
   }
 
-  static async getMessageById(messageId: string) {
+  static getMessageById(messageId: string): Promise<Message | null> {
     return this.findByPk(messageId, {
-      include: [
-        {
-          model: User,
-          as: "sender",
-          attributes: ["id", "firstName", "lastName", "username"],
-        },
-        {
-          model: Message,
-          as: "replyTo",
-          required: false,
-          include: [
-            {
-              model: User,
-              as: "sender",
-              attributes: ["id", "firstName", "lastName", "username"],
-            },
-          ],
-        },
-      ],
+      include: [includeUser("sender"), includeReplyTo()],
     });
+  }
+
+  private static async findOwned(
+    messageId: string,
+    userId: number,
+  ): Promise<Message> {
+    const message = await this.findByPk(messageId);
+    if (!message) throw new NotFoundError("Message not found");
+    if (!message.canModify(userId)) {
+      throw new ForbiddenError("Not authorized to modify this message");
+    }
+    return message;
   }
 
   static async editMessage(
     messageId: string,
     userId: number,
-    newContent: string,
-    transaction?: any
-  ) {
-    const message = await this.findByPk(messageId);
-    if (!message) {
-      throw new Error("Message not found");
-    }
-
-    if (!message.canModify(userId)) {
-      throw new Error("User is not authorized to edit this message");
-    }
-
-    if (message.deletedAt) {
-      throw new Error("Cannot edit deleted message");
-    }
-
-    return message.editContent(newContent, transaction);
+    content: string,
+    transaction?: Transaction,
+  ): Promise<Message> {
+    const message = await this.findOwned(messageId, userId);
+    await message.update(
+      { content, isEdited: true, editedAt: new Date() },
+      { transaction },
+    );
+    return (await this.getMessageById(messageId)) ?? message;
   }
 
+  /** Soft delete (paranoid). */
   static async deleteMessage(
     messageId: string,
     userId: number,
-    transaction?: any
-  ) {
-    const message = await this.findByPk(messageId);
-    if (!message) {
-      throw new Error("Message not found");
-    }
-
-    if (!message.canModify(userId)) {
-      throw new Error("User is not authorized to delete this message");
-    }
-
-    // Soft delete
-    return message.destroy({ transaction });
+    transaction?: Transaction,
+  ): Promise<Message> {
+    const message = await this.findOwned(messageId, userId);
+    await message.destroy({ transaction });
+    return message;
   }
 
+  /** Append `userId` to readBy for every listed message that doesn't already have it. */
   static async markAsRead(
     messageIds: string[],
     userId: number,
-    transaction?: any
-  ) {
-    const messages = await this.findAll({
-      where: { id: messageIds },
-    });
-
-    await Promise.all(
-      messages.map((message) => message.markAsReadBy(userId, transaction))
+    transaction?: Transaction,
+  ): Promise<number> {
+    if (messageIds.length === 0) return 0;
+    const uid = Number(userId); // validated upstream; interpolated into the literal below
+    const [affected] = await this.update(
+      { readBy: fn("array_append", col("readBy"), uid) },
+      {
+        where: {
+          id: { [Op.in]: messageIds },
+          [Op.and]: [
+            literal(
+              `NOT (COALESCE("readBy", '{}') @> ARRAY[${uid}]::integer[])`,
+            ),
+          ],
+        },
+        transaction,
+      },
     );
-
-    return messages;
-  }
-
-  static async searchMessages(
-    conversationId: string,
-    searchTerm: string,
-    options: {
-      limit?: number;
-      offset?: number;
-    } = {}
-  ) {
-    const { limit = 20, offset = 0 } = options;
-
-    return this.findAll({
-      where: {
-        conversationId,
-        content: { [Op.iLike]: `%${searchTerm}%` },
-        deletedAt: { [Op.is]: null },
-      },
-      include: [
-        {
-          model: User,
-          as: "sender",
-          attributes: ["id", "firstName", "lastName", "username"],
-        },
-      ],
-      order: [["createdAt", "DESC"]],
-      limit,
-      offset,
-    });
-  }
-
-  static async getUnreadMessages(conversationId: string, userId: number) {
-    return this.findAll({
-      where: {
-        conversationId,
-        senderId: { [Op.ne]: userId },
-        [Op.or]: [
-          { readBy: { [Op.is]: null } },
-          {
-            readBy: {
-              [Op.not]: {
-                [Op.contains]: [userId],
-              },
-            },
-          },
-        ],
-        deletedAt: { [Op.is]: null },
-      },
-      include: [
-        {
-          model: User,
-          as: "sender",
-          attributes: ["id", "firstName", "lastName", "username"],
-        },
-      ],
-      order: [["createdAt", "ASC"]],
-    });
-  }
-
-  static async getMessageStats(conversationId: string) {
-    const [totalCount, editedCount] = await Promise.all([
-      this.count({ where: { conversationId } }),
-      this.count({ where: { conversationId, isEdited: true } }),
-    ]);
-
-    // Count deleted separately due to paranoid mode
-    const deletedCount =
-      (await this.count({
-        where: { conversationId },
-        paranoid: false,
-      })) - totalCount;
-
-    return {
-      totalCount,
-      editedCount,
-      deletedCount,
-      activeCount: totalCount,
-    };
+    return affected;
   }
 }

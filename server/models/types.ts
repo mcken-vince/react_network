@@ -1,6 +1,19 @@
-import { Model } from "sequelize";
+import type { Optional } from "sequelize";
+import type { NotificationType } from "../../shared/notificationTypes";
+import type {
+  ConnectionStatus,
+  ConversationType,
+  MessageType,
+  PostVisibility,
+  RelatedEntityType,
+} from "../../shared/types";
 
-// Define interfaces for model attributes
+/** Columns Sequelize fills in itself; never required on create. */
+type AutoKeys = "id" | "createdAt" | "updatedAt";
+
+// ---------------------------------------------------------------------------
+// users
+// ---------------------------------------------------------------------------
 export interface UserAttributes {
   id: number;
   username: string;
@@ -10,114 +23,123 @@ export interface UserAttributes {
   lastName: string;
   age: number;
   location: string;
-  bio?: string;
-  createdAt?: Date;
-  updatedAt?: Date;
+  bio?: string | null;
+  createdAt: Date;
+  updatedAt: Date;
 }
+export type UserCreationAttributes = Optional<UserAttributes, AutoKeys>;
 
+// ---------------------------------------------------------------------------
+// connections
+// ---------------------------------------------------------------------------
 export interface ConnectionAttributes {
   id: number;
   requesterId: number;
   recipientId: number;
-  status: "pending" | "accepted" | "rejected";
-  createdAt?: Date;
-  updatedAt?: Date;
+  status: ConnectionStatus;
+  createdAt: Date;
+  updatedAt: Date;
 }
+export type ConnectionCreationAttributes = Optional<
+  ConnectionAttributes,
+  AutoKeys | "status"
+>;
 
+// ---------------------------------------------------------------------------
+// posts
+// ---------------------------------------------------------------------------
 export interface PostAttributes {
   id: string;
   userId: number;
   content: string;
-  imageUrl?: string;
-  visibility: "public" | "friends" | "private";
-  createdAt?: Date;
-  updatedAt?: Date;
+  imageUrl?: string | null;
+  visibility: PostVisibility;
+  createdAt: Date;
+  updatedAt: Date;
 }
+export type PostCreationAttributes = Optional<
+  PostAttributes,
+  AutoKeys | "visibility"
+>;
 
+// ---------------------------------------------------------------------------
+// notifications
+// ---------------------------------------------------------------------------
 export interface NotificationAttributes {
-  id?: number;
+  id: number;
   userId: number;
-  type: string;
+  type: NotificationType;
+  title?: string | null;
   message: string;
-  title?: string;
   isRead: boolean;
-  relatedUserId?: number;
-  relatedEntityType?: string;
-  relatedEntityId?: string;
-  metadata?: any;
-  createdAt?: Date;
-  updatedAt?: Date;
+  relatedUserId?: number | null;
+  relatedEntityType?: RelatedEntityType | null;
+  relatedEntityId?: string | null;
+  metadata?: Record<string, unknown> | null;
+  createdAt: Date;
+  updatedAt: Date;
 }
+export type NotificationCreationAttributes = Optional<
+  NotificationAttributes,
+  AutoKeys | "isRead"
+>;
 
+// ---------------------------------------------------------------------------
+// conversations
+// ---------------------------------------------------------------------------
 export interface ConversationAttributes {
   id: string;
-  type: "direct" | "group";
-  name?: string;
+  type: ConversationType;
+  name?: string | null;
   createdBy: number;
-  lastMessageAt?: Date;
-  createdAt?: Date;
-  updatedAt?: Date;
+  lastMessageAt?: Date | null;
+  createdAt: Date;
+  updatedAt: Date;
 }
+export type ConversationCreationAttributes = Optional<
+  ConversationAttributes,
+  AutoKeys | "type"
+>;
 
+// ---------------------------------------------------------------------------
+// conversationParticipants
+// ---------------------------------------------------------------------------
 export interface ConversationParticipantAttributes {
   id: string;
   conversationId: string;
   userId: number;
-  role?: string;
-  isAdmin?: boolean;
-  isActive?: boolean;
-  joinedAt?: Date;
-  lastReadAt?: Date;
-  createdAt?: Date;
-  updatedAt?: Date;
+  role?: string | null;
+  isAdmin: boolean;
+  isActive: boolean;
+  joinedAt?: Date | null;
+  lastReadAt?: Date | null;
+  createdAt: Date;
+  updatedAt: Date;
 }
+export type ConversationParticipantCreationAttributes = Optional<
+  ConversationParticipantAttributes,
+  AutoKeys | "isAdmin" | "isActive" | "joinedAt"
+>;
 
+// ---------------------------------------------------------------------------
+// messages
+// ---------------------------------------------------------------------------
 export interface MessageAttributes {
   id: string;
   conversationId: string;
   senderId: number;
   content: string;
-  messageType?: "text" | "image" | "file" | "system";
-  attachmentUrl?: string;
-  replyToId?: string;
-  isEdited?: boolean;
-  editedAt?: Date;
-  readBy?: number[];
+  messageType: MessageType;
+  attachmentUrl?: string | null;
+  replyToId?: string | null;
+  isEdited: boolean;
+  editedAt?: Date | null;
+  readBy?: number[] | null;
   deletedAt?: Date | null;
-  createdAt?: Date;
-  updatedAt?: Date;
+  createdAt: Date;
+  updatedAt: Date;
 }
-
-// Extend Sequelize Model with proper typing
-export interface UserInstance extends Model<UserAttributes>, UserAttributes {
-  comparePassword(candidatePassword: string): Promise<boolean>;
-  getFullName(): string;
-  isProfileComplete(): boolean;
-}
-
-export interface ConnectionInstance
-  extends Model<ConnectionAttributes>,
-    ConnectionAttributes {}
-
-export interface PostInstance extends Model<PostAttributes>, PostAttributes {}
-
-export interface NotificationInstance
-  extends Model<NotificationAttributes>,
-    NotificationAttributes {}
-
-export interface ConversationInstance
-  extends Model<ConversationAttributes>,
-    ConversationAttributes {
-  hasParticipant(userId: number): Promise<boolean>;
-  getActiveParticipants(): Promise<any>;
-  getLastMessage(): Promise<any>;
-  getUnreadCount(userId: number): Promise<number>;
-}
-
-export interface ConversationParticipantInstance
-  extends Model<ConversationParticipantAttributes>,
-    ConversationParticipantAttributes {}
-
-export interface MessageInstance
-  extends Model<MessageAttributes>,
-    MessageAttributes {}
+export type MessageCreationAttributes = Optional<
+  MessageAttributes,
+  AutoKeys | "messageType" | "isEdited" | "readBy"
+>;
