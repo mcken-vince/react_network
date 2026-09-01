@@ -1,29 +1,38 @@
-import type { Request, Response, NextFunction } from 'express';
+import type { ErrorRequestHandler } from "express";
+import { sendError } from "../utils/responses";
 
-interface CustomError extends Error {
+interface HttpError {
+  message?: string;
+  stack?: string;
+  /** Set by body-parser (e.g. "entity.parse.failed"). */
   type?: string;
   status?: number;
+  statusCode?: number;
 }
 
-export const errorHandler = (
-  err: CustomError,
-  req: Request,
-  res: Response,
-  next: NextFunction
-): void => {
-  console.error(err.stack);
+export const errorHandler: ErrorRequestHandler = (
+  err: unknown,
+  _req,
+  res,
+  _next,
+) => {
+  const e: HttpError =
+    typeof err === "object" && err !== null ? (err as HttpError) : {};
 
-  if (err.type === 'entity.parse.failed') {
-    res.status(400).json({ error: 'Invalid JSON in request body' });
+  if (e.type === "entity.parse.failed") {
+    sendError(res, 400, "Invalid JSON in request body");
+    return;
+  }
+  if (e.type === "entity.too.large") {
+    sendError(res, 413, "Request entity too large");
     return;
   }
 
-  if (err.type === 'entity.too.large') {
-    res.status(413).json({ error: 'Request entity too large' });
+  const status = e.status ?? e.statusCode ?? 500;
+  if (status >= 500) {
+    console.error(e.stack ?? err);
+    sendError(res, status, "Something went wrong!");
     return;
   }
-
-  res.status(err.status || 500).json({ 
-    error: err.message || 'Something went wrong!' 
-  });
+  sendError(res, status, e.message || "Request failed");
 };

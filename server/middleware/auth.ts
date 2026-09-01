@@ -1,40 +1,23 @@
-import jwt from "jsonwebtoken";
-import dotenv from "dotenv";
-import type { Response, NextFunction } from "express";
-import type { AuthRequest, JWTPayload } from "../types";
-
-dotenv.config();
-
-const JWT_SECRET =
-  process.env.JWT_SECRET || "your-secret-key-change-in-production";
+import type { NextFunction, Response } from "express";
+import type { AuthRequest } from "../types";
+import { extractBearerToken, verifyToken } from "../lib/jwt";
+import { sendError } from "../utils/responses";
 
 export const authenticateToken = (
   req: AuthRequest,
   res: Response,
-  next: NextFunction
+  next: NextFunction,
 ): void => {
-  const authHeader = req.headers["authorization"];
-  const token = authHeader && authHeader.split(" ")[1]; // Bearer TOKEN
-
+  const token = extractBearerToken(req.headers.authorization);
   if (!token) {
-    res.status(401).json({ error: "Access token required" });
+    sendError(res, 401, "Access token required");
     return;
   }
 
-  jwt.verify(token, JWT_SECRET, (err, decoded) => {
-    if (err) {
-      res.status(403).json({ error: "Invalid or expired token" });
-      return;
-    }
-
-    const payload = decoded as JWTPayload;
-    req.userId = payload.userId;
-    req.user = {
-      id: payload.userId.toString(),
-      username: payload.username || "",
-      email: payload.email || "",
-    };
-
+  try {
+    req.userId = verifyToken(token).userId;
     next();
-  });
+  } catch {
+    sendError(res, 403, "Invalid or expired token");
+  }
 };

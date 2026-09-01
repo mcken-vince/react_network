@@ -1,23 +1,35 @@
 import type { Response } from "express";
+import type { ValidationError } from "sequelize";
+import type { ErrorResponse } from "../../shared/types";
+import type { FieldErrors, ValidationFailure } from "./validation";
 
-interface ValidationFailure {
-  message: string;
-  errors?: Record<string, string>;
+/** Standard error envelope for any status. */
+export function sendError(
+  res: Response,
+  status: number,
+  error: string,
+  errors?: FieldErrors,
+): void {
+  const body: ErrorResponse = errors ? { error, errors } : { error };
+  res.status(status).json(body);
 }
 
-/** 400 with the standard error envelope for a validateX() failure. */
+/** 400 for a validateX() failure. */
 export function sendValidationError(
   res: Response,
   failure: ValidationFailure,
 ): void {
-  res.status(400).json({ error: failure.message, errors: failure.errors });
+  sendError(res, 400, failure.message, failure.errors);
 }
 
 /** 400 for a Sequelize validation error, same envelope. */
-export function sendSequelizeValidationError(res: Response, error: any): void {
-  const errors: Record<string, string> = {};
-  for (const item of error.errors ?? []) {
-    if (item?.path) errors[item.path] = item.message;
+export function sendSequelizeValidationError(
+  res: Response,
+  error: ValidationError,
+): void {
+  const errors: FieldErrors = {};
+  for (const item of error.errors) {
+    if (item.path) errors[item.path] = item.message;
   }
-  res.status(400).json({ error: "Validation failed", errors });
+  sendError(res, 400, "Validation failed", errors);
 }

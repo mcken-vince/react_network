@@ -4,7 +4,7 @@ import { Model } from "sequelize";
 export interface UserAttributes {
   id: number;
   username: string;
-  email?: string;
+  email?: string | null;
   password: string;
   firstName: string;
   lastName: string;
