@@ -12,6 +12,7 @@ export interface ServerToClientEvents {
   "notification:new": (notification: Notification) => void;
   "notification:updated": (notification: Notification) => void;
   "notification:deleted": (notificationId: number) => void;
+  "notification:allRead": () => void;
 
   // Messages
   "message:new": (message: Message) => void;
