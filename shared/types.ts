@@ -234,6 +234,7 @@ export interface AuthResponse {
 }
 
 export interface UserResponse {
+  message?: string;
   user: User;
 }
 export interface UsersResponse {
