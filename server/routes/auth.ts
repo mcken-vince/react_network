@@ -1,73 +1,48 @@
-import express from "express";
-import jwt from "jsonwebtoken";
-import dotenv from "dotenv";
+import { Router } from "express";
 import { User } from "../models";
-import { validateSignup, validateLogin } from "../utils/validation.js";
-import { sendValidationError } from "../utils/responses";
-import type { Request, Response } from "express";
+import { signToken } from "../lib/jwt";
+import { route, validated } from "../lib/http";
+import { toWire } from "../lib/serialize";
+import { ConflictError, UnauthorizedError } from "../lib/errors";
+import { validateLogin, validateSignup } from "../utils/validation";
+import type { AuthResponse, User as UserDto } from "../types";
 
-dotenv.config();
+const router = Router();
 
-const router = express.Router();
-const JWT_SECRET =
-  process.env.JWT_SECRET || "your-secret-key-change-in-production";
+const authResponse = (message: string, user: User): AuthResponse => ({
+  message,
+  user: toWire<UserDto>(user),
+  token: signToken(user.id),
+});
 
-const issueToken = (userId: number) =>
-  jwt.sign({ userId }, JWT_SECRET, { expiresIn: "7d" });
+router.post(
+  "/signup",
+  route(async (req, res) => {
+    const data = validated(validateSignup(req.body));
 
-router.post("/signup", async (req: Request, res: Response): Promise<void> => {
-  try {
-    const { error, data } = validateSignup(req.body);
-    if (error) {
-      sendValidationError(res, error);
-      return;
-    }
-
-    const existingUser = await User.findByUsername(data.username);
-    if (existingUser) {
-      res.status(400).json({
-        error: "Username already exists",
-        errors: { username: "Username already exists" },
+    if ((await User.count({ where: { username: data.username } })) > 0) {
+      throw new ConflictError("Username already exists", {
+        username: "Username already exists",
       });
-      return;
     }
 
     const user = await User.createUser(data);
+    res.status(201).json(authResponse("User created successfully", user));
+  }),
+);
 
-    res.status(201).json({
-      message: "User created successfully",
-      user: user.toJSON(),
-      token: issueToken(user.id),
-    });
-  } catch (error) {
-    console.error("Signup error:", error);
-    res.status(500).json({ error: "Internal server error" });
-  }
-});
+router.post(
+  "/signin",
+  route(async (req, res) => {
+    const { username, password } = validated(validateLogin(req.body));
 
-router.post("/signin", async (req: Request, res: Response): Promise<void> => {
-  try {
-    const { error, data } = validateLogin(req.body);
-    if (error) {
-      sendValidationError(res, error);
-      return;
+    const user = await User.findByUsername(username);
+    if (!user || !(await user.comparePassword(password))) {
+      throw new UnauthorizedError("Invalid credentials");
     }
 
-    const user = await User.findByUsername(data.username);
-    if (!user || !(await user.comparePassword(data.password))) {
-      res.status(401).json({ error: "Invalid credentials" });
-      return;
-    }
-
-    res.json({
-      message: "Login successful",
-      user: user.toJSON(),
-      token: issueToken(user.id),
-    });
-  } catch (error) {
-    console.error("Login error:", error);
-    res.status(500).json({ error: "Internal server error" });
-  }
-});
+    res.json(authResponse("Login successful", user));
+  }),
+);
 
 export default router;

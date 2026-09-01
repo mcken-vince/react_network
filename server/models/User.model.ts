@@ -268,10 +268,6 @@ export default class User extends BaseModel<
     return this.scope("withPassword").findOne({ where: { username } });
   }
 
-  static findById(id: number): Promise<User | null> {
-    return this.findByPk(id);
-  }
-
   /** @throws ConflictError on a duplicate username/email */
   static async createUser(data: UserCreationAttributes): Promise<User> {
     try {

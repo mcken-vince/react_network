@@ -10,7 +10,18 @@ export {
 } from "../../shared/notificationTypes";
 export type { NotificationType } from "../../shared/notificationTypes";
 
-/** An Express request after `authenticateToken` has populated `userId`. */
-export interface AuthRequest extends Request {
+/**
+ * Request with body (and response body) typed as `unknown`: the only way to
+ * read the body is through a validator in utils/validation.ts.
+ */
+export type ApiRequest = Request<Record<string, string>, unknown, unknown>;
+
+/** Before `authenticateToken` has run — `userId` may be absent. */
+export interface AuthRequest extends ApiRequest {
   userId?: number;
+}
+
+/** Inside a handler wrapped by `authed()` — `userId` is guaranteed. */
+export interface AuthenticatedRequest extends ApiRequest {
+  userId: number;
 }

@@ -1,279 +1,144 @@
-import express from "express";
-import { authenticateToken } from "../middleware/auth.js";
-import { Connection, Post, User } from "../models";
-import { validateCreatePost, validateUpdatePost } from "../utils/validation.js";
-import type { Response } from "express";
-import type { AuthRequest } from "../types";
+import { Router } from "express";
+import { Connection, Post } from "../models";
+import { includeUser } from "../models/includes";
+import { authenticateToken } from "../middleware/auth";
 import {
-  sendValidationError,
-  sendSequelizeValidationError,
-} from "../utils/responses";
+  authed,
+  intParam,
+  pagination,
+  uuidParam,
+  validated,
+} from "../lib/http";
+import { toWire } from "../lib/serialize";
+import { ForbiddenError, NotFoundError } from "../lib/errors";
+import { validateCreatePost, validateUpdatePost } from "../utils/validation";
+import type {
+  Post as PostDto,
+  PostResponse,
+  PostsResponse,
+  SuccessMessageResponse,
+} from "../types";
 
-const router = express.Router();
+const router = Router();
+router.use(authenticateToken);
 
-const MAX_LIMIT = 100;
+const postsResponse = (
+  posts: Post[],
+  limit: number,
+  offset: number,
+): PostsResponse => ({
+  posts: posts.map((p) => toWire<PostDto>(p)),
+  pagination: { limit, offset, count: posts.length },
+});
 
-function parsePagination(req: AuthRequest) {
-  const limit = parseInt(req.query.limit as string) || 50;
-  const offset = parseInt(req.query.offset as string) || 0;
-  return { limit, offset };
+async function loadPostWithAuthor(postId: string): Promise<Post> {
+  const post = await Post.findPostById(postId, {
+    include: [includeUser("author")],
+  });
+  if (!post) throw new NotFoundError("Post not found");
+  return post;
 }
 
-/**
- * GET /api/posts/feed
- * The caller's own posts (all visibilities) plus public/friends posts from
- * their accepted connections.
- */
+/** @throws NotFoundError, ForbiddenError */
+async function findOwnedPost(postId: string, userId: number): Promise<Post> {
+  const post = await Post.findByPk(postId);
+  if (!post) throw new NotFoundError("Post not found");
+  if (post.userId !== userId)
+    throw new ForbiddenError("Not authorized to modify this post");
+  return post;
+}
+
+// Own posts (all visibilities) + public/friends posts from accepted connections
 router.get(
   "/feed",
-  authenticateToken,
-  async (req: AuthRequest, res: Response): Promise<void> => {
-    try {
-      const userId = req.userId!;
-      const { limit, offset } = parsePagination(req);
-
-      if (limit > MAX_LIMIT) {
-        res.status(400).json({ error: `Limit cannot exceed ${MAX_LIMIT}` });
-        return;
-      }
-
-      const connectedUserIds = await Connection.getConnectedUserIds(userId);
-      const posts = await Post.getFeedPosts(userId, connectedUserIds, {
-        limit,
-        offset,
-        includeAuthor: true,
-      });
-
-      res.json({
-        posts: posts.map((post) => post.toJSON()),
-        pagination: { limit, offset, count: posts.length },
-      });
-    } catch (error) {
-      console.error("Get feed error:", error);
-      res.status(500).json({ error: "Internal server error" });
-    }
-  },
+  authed(async (req, res) => {
+    const { limit, offset } = pagination(req);
+    const connectedUserIds = await Connection.getConnectedUserIds(req.userId);
+    const posts = await Post.getFeedPosts(req.userId, connectedUserIds, {
+      limit,
+      offset,
+      includeAuthor: true,
+    });
+    res.json(postsResponse(posts, limit, offset));
+  }),
 );
 
-/**
- * GET /api/posts/user/:userId
- * Posts by a specific user, filtered by the caller's relationship to them:
- * own profile → everything; connection → public + friends; otherwise → public.
- */
+// A user's posts, filtered by the caller's relationship to them
 router.get(
   "/user/:userId",
-  authenticateToken,
-  async (req: AuthRequest, res: Response): Promise<void> => {
-    try {
-      const viewerId = req.userId!;
-      const targetUserId = parseInt(req.params.userId as string);
-      const { limit, offset } = parsePagination(req);
-
-      if (isNaN(targetUserId)) {
-        res.status(400).json({ error: "Invalid user ID" });
-        return;
-      }
-      if (limit > MAX_LIMIT) {
-        res.status(400).json({ error: `Limit cannot exceed ${MAX_LIMIT}` });
-        return;
-      }
-
-      const visibility = await Post.visibleVisibilitiesFor(
-        viewerId,
-        targetUserId,
-      );
-      const posts = await Post.getUserPosts(targetUserId, {
-        limit,
-        offset,
-        includeAuthor: true,
-        visibility,
-      });
-
-      res.json({
-        posts: posts.map((post) => post.toJSON()),
-        pagination: { limit, offset, count: posts.length },
-      });
-    } catch (error) {
-      console.error("Get user posts error:", error);
-      res.status(500).json({ error: "Internal server error" });
-    }
-  },
+  authed(async (req, res) => {
+    const targetUserId = intParam(req, "userId");
+    const { limit, offset } = pagination(req);
+    const visibility = await Post.visibleVisibilitiesFor(
+      req.userId,
+      targetUserId,
+    );
+    const posts = await Post.getUserPosts(targetUserId, {
+      limit,
+      offset,
+      includeAuthor: true,
+      visibility,
+    });
+    res.json(postsResponse(posts, limit, offset));
+  }),
 );
 
-/**
- * GET /api/posts/:postId
- * A single post, if the caller is allowed to see it (404 otherwise).
- */
+// A single post, 404 if the caller may not see it (don't reveal it exists)
 router.get(
   "/:postId",
-  authenticateToken,
-  async (req: AuthRequest, res: Response): Promise<void> => {
-    try {
-      const userId = req.userId!;
-      const { postId } = req.params;
-
-      if (!postId) {
-        res.status(400).json({ error: "Post ID is required" });
-        return;
-      }
-
-      const canAccess = await Post.canUserAccessPost(postId, userId);
-      if (!canAccess) {
-        res.status(404).json({ error: "Post not found" });
-        return;
-      }
-
-      const post = await Post.findPostById(postId, {
-        include: [
-          {
-            model: User,
-            as: "author",
-            attributes: ["id", "firstName", "lastName", "username", "location"],
-          },
-        ],
-      });
-
-      if (!post) {
-        res.status(404).json({ error: "Post not found" });
-        return;
-      }
-
-      res.json({ post: post.toJSON() });
-    } catch (error) {
-      console.error("Get post error:", error);
-      res.status(500).json({ error: "Internal server error" });
+  authed(async (req, res) => {
+    const postId = uuidParam(req, "postId");
+    if (!(await Post.canUserAccessPost(postId, req.userId))) {
+      throw new NotFoundError("Post not found");
     }
-  },
+    const post = await loadPostWithAuthor(postId);
+    res.json({ post: toWire<PostDto>(post) } satisfies PostResponse);
+  }),
 );
 
-/**
- * POST /api/posts
- */
 router.post(
   "/",
-  authenticateToken,
-  async (req: AuthRequest, res: Response): Promise<void> => {
-    try {
-      const userId = req.userId!;
-      const { content, imageUrl, visibility } = req.body;
-
-      const validation = validateCreatePost({ content, imageUrl, visibility });
-      if (validation.error) {
-        sendValidationError(res, validation.error);
-        return;
-      }
-
-      const post = await Post.createPost({
-        userId,
-        content,
-        imageUrl: imageUrl || null,
-        visibility: visibility || "friends",
-      });
-
-      res.status(201).json({
-        message: "Post created successfully",
-        post: post.toJSON(),
-      });
-    } catch (error: any) {
-      console.error("Create post error:", error);
-      if (error.name === "SequelizeValidationError") {
-        sendSequelizeValidationError(res, error);
-        return;
-      }
-      res.status(500).json({ error: "Internal server error" });
-    }
-  },
+  authed(async (req, res) => {
+    const data = validated(validateCreatePost(req.body));
+    const created = await Post.createPost({
+      userId: req.userId,
+      content: data.content,
+      imageUrl: data.imageUrl ?? null,
+      visibility: data.visibility ?? "friends",
+    });
+    const post = await loadPostWithAuthor(created.id);
+    res.status(201).json({
+      message: "Post created successfully",
+      post: toWire<PostDto>(post),
+    } satisfies PostResponse);
+  }),
 );
 
-/**
- * PUT /api/posts/:postId  (author only)
- */
 router.put(
   "/:postId",
-  authenticateToken,
-  async (req: AuthRequest, res: Response): Promise<void> => {
-    try {
-      const userId = req.userId!;
-      const { postId } = req.params;
-      const { content, imageUrl, visibility } = req.body;
-
-      if (!postId) {
-        res.status(400).json({ error: "Post ID is required" });
-        return;
-      }
-
-      const validation = validateUpdatePost({ content, imageUrl, visibility });
-      if (validation.error) {
-        sendValidationError(res, validation.error);
-        return;
-      }
-
-      const existingPost = await Post.findPostById(postId);
-      if (!existingPost) {
-        res.status(404).json({ error: "Post not found" });
-        return;
-      }
-      if (existingPost.userId !== userId) {
-        res.status(403).json({ error: "Not authorized to update this post" });
-        return;
-      }
-
-      const updateData: Record<string, any> = {};
-      if (content !== undefined) updateData.content = content;
-      if (imageUrl !== undefined) updateData.imageUrl = imageUrl;
-      if (visibility !== undefined) updateData.visibility = visibility;
-
-      const post = await Post.updatePost(postId, updateData);
-      if (!post) {
-        res.status(500).json({ error: "Failed to update post" });
-        return;
-      }
-
-      res.json({ message: "Post updated successfully", post: post.toJSON() });
-    } catch (error: any) {
-      console.error("Update post error:", error);
-      if (error.name === "SequelizeValidationError") {
-        sendSequelizeValidationError(res, error);
-        return;
-      }
-      res.status(500).json({ error: "Internal server error" });
-    }
-  },
+  authed(async (req, res) => {
+    const postId = uuidParam(req, "postId");
+    const data = validated(validateUpdatePost(req.body));
+    await findOwnedPost(postId, req.userId);
+    await Post.updatePost(postId, data);
+    const post = await loadPostWithAuthor(postId);
+    res.json({
+      message: "Post updated successfully",
+      post: toWire<PostDto>(post),
+    } satisfies PostResponse);
+  }),
 );
 
-/**
- * DELETE /api/posts/:postId  (author only)
- */
 router.delete(
   "/:postId",
-  authenticateToken,
-  async (req: AuthRequest, res: Response): Promise<void> => {
-    try {
-      const userId = req.userId!;
-      const { postId } = req.params;
-
-      if (!postId) {
-        res.status(400).json({ error: "Post ID is required" });
-        return;
-      }
-
-      const existingPost = await Post.findPostById(postId);
-      if (!existingPost) {
-        res.status(404).json({ error: "Post not found" });
-        return;
-      }
-      if (existingPost.userId !== userId) {
-        res.status(403).json({ error: "Not authorized to delete this post" });
-        return;
-      }
-
-      await Post.deletePost(postId);
-      res.json({ message: "Post deleted successfully" });
-    } catch (error) {
-      console.error("Delete post error:", error);
-      res.status(500).json({ error: "Internal server error" });
-    }
-  },
+  authed(async (req, res) => {
+    const postId = uuidParam(req, "postId");
+    await findOwnedPost(postId, req.userId);
+    await Post.deletePost(postId);
+    res.json({
+      message: "Post deleted successfully",
+    } satisfies SuccessMessageResponse);
+  }),
 );
 
 export default router;

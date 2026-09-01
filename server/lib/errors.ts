@@ -1,20 +1,30 @@
+export type FieldErrors = Record<string, string>;
+
 /**
- * Errors that carry an HTTP status. Model/service code throws these; route
- * handlers map them straight to a response instead of regex-matching messages.
+ * Errors that carry an HTTP status (and optionally field-level messages).
+ * Thrown from models/services; mapped to responses by lib/http.ts.
  */
 export class HttpError extends Error {
   readonly status: number;
+  readonly errors: FieldErrors | undefined;
 
-  constructor(status: number, message: string) {
+  constructor(status: number, message: string, errors?: FieldErrors) {
     super(message);
     this.name = new.target.name;
     this.status = status;
+    this.errors = errors;
   }
 }
 
 export class BadRequestError extends HttpError {
-  constructor(message = "Bad request") {
-    super(400, message);
+  constructor(message = "Bad request", errors?: FieldErrors) {
+    super(400, message, errors);
+  }
+}
+
+export class UnauthorizedError extends HttpError {
+  constructor(message = "Unauthorized") {
+    super(401, message);
   }
 }
 
@@ -31,7 +41,7 @@ export class NotFoundError extends HttpError {
 }
 
 export class ConflictError extends HttpError {
-  constructor(message = "Conflict") {
-    super(409, message);
+  constructor(message = "Conflict", errors?: FieldErrors) {
+    super(409, message, errors);
   }
 }

@@ -1,198 +1,160 @@
-import express from "express";
-import { Connection, User } from "../models";
-import { authenticateToken } from "../middleware/auth.js";
-import {
-  validateProfileUpdate,
-  validatePasswordChange,
-} from "../utils/validation.js";
-import type { Response } from "express";
-import type { AuthRequest } from "../types";
+import { Router } from "express";
 import { Op } from "sequelize";
-import { sendValidationError } from "../utils/responses";
+import { Connection, User } from "../models";
+import { authenticateToken } from "../middleware/auth";
+import {
+  authed,
+  intParam,
+  pagination,
+  queryBool,
+  queryString,
+  validated,
+} from "../lib/http";
+import { toWire } from "../lib/serialize";
+import {
+  ConflictError,
+  ForbiddenError,
+  NotFoundError,
+  UnauthorizedError,
+} from "../lib/errors";
+import {
+  validatePasswordChange,
+  validateProfileUpdate,
+} from "../utils/validation";
+import type {
+  Connection as ConnectionDto,
+  ConnectionStatusInfo,
+  SuccessMessageResponse,
+  User as UserDto,
+  UserResponse,
+  UsersResponse,
+  UsersWithConnectionStatusResponse,
+} from "../types";
 
-const router = express.Router();
+const router = Router();
+router.use(authenticateToken);
 
-// Get all users
+/** Every connection row involving `userId`, keyed by the *other* user's id. */
+async function connectionStatusByUser(
+  userId: number,
+): Promise<Map<number, ConnectionStatusInfo>> {
+  const connections = await Connection.findAll({
+    where: { [Op.or]: [{ requesterId: userId }, { recipientId: userId }] },
+  });
+  return new Map(
+    connections.map((c): [number, ConnectionStatusInfo] => [
+      c.requesterId === userId ? c.recipientId : c.requesterId,
+      { ...toWire<ConnectionDto>(c), isRequester: c.requesterId === userId },
+    ]),
+  );
+}
+
+// GET /users?includeConnectionStatus=true
 router.get(
   "/",
-  authenticateToken,
-  async (req: AuthRequest, res: Response): Promise<void> => {
-    try {
-      const users = await User.getAllUsers();
+  authed(async (req, res) => {
+    const users = await User.getAllUsers(pagination(req));
 
-      if (req.query.includeConnectionStatus === "true") {
-        const userId = req.userId!;
-        const connections = await Connection.findAll({
-          where: {
-            [Op.or]: [{ requesterId: userId }, { recipientId: userId }],
-          },
-        });
-        const statusByUser = new Map(
-          connections.map((c) => [
-            c.requesterId === userId ? c.recipientId : c.requesterId,
-            { ...c.toJSON(), isRequester: c.requesterId === userId },
-          ]),
-        );
-        res.json({
-          users: users.map((u) => ({
-            ...u.toJSON(),
-            connectionStatus: statusByUser.get(u.id) || null,
-          })),
-        });
-        return;
-      }
-
-      res.json({ users });
-    } catch (error) {
-      console.error("Get users error:", error);
-      res.status(500).json({ error: "Internal server error" });
+    if (!queryBool(req, "includeConnectionStatus")) {
+      res.json({
+        users: users.map((u) => toWire<UserDto>(u)),
+      } satisfies UsersResponse);
+      return;
     }
-  },
+
+    const statusByUser = await connectionStatusByUser(req.userId);
+    res.json({
+      users: users.map((u) => ({
+        ...toWire<UserDto>(u),
+        connectionStatus: statusByUser.get(u.id) ?? null,
+      })),
+    } satisfies UsersWithConnectionStatusResponse);
+  }),
 );
 
-// Get current user
+// GET /users/search?q=
+router.get(
+  "/search",
+  authed(async (req, res) => {
+    const term = queryString(req, "q")?.trim() ?? "";
+    const users = term ? await User.searchUsers(term, pagination(req)) : [];
+    res.json({
+      users: users.map((u) => toWire<UserDto>(u)),
+    } satisfies UsersResponse);
+  }),
+);
+
 router.get(
   "/me",
-  authenticateToken,
-  async (req: AuthRequest, res: Response): Promise<void> => {
-    try {
-      const user = await User.findById(req.userId!);
-      if (!user) {
-        res.status(404).json({ error: "User not found" });
-        return;
-      }
-      res.json({ user: user.toJSON() });
-    } catch (error) {
-      console.error("Get current user error:", error);
-      res.status(500).json({ error: "Internal server error" });
-    }
-  },
+  authed(async (req, res) => {
+    const user = await User.findByPk(req.userId);
+    if (!user) throw new NotFoundError("User not found");
+    res.json({ user: toWire<UserDto>(user) } satisfies UserResponse);
+  }),
 );
 
-// Change current user's password.
-// Registered before "/:userId" so "me" is never treated as an id.
+// Registered before "/:userId" so "me" is never parsed as an id.
 router.put(
   "/me/password",
-  authenticateToken,
-  async (req: AuthRequest, res: Response): Promise<void> => {
-    try {
-      const { currentPassword, newPassword } = req.body;
+  authed(async (req, res) => {
+    const { currentPassword, newPassword } = validated(
+      validatePasswordChange(req.body),
+    );
 
-      const { error } = validatePasswordChange({
-        currentPassword,
-        newPassword,
-      });
-      if (error) {
-        sendValidationError(res, error);
-        return;
-      }
+    // The default scope strips the hash; we need it to compare.
+    const user = await User.scope("withPassword").findByPk(req.userId);
+    if (!user) throw new NotFoundError("User not found");
 
-      // Default scope excludes the password hash; we need it to compare.
-      const user = await User.scope("withPassword").findByPk(req.userId!);
-      if (!user) {
-        res.status(404).json({ error: "User not found" });
-        return;
-      }
-
-      const isCurrentValid = await user.comparePassword(currentPassword);
-      if (!isCurrentValid) {
-        res.status(401).json({ error: "Current password is incorrect" });
-        return;
-      }
-
-      user.password = newPassword; // @BeforeUpdate hook hashes it
-      await user.save();
-
-      res.json({ message: "Password updated successfully" });
-    } catch (error) {
-      console.error("Change password error:", error);
-      res.status(500).json({ error: "Internal server error" });
+    if (!(await user.comparePassword(currentPassword))) {
+      throw new UnauthorizedError("Current password is incorrect");
     }
-  },
+
+    user.password = newPassword; // BeforeUpdate hook hashes it
+    await user.save();
+
+    res.json({
+      message: "Password updated successfully",
+    } satisfies SuccessMessageResponse);
+  }),
 );
 
-// Get user by ID
 router.get(
   "/:userId",
-  authenticateToken,
-  async (req: AuthRequest, res: Response): Promise<void> => {
-    try {
-      const { userId } = req.params;
-      if (!userId) {
-        res.status(400).json({ error: "User ID is required" });
-        return;
-      }
-
-      const user = await User.findById(parseInt(userId));
-      if (!user) {
-        res.status(404).json({ error: "User not found" });
-        return;
-      }
-
-      res.json({ user: user.toJSON() });
-    } catch (error) {
-      console.error("Get user error:", error);
-      res.status(500).json({ error: "Internal server error" });
-    }
-  },
+  authed(async (req, res) => {
+    const user = await User.findByPk(intParam(req, "userId"));
+    if (!user) throw new NotFoundError("User not found");
+    res.json({ user: toWire<UserDto>(user) } satisfies UserResponse);
+  }),
 );
 
-// Update own profile (password changes are NOT accepted here — see /me/password)
+// Profile fields only — password changes go through PUT /users/me/password.
 router.put(
   "/:userId",
-  authenticateToken,
-  async (req: AuthRequest, res: Response): Promise<void> => {
-    try {
-      const { userId } = req.params;
-      if (!userId) {
-        res.status(400).json({ error: "User ID is required" });
-        return;
-      }
-
-      if (req.userId !== parseInt(userId)) {
-        res.status(403).json({ error: "Unauthorized" });
-        return;
-      }
-
-      const { error, data } = validateProfileUpdate(req.body);
-      if (error) {
-        sendValidationError(res, error);
-        return;
-      }
-
-      const user = await User.findById(parseInt(userId));
-      if (!user) {
-        res.status(404).json({ error: "User not found" });
-        return;
-      }
-
-      if (data.username && data.username !== user.username) {
-        const existingUser = await User.findByUsername(data.username);
-        if (existingUser && existingUser.id !== user.id) {
-          res.status(400).json({
-            error: "Username already exists",
-            errors: { username: "Username already exists" },
-          });
-          return;
-        }
-      }
-
-      // User.updateUser strips `password` defensively.
-      const updatedUser = await User.updateUser(parseInt(userId), data);
-      if (!updatedUser) {
-        res.status(500).json({ error: "Failed to update user" });
-        return;
-      }
-
-      res.json({
-        message: "Profile updated successfully",
-        user: updatedUser.toJSON(),
-      });
-    } catch (error) {
-      console.error("Update user error:", error);
-      res.status(500).json({ error: "Internal server error" });
+  authed(async (req, res) => {
+    const userId = intParam(req, "userId");
+    if (userId !== req.userId) {
+      throw new ForbiddenError("You can only update your own profile");
     }
-  },
+
+    const data = validated(validateProfileUpdate(req.body));
+
+    if (data.username) {
+      const taken = await User.count({
+        where: { username: data.username, id: { [Op.ne]: userId } },
+      });
+      if (taken > 0) {
+        throw new ConflictError("Username already exists", {
+          username: "Username already exists",
+        });
+      }
+    }
+
+    const user = await User.updateUser(userId, data);
+    res.json({
+      message: "Profile updated successfully",
+      user: toWire<UserDto>(user),
+    } satisfies UserResponse);
+  }),
 );
 
 export default router;
