@@ -1,116 +1,61 @@
-import type { Server, Socket } from "socket.io";
-import type {
-  ServerToClientEvents,
-  ClientToServerEvents,
-  InterServerEvents,
-  SocketData,
-} from "../../types";
+import type { AppSocket } from "../io";
+import type { PresenceStatus } from "../../types";
 
-// Store user presence status
-const userPresence = new Map<
-  number,
-  {
-    status: "online" | "away" | "offline";
-    lastSeen: Date;
-    socketIds: Set<string>;
-  }
->();
+interface Presence {
+  status: PresenceStatus;
+  lastSeen: Date;
+  socketIds: Set<string>;
+}
 
-export function handlePresenceEvents(
-  io: Server<
-    ClientToServerEvents,
-    ServerToClientEvents,
-    InterServerEvents,
-    SocketData
-  >,
-  socket: Socket<
-    ClientToServerEvents,
-    ServerToClientEvents,
-    InterServerEvents,
-    SocketData
-  >
-) {
-  // Initialize user presence on connection
-  if (socket.data.userId) {
-    const presence = userPresence.get(socket.data.userId) || {
-      status: "online" as const,
-      lastSeen: new Date(),
-      socketIds: new Set<string>(),
-    };
+const STATUSES: readonly PresenceStatus[] = ["online", "away", "offline"];
+const isPresenceStatus = (value: unknown): value is PresenceStatus =>
+  typeof value === "string" && (STATUSES as readonly string[]).includes(value);
 
-    presence.socketIds.add(socket.id);
-    presence.status = "online";
-    presence.lastSeen = new Date();
+/** Forget a user's presence this long after their last socket disconnects. */
+const OFFLINE_CLEANUP_MS = 5 * 60 * 1000;
 
-    userPresence.set(socket.data.userId, presence);
+const presenceByUser = new Map<number, Presence>();
+
+export function registerPresenceHandlers(socket: AppSocket): void {
+  const { userId } = socket.data;
+
+  const presence = presenceByUser.get(userId) ?? {
+    status: "online",
+    lastSeen: new Date(),
+    socketIds: new Set<string>(),
+  };
+  const firstSocket = presence.socketIds.size === 0;
+
+  presence.socketIds.add(socket.id);
+  presence.status = "online";
+  presence.lastSeen = new Date();
+  presenceByUser.set(userId, presence);
+
+  // Only announce when the *user* comes online, not every additional tab.
+  if (firstSocket) {
+    socket.broadcast.emit("user:status", { userId, status: "online" });
   }
 
-  // Update presence status
   socket.on("presence:update", (status) => {
-    if (!socket.data.userId) return;
-
-    const presence = userPresence.get(socket.data.userId);
-    if (presence) {
-      presence.status = status;
-      presence.lastSeen = new Date();
-
-      // Broadcast status update to all users
-      socket.broadcast.emit("user:status", {
-        userId: socket.data.userId,
-        status,
-      });
-    }
+    if (!isPresenceStatus(status)) return;
+    presence.status = status;
+    presence.lastSeen = new Date();
+    socket.broadcast.emit("user:status", { userId, status });
   });
 
-  // Handle disconnect for presence
   socket.on("disconnect", () => {
-    if (!socket.data.userId) return;
+    presence.socketIds.delete(socket.id);
+    if (presence.socketIds.size > 0) return;
 
-    const presence = userPresence.get(socket.data.userId);
-    if (presence) {
-      presence.socketIds.delete(socket.id);
+    presence.status = "offline";
+    presence.lastSeen = new Date();
+    socket.broadcast.emit("user:status", { userId, status: "offline" });
 
-      // If user has no more active sockets, mark as offline
-      if (presence.socketIds.size === 0) {
-        presence.status = "offline";
-        presence.lastSeen = new Date();
-
-        // Broadcast offline status
-        socket.broadcast.emit("user:status", {
-          userId: socket.data.userId,
-          status: "offline",
-        });
-
-        // Clean up after a delay (optional)
-        setTimeout(
-          () => {
-            const currentPresence = userPresence.get(socket.data.userId);
-            if (currentPresence && currentPresence.socketIds.size === 0) {
-              userPresence.delete(socket.data.userId);
-            }
-          },
-          5 * 60 * 1000
-        ); // 5 minutes
+    setTimeout(() => {
+      const current = presenceByUser.get(userId);
+      if (current && current.socketIds.size === 0) {
+        presenceByUser.delete(userId);
       }
-    }
+    }, OFFLINE_CLEANUP_MS);
   });
-}
-
-// Utility function to get online users
-export function getOnlineUsers(): number[] {
-  return Array.from(userPresence.entries())
-    .filter(([_, presence]) => presence.status === "online")
-    .map(([userId]) => userId);
-}
-
-// Utility function to get user status
-export function getUserStatus(userId: number): "online" | "away" | "offline" {
-  const presence = userPresence.get(userId);
-  return presence?.status || "offline";
-}
-
-// Utility function to check if user is online
-export function isUserOnline(userId: number): boolean {
-  const presence = userPresence.get(userId);
-  return presence?.status === "online" || false;
 }

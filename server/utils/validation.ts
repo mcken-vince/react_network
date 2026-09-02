@@ -63,6 +63,10 @@ const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 const USERNAME_RE = /^[a-zA-Z0-9_]+$/;
 const UUID_RE =
   /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+
+export const isUuid = (value: unknown): value is string =>
+  typeof value === "string" && UUID_RE.test(value);
+
 const POST_VISIBILITIES: readonly PostVisibility[] = [
   "public",
   "friends",
@@ -382,8 +386,7 @@ export const validateMessage = (
   addError(errors, "content", validateMessageContent(content));
 
   if (b.replyToId !== undefined && b.replyToId !== null && b.replyToId !== "") {
-    const v = text(b.replyToId);
-    if (UUID_RE.test(v)) data.replyToId = v;
+    if (isUuid(b.replyToId)) data.replyToId = b.replyToId;
     else errors.replyToId = "replyToId must be a valid message id";
   }
 

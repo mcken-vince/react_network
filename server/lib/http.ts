@@ -11,9 +11,7 @@ import type {
   AuthenticatedRequest,
   PaginationParams,
 } from "../types";
-
-const UUID_RE =
-  /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+import { isUuid } from "../utils/validation";
 
 type Handler<R> = (req: R, res: Response) => Promise<void>;
 
@@ -102,7 +100,7 @@ export function intParam(req: ApiRequest, name: string): number {
 
 export function uuidParam(req: ApiRequest, name: string): string {
   const value = requiredParam(req, name);
-  if (!UUID_RE.test(value)) throw new BadRequestError(`Invalid ${name}`);
+  if (!isUuid(value)) throw new BadRequestError(`Invalid ${name}`);
   return value;
 }
 

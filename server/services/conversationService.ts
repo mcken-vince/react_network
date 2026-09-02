@@ -1,6 +1,6 @@
 import { Op } from "sequelize";
 import { Conversation, ConversationParticipant, User } from "../models";
-import { BadRequestError, NotFoundError } from "../lib/errors";
+import { BadRequestError, NotFoundError, ForbiddenError } from "../lib/errors";
 import { toWire } from "../lib/serialize";
 import { emitToUsers } from "../websocket/io";
 import type {
@@ -18,6 +18,19 @@ export async function activeParticipantIds(
     attributes: ["userId"],
   });
   return rows.map((row) => row.userId);
+}
+
+/** @throws ForbiddenError */
+export async function assertParticipant(
+  conversationId: string,
+  userId: number,
+): Promise<void> {
+  const count = await ConversationParticipant.count({
+    where: { conversationId, userId, isActive: true },
+  });
+  if (count === 0) {
+    throw new ForbiddenError("Not a participant in this conversation");
+  }
 }
 
 /** Reload a conversation with participants + creator and serialize it. */

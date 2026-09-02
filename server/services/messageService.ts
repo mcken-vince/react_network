@@ -1,27 +1,14 @@
 import { ConversationParticipant, Message } from "../models";
-import { ForbiddenError, NotFoundError } from "../lib/errors";
+import { NotFoundError } from "../lib/errors";
 import { toWire } from "../lib/serialize";
 import { emitToUsers } from "../websocket/io";
-import { activeParticipantIds } from "./conversationService";
+import { activeParticipantIds, assertParticipant } from "./conversationService";
 import { LIMITS } from "../../shared/limits";
 import type {
   Message as MessageDto,
   MessagesQuery,
   SendMessageData,
 } from "../types";
-
-/** @throws ForbiddenError */
-async function assertParticipant(
-  conversationId: string,
-  userId: number,
-): Promise<void> {
-  const count = await ConversationParticipant.count({
-    where: { conversationId, userId, isActive: true },
-  });
-  if (count === 0) {
-    throw new ForbiddenError("Not a participant in this conversation");
-  }
-}
 
 /** Newest-first page; `nextCursor` is the id to pass as `beforeMessageId` for the next (older) page. */
 export async function listMessages(

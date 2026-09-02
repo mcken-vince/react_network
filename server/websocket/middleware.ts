@@ -1,40 +1,40 @@
-import jwt from 'jsonwebtoken';
-import type { Socket } from 'socket.io';
-import type { ExtendedError } from 'socket.io/dist/namespace';
-import type { 
-  ClientToServerEvents, 
-  ServerToClientEvents, 
-  InterServerEvents, 
-  SocketData,
-  JWTPayload 
-} from '../types';
+import { verifyToken } from "../lib/jwt";
+import { User } from "../models";
+import type { AppSocket } from "./io";
 
+/**
+ * Socket.IO connection middleware: verifies the JWT from the handshake and
+ * populates socket.data. Rejected connections never reach the handlers.
+ */
 export async function authenticateSocket(
-  socket: Socket<ClientToServerEvents, ServerToClientEvents, InterServerEvents, SocketData>,
-  next: (err?: ExtendedError) => void
-) {
+  socket: AppSocket,
+  next: (err?: Error) => void,
+): Promise<void> {
+  const raw: unknown =
+    socket.handshake.auth.token ?? socket.handshake.query.token;
+  const token = typeof raw === "string" ? raw : undefined;
+
+  if (!token) {
+    next(new Error("Authentication error: No token provided"));
+    return;
+  }
+
   try {
-    // Get token from handshake auth or query
-    const token = socket.handshake.auth.token || socket.handshake.query.token;
-    
-    if (!token) {
-      return next(new Error('Authentication error: No token provided'));
+    const { userId } = verifyToken(token);
+    const user = await User.findByPk(userId, {
+      attributes: ["id", "username"],
+    });
+    if (!user) {
+      next(new Error("Authentication error: User not found"));
+      return;
     }
-    
-    // Verify JWT token
-    const decoded = jwt.verify(
-      token as string, 
-      process.env.JWT_SECRET || 'your-secret-key'
-    ) as JWTPayload;
-    
-    // Store user info in socket data
-    socket.data.userId = decoded.id;
-    socket.data.username = decoded.username;
+
+    socket.data.userId = user.id;
+    socket.data.username = user.username;
     socket.data.rooms = new Set();
-    
     next();
   } catch (error) {
-    console.error('Socket authentication error:', error);
-    next(new Error('Authentication error: Invalid token'));
+    console.error("Socket authentication error:", error);
+    next(new Error("Authentication error: Invalid token"));
   }
 }
