@@ -31,7 +31,6 @@ export async function authenticateSocket(
 
     socket.data.userId = user.id;
     socket.data.username = user.username;
-    socket.data.rooms = new Set();
     next();
   } catch (error) {
     console.error("Socket authentication error:", error);

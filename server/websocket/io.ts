@@ -31,12 +31,7 @@ export function setIO(server: AppServer): void {
   io = server;
 }
 
-export function getIO(): AppServer {
-  if (!io) {
-    throw new Error("Socket.IO server has not been initialised");
-  }
-  return io;
-}
+// Every helper is a no-op when no server is registered (scripts, tests).
 
 /** Emit to one user's personal room (every tab/device they have open). */
 export function emitToUser<E extends EventName>(
@@ -56,11 +51,10 @@ export function emitToUsers<E extends EventName>(
   io?.to(userIds.map((id) => rooms.user(id))).emit(event, ...args);
 }
 
-/** Emit to everyone currently *viewing* a conversation (typing indicators). */
-export function emitToConversation<E extends EventName>(
-  conversationId: string,
+/** Emit to every connected socket. */
+export function broadcast<E extends EventName>(
   event: E,
   ...args: EventArgs<E>
 ): void {
-  io?.to(rooms.conversation(conversationId)).emit(event, ...args);
+  io?.emit(event, ...args);
 }

@@ -6,175 +6,171 @@ import cors from "cors";
 import helmet from "helmet";
 import rateLimit from "express-rate-limit";
 import dotenv from "dotenv";
-import authRoutes from "./routes/auth.js";
-import userRoutes from "./routes/users.js";
-import connectionRoutes from "./routes/connections.js";
-import notificationRoutes from "./routes/notifications.js";
-import postRoutes from "./routes/posts.js";
-import messageRoutes from "./routes/messages.js";
+import { QueryTypes } from "sequelize";
+import authRoutes from "./routes/auth";
+import userRoutes from "./routes/users";
+import connectionRoutes from "./routes/connections";
+import notificationRoutes from "./routes/notifications";
+import postRoutes from "./routes/posts";
+import messageRoutes from "./routes/messages";
 import { errorHandler } from "./middleware/errorHandler";
 import { sequelize } from "./models";
+import { sendError } from "./utils/responses";
 import { setupWebSocketHandlers } from "./websocket/handlers";
 import { authenticateSocket } from "./websocket/middleware";
+import { setIO } from "./websocket/io";
 import type {
-  ServerToClientEvents,
   ClientToServerEvents,
   InterServerEvents,
+  ServerToClientEvents,
   SocketData,
 } from "./types";
 
 dotenv.config();
 
+const PORT = Number(process.env.PORT ?? 3001);
+const CLIENT_URL = process.env.CLIENT_URL ?? "http://localhost:5173";
+
 const app = express();
 const httpServer = createServer(app);
-const PORT = process.env.PORT || 3001;
 
-// Initialize Socket.IO with TypeScript types
+// ---------------------------------------------------------------------------
+// Socket.IO
+// ---------------------------------------------------------------------------
+
 const io = new Server<
   ClientToServerEvents,
   ServerToClientEvents,
   InterServerEvents,
   SocketData
 >(httpServer, {
-  cors: {
-    origin: process.env.CLIENT_URL || "http://localhost:5173",
-    credentials: true,
-  },
+  cors: { origin: CLIENT_URL, credentials: true },
   transports: ["websocket", "polling"],
 });
+setIO(io);
 
-// Security middleware
-app.use(
-  helmet({
-    crossOriginResourcePolicy: { policy: "cross-origin" },
-  }),
-);
+io.use(authenticateSocket);
+io.on("connection", (socket) => {
+  console.log(`WebSocket connected: ${socket.id} (user ${socket.data.userId})`);
+  setupWebSocketHandlers(socket);
+});
 
-app.use(
-  cors({
-    origin: process.env.CLIENT_URL || "http://localhost:5173",
-    credentials: true,
-  }),
-);
+// ---------------------------------------------------------------------------
+// HTTP middleware
+// ---------------------------------------------------------------------------
 
-// Rate limiting
+app.use(helmet({ crossOriginResourcePolicy: { policy: "cross-origin" } }));
+app.use(cors({ origin: CLIENT_URL, credentials: true }));
+
 // General API: generous enough for a React Query SPA on a shared office IP.
-const apiLimiter = rateLimit({
-  windowMs: 15 * 60 * 1000,
-  max: 1000,
-  standardHeaders: true,
-  legacyHeaders: false,
-  message: { error: "Too many requests, please try again later" },
-});
-
+app.use(
+  "/api",
+  rateLimit({
+    windowMs: 15 * 60 * 1000,
+    max: 1000,
+    standardHeaders: true,
+    legacyHeaders: false,
+    message: { error: "Too many requests, please try again later" },
+  }),
+);
 // Auth endpoints: tight, to slow credential stuffing.
-const authLimiter = rateLimit({
-  windowMs: 15 * 60 * 1000,
-  max: 20,
-  standardHeaders: true,
-  legacyHeaders: false,
-  message: { error: "Too many login attempts, please try again later" },
-});
+app.use(
+  "/api/auth",
+  rateLimit({
+    windowMs: 15 * 60 * 1000,
+    max: 20,
+    standardHeaders: true,
+    legacyHeaders: false,
+    message: { error: "Too many login attempts, please try again later" },
+  }),
+);
 
-app.use("/api/auth", authLimiter);
-app.use("/api", apiLimiter);
-
-// Body parsing middleware
 app.use(express.json({ limit: "10mb" }));
 app.use(express.urlencoded({ extended: true }));
 
+// ---------------------------------------------------------------------------
 // Routes
+// ---------------------------------------------------------------------------
+
 app.use("/api/auth", authRoutes);
 app.use("/api/users", userRoutes);
 app.use("/api/connections", connectionRoutes);
 app.use("/api/notifications", notificationRoutes);
 app.use("/api/posts", postRoutes);
-app.use("/api", messageRoutes);
+app.use("/api", messageRoutes); // /api/conversations/*, /api/messages/*
 
-// Health check with database connection status
+interface HealthResponse {
+  status: "ok" | "error";
+  timestamp: string;
+  database: "connected" | "disconnected";
+  dbTime?: string;
+  websocketClients?: number;
+  error?: string;
+}
+
 app.get("/api/health", async (_req, res) => {
+  const timestamp = new Date().toISOString();
   try {
-    const result = await sequelize.query("SELECT NOW()");
+    const rows = await sequelize.query<{ now: Date }>("SELECT NOW() AS now", {
+      type: QueryTypes.SELECT,
+    });
     res.json({
       status: "ok",
-      timestamp: new Date().toISOString(),
+      timestamp,
       database: "connected",
-      dbTime: (result as any)[0]?.[0]?.now || "unknown",
-      websocket: io.engine.clientsCount,
-    });
+      dbTime: rows[0]?.now.toISOString(),
+      websocketClients: io.engine.clientsCount,
+    } satisfies HealthResponse);
   } catch (error) {
     res.status(500).json({
       status: "error",
-      timestamp: new Date().toISOString(),
+      timestamp,
       database: "disconnected",
       error: error instanceof Error ? error.message : "Unknown error",
-    });
+    } satisfies HealthResponse);
   }
 });
 
-// WebSocket authentication middleware
-io.use(authenticateSocket);
-
-// WebSocket connection handling
-io.on("connection", (socket) => {
-  console.log(
-    `New WebSocket connection: ${socket.id}, User: ${socket.data.userId}`,
-  );
-
-  // Set up WebSocket handlers
-  setupWebSocketHandlers(io, socket);
-
-  // Join user's personal room
-  if (socket.data.userId) {
-    socket.join(`user:${socket.data.userId}`);
-
-    // Notify others that user is online
-    socket.broadcast.emit("user:online", socket.data.userId);
-  }
-
-  // Handle disconnect
-  socket.on("disconnect", () => {
-    console.log(`WebSocket disconnected: ${socket.id}`);
-
-    if (socket.data.userId) {
-      // Notify others that user is offline
-      socket.broadcast.emit("user:offline", socket.data.userId);
-    }
-  });
+// 404 must come before the error handler.
+app.use((_req, res) => {
+  sendError(res, 404, "Route not found");
 });
-
-// Error handling
 app.use(errorHandler);
 
-// 404 handler
-app.use("*", (_req, res) => {
-  res.status(404).json({ error: "Route not found" });
-});
+// ---------------------------------------------------------------------------
+// Lifecycle
+// ---------------------------------------------------------------------------
 
-// Graceful shutdown
-process.on("SIGINT", async () => {
-  console.log("\nShutting down gracefully...");
+function shutdown(signal: NodeJS.Signals): void {
+  console.log(`\n${signal} received — shutting down gracefully...`);
 
-  // Close WebSocket connections
-  io.close(() => {
-    console.log("WebSocket server closed");
-  });
-
-  // Close database connection
-  await sequelize.close();
-
-  // Close HTTP server
+  // Stop accepting new connections, drop sockets, then release the DB pool.
   httpServer.close(() => {
-    console.log("HTTP server closed");
-    process.exit(0);
+    io.close(() => {
+      sequelize
+        .close()
+        .then(() => {
+          console.log("Shutdown complete");
+          process.exit(0);
+        })
+        .catch((error: unknown) => {
+          console.error("Error closing database connection:", error);
+          process.exit(1);
+        });
+    });
   });
-});
 
-// Start server
+  // Don't hang forever on stuck keep-alive connections.
+  setTimeout(() => {
+    console.error("Forced shutdown after timeout");
+    process.exit(1);
+  }, 10_000).unref();
+}
+
+process.on("SIGINT", shutdown);
+process.on("SIGTERM", shutdown);
+
 httpServer.listen(PORT, () => {
   console.log(`Server running on port ${PORT}`);
-  console.log(`WebSocket server ready`);
+  console.log(`WebSocket server ready (client origin: ${CLIENT_URL})`);
 });
-
-// Export for use in other modules
-export { io };

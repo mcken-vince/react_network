@@ -1,12 +1,14 @@
-import type {
-  Conversation,
-  ConversationType,
-  Message,
-  Notification,
-} from "./types";
+import type { Conversation, Message, Notification } from "./types";
 
-export type PresenceStatus = "online" | "away" | "offline";
+export type PresenceStatus = "online" | "offline";
 
+/**
+ * Server → client. The socket is a push channel: every mutation happens over
+ * REST and the server broadcasts the resulting state change to everyone it
+ * concerns — including the originating user's other tabs. Clients must treat
+ * `*:new` / `*:created` as upserts, since the originating tab also receives
+ * the REST response.
+ */
 export interface ServerToClientEvents {
   // Notifications
   "notification:new": (notification: Notification) => void;
@@ -14,7 +16,7 @@ export interface ServerToClientEvents {
   "notification:deleted": (notificationId: number) => void;
   "notification:allRead": () => void;
 
-  // Messages
+  // Messaging
   "message:new": (message: Message) => void;
   "message:updated": (message: Message) => void;
   "message:deleted": (data: {
@@ -26,65 +28,31 @@ export interface ServerToClientEvents {
     userId: number;
     isTyping: boolean;
   }) => void;
-
-  // Conversations
   "conversation:created": (conversation: Conversation) => void;
 
-  // Presence
+  // Presence — derived purely from open sockets.
+  /** Sent once to a socket right after it connects: every user currently online. */
+  "presence:snapshot": (onlineUserIds: number[]) => void;
   "user:status": (data: { userId: number; status: PresenceStatus }) => void;
-
-  // System
-  error: (error: { message: string; code?: string }) => void;
 }
 
+/** Client → server. Only ephemeral signals that have no REST equivalent. */
 export interface ClientToServerEvents {
-  // Notifications
-  "notification:markRead": (notificationId: number) => void;
-  "notification:markAllRead": () => void;
-
-  // Messages
-  "message:send": (data: {
-    conversationId: string;
-    content: string;
-    replyToId?: string | null;
-  }) => void;
-  "message:edit": (data: { messageId: string; content: string }) => void;
-  "message:delete": (messageId: string) => void;
-  "message:markRead": (data: {
-    conversationId: string;
-    messageIds: string[];
-  }) => void;
   "message:typing": (data: {
     conversationId: string;
     isTyping: boolean;
   }) => void;
-
-  // Conversations
-  "conversation:join": (conversationId: string) => void;
-  "conversation:leave": (conversationId: string) => void;
-  "conversation:create": (data: {
-    userIds: number[];
-    type: ConversationType;
-    name?: string;
-  }) => void;
-
-  // Presence
-  "presence:update": (status: PresenceStatus) => void;
 }
 
-export interface InterServerEvents {
-  ping: () => void;
-}
+/** No server-to-server events (single instance). */
+export type InterServerEvents = Record<string, never>;
 
 export interface SocketData {
   userId: number;
   username: string;
-  rooms: Set<string>;
 }
 
-/** Room naming — the one place these strings are defined. */
+/** Room naming — the one place this string is defined. */
 export const rooms = {
   user: (userId: number) => `user:${userId}` as const,
-  conversation: (conversationId: string) =>
-    `conversation:${conversationId}` as const,
 };
