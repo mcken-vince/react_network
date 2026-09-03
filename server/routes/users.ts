@@ -121,7 +121,10 @@ router.put(
 router.get(
   "/:userId",
   authed(async (req, res) => {
-    const user = await User.findByPk(intParam(req, "userId"));
+    const userId = intParam(req, "userId");
+    // Only the owner sees private fields (email).
+    const finder = userId === req.userId ? User : User.scope("public");
+    const user = await finder.findByPk(userId);
     if (!user) throw new NotFoundError("User not found");
     res.json({ user: toWire<UserDto>(user) } satisfies UserResponse);
   }),

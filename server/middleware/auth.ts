@@ -18,6 +18,6 @@ export const authenticateToken = (
     req.userId = verifyToken(token).userId;
     next();
   } catch {
-    sendError(res, 403, "Invalid or expired token");
+    sendError(res, 401, "Invalid or expired token");
   }
 };

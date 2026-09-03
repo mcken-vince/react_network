@@ -2,7 +2,7 @@ import type { IncludeOptions } from "sequelize";
 import User from "./User.model";
 
 /** Columns exposed when a user is embedded in another entity (author, sender, ...). */
-export const USER_SUMMARY_ATTRIBUTES = [
+const USER_SUMMARY_ATTRIBUTES = [
   "id",
   "firstName",
   "lastName",

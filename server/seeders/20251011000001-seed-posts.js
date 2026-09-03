@@ -1,4 +1,4 @@
-import { v4 as uuidv4 } from 'uuid';
+import { randomUUID } from 'node:crypto';
 
 export default {
   async up(queryInterface, Sequelize) {
@@ -46,7 +46,7 @@ export default {
         postDate.setDate(postDate.getDate() - daysAgo);
 
         posts.push({
-          id: uuidv4(),
+          id: randomUUID(),
           userId: user.id,
           content: samplePosts[Math.floor(Math.random() * samplePosts.length)],
           imageUrl: null,

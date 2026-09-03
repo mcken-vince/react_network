@@ -84,7 +84,7 @@ export function validated<T>(result: ValidationResult<T>): T {
   return result.data;
 }
 
-export function requiredParam(req: ApiRequest, name: string): string {
+function requiredParam(req: ApiRequest, name: string): string {
   const value = req.params[name];
   if (!value) throw new BadRequestError(`${name} is required`);
   return value;

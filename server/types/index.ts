@@ -4,11 +4,6 @@ import type { Request } from "express";
 // shared with the client so the two sides cannot drift.
 export * from "../../shared/types";
 export * from "../../shared/socketEvents";
-export {
-  NOTIFICATION_TYPES,
-  NOTIFICATION_CONFIG,
-} from "../../shared/notificationTypes";
-export type { NotificationType } from "../../shared/notificationTypes";
 
 /**
  * Request with body (and response body) typed as `unknown`: the only way to

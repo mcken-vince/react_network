@@ -6,7 +6,6 @@
     "moduleResolution": "bundler",
     "rootDir": "..",
     "outDir": "./dist",
-    "allowJs": true,
     "esModuleInterop": true,
     "allowSyntheticDefaultImports": true,
     "forceConsistentCasingInFileNames": true,

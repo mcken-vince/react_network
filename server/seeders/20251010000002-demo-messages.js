@@ -1,6 +1,6 @@
 'use strict';
 
-import { v4 as uuidv4 } from 'uuid';
+import { randomUUID } from 'node:crypto';
 
 export default {
   up: async (queryInterface, Sequelize) => {
@@ -58,7 +58,7 @@ export default {
         const minutesAgo = (messageCount - i) * 30 + convIndex * 60;
 
         messages.push({
-          id: uuidv4(),
+          id: randomUUID(),
           conversationId,
           senderId,
           content: messageContents[messageIndex % messageContents.length],

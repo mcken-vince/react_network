@@ -1,7 +1,7 @@
 import type { Response } from "express";
 import type { ValidationError } from "sequelize";
 import type { ErrorResponse } from "../../shared/types";
-import type { FieldErrors, ValidationFailure } from "./validation";
+import type { FieldErrors } from "./validation";
 
 /** Standard error envelope for any status. */
 export function sendError(
@@ -12,14 +12,6 @@ export function sendError(
 ): void {
   const body: ErrorResponse = errors ? { error, errors } : { error };
   res.status(status).json(body);
-}
-
-/** 400 for a validateX() failure. */
-export function sendValidationError(
-  res: Response,
-  failure: ValidationFailure,
-): void {
-  sendError(res, 400, failure.message, failure.errors);
 }
 
 /** 400 for a Sequelize validation error, same envelope. */

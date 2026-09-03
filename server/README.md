@@ -1,69 +1,21 @@
-# React Network Server - PostgreSQL Backend
+# Server
 
-## Prerequisites
+Express + Socket.IO + Sequelize (Postgres), run with `tsx`.
 
-- Node.js (v14 or higher)
-- PostgreSQL (running on localhost:5433)
-- npm or yarn
+## Scripts
+- `npm run dev` — start with file watching
+- `npm run start` — start (also via tsx; see D5 in the refactor notes re: a compiled build)
+- `npm run typecheck` / `lint` / `knip` — must all be clean before merging
+- `npm run db:setup` — run migrations · `db:seed` — seed demo data · `db:drop` — drop everything · `db:test` — connectivity check
 
-## Setup
+## Layout
+- `shared/` (repo root) — wire types, socket event map, limits, notification config. Shared with the client; the server must not diverge from it.
+- `routes/` — thin: validate → model/service → `satisfies` response type
+- `services/` — anything that both writes and emits a socket event
+- `websocket/` — auth middleware, `io.ts` emit helpers, `handlers.ts` (presence + typing)
+- `lib/` — jwt, typed HTTP errors, handler wrappers, serialization
 
-1. **Install dependencies:**
-
-   ```bash
-   npm install
-   ```
-
-2. **Configure environment variables:**
-
-   Copy the `.env.example` file to `.env`:
-
-   ```bash
-   cp .env.example .env
-   ```
-
-   Then edit `.env` with your configuration:
-
-   ```
-   # Database Configuration
-   DB_HOST=localhost
-   DB_PORT=5433
-   DB_NAME=react_network
-   DB_USER=postgres
-   DB_PASSWORD=postgres
-
-   # JWT Configuration
-   JWT_SECRET=your-secret-key-change-in-production
-
-   # Server Configuration
-   PORT=3001
-   ```
-
-3. **Create the database:**
-
-   Make sure PostgreSQL is running on localhost:5433, then create the database:
-
-   ```sql
-   CREATE DATABASE react_network;
-   ```
-
-4. **Set up database tables:**
-   ```bash
-   npm run db:setup
-   ```
-
-## Running the Server
-
-- **Development mode (with auto-reload):**
-
-  ```bash
-  npm run dev
-  ```
-
-- **Production mode:**
-  ```bash
-  npm start
-  ```
-
-## **Database Migrations**
-- Always create database migrations with working `up` and `down` scripts whenever tables are updated. Assume the database may need to be setup from scratch, so the post-migration tables should always match the corresponding sequelize entities.
+## The JavaScript exception
+`migrations/`, `seeders/`, and `config/database.cli.js` are intentionally JavaScript:
+`sequelize-cli` cannot load TypeScript. They are excluded from `tsc`, `eslint`, and `knip`.
+Everything else is TypeScript with `allowJs` off.

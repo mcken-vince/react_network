@@ -1,6 +1,7 @@
 {
   "$schema": "https://unpkg.com/knip@5/schema.json",
-  "entry": ["index.ts", "scripts/*.ts"],
+  "entry": ["scripts/*.ts"],
   "project": ["**/*.{ts,js}"],
-  "ignore": ["migrations/**", "seeders/**", "config/database.cli.js"]
+  "ignore": ["migrations/**", "seeders/**", "config/database.cli.js"],
+  "ignoreDependencies": ["pg", "pg-hstore"]
 }

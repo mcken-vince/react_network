@@ -29,9 +29,11 @@ const PUBLIC_ATTRIBUTES = [
   "firstName",
   "lastName",
   "username",
+  "age",
   "location",
   "bio",
   "createdAt",
+  "updatedAt",
 ];
 
 /** What a User serializes to (never includes the password hash). */

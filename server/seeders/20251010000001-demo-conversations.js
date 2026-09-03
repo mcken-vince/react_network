@@ -1,6 +1,6 @@
 'use strict';
 
-import { v4 as uuidv4 } from 'uuid';
+import { randomUUID } from 'node:crypto';
 
 export default {
   up: async (queryInterface, Sequelize) => {
@@ -21,7 +21,7 @@ export default {
 
     // Create 2 direct conversations
     for (let i = 0; i < Math.min(2, users.length - 1); i++) {
-      const conversationId = uuidv4();
+      const conversationId = randomUUID();
       conversationIds.push({
         id: conversationId,
         type: 'direct',
@@ -40,7 +40,7 @@ export default {
 
     // Create 1 group conversation if we have enough users
     if (users.length >= 3) {
-      const groupId = uuidv4();
+      const groupId = randomUUID();
       conversationIds.push({
         id: groupId,
         type: 'group',
