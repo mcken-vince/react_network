@@ -1,35 +1,19 @@
-import React, { useState } from "react";
-import { Button, Flex, Stack, Text, Heading } from "../atoms";
+import { Button, Flex, Heading, Stack, Text } from "../atoms";
 import { useNotifications } from "../../hooks/useNotificationsContext";
 import NotificationCard from "./NotificationCard";
 import { LoadingSpinner } from "../ui/LoadingSpinner";
 
-const NotificationsList: React.FC = () => {
-  const { 
-    notifications, 
-    isLoading, 
+const NotificationsList = () => {
+  const {
+    notifications,
+    isLoading,
     isRefreshing,
-    markAllAsRead, 
-    loadNotifications 
+    refresh,
+    markAllAsRead,
+    isMarkingAllAsRead,
   } = useNotifications();
-  
-  const [isMarkingAllRead, setIsMarkingAllRead] = useState(false);
 
-  const unreadNotifications = notifications.filter((n) => !n.isRead);
-  const hasUnread = unreadNotifications.length > 0;
-
-  const handleMarkAllAsRead = async () => {
-    setIsMarkingAllRead(true);
-    try {
-      await markAllAsRead();
-    } finally {
-      setIsMarkingAllRead(false);
-    }
-  };
-
-  const handleRefresh = async () => {
-    await loadNotifications();
-  };
+  const unreadCount = notifications.filter((n) => !n.isRead).length;
 
   if (isLoading && notifications.length === 0) {
     return (
@@ -50,44 +34,35 @@ const NotificationsList: React.FC = () => {
           <Button
             variant="ghost"
             size="sm"
-            onClick={handleRefresh}
+            onClick={() => refresh()}
             disabled={isRefreshing}
             className="flex items-center gap-2"
           >
-            {isRefreshing ? (
-              <LoadingSpinner size="sm" />
-            ) : (
-              <span className="inline-block">🔄</span>
-            )}
+            {isRefreshing ? <LoadingSpinner size="sm" /> : <span>🔄</span>}
             <span>Refresh</span>
           </Button>
-          {hasUnread && (
+          {unreadCount > 0 && (
             <Button
               variant="outline"
               size="sm"
-              onClick={handleMarkAllAsRead}
-              disabled={isMarkingAllRead}
+              onClick={() => markAllAsRead()}
+              disabled={isMarkingAllAsRead}
             >
-              {isMarkingAllRead ? "Marking..." : "Mark All Read"}
+              {isMarkingAllAsRead ? "Marking..." : "Mark All Read"}
             </Button>
           )}
         </Flex>
       </Flex>
 
-      {hasUnread && (
+      {unreadCount > 0 && (
         <Text size="sm" color="muted">
-          {unreadNotifications.length} unread notification
-          {unreadNotifications.length !== 1 ? "s" : ""}
+          {unreadCount} unread notification{unreadCount !== 1 ? "s" : ""}
         </Text>
       )}
 
       {notifications.length === 0 ? (
         <div className="text-center py-8 text-gray-500">
           <Text>No notifications yet</Text>
-          <Text size="sm" color="muted" className="mt-2">
-            You'll receive notifications when someone sends you a connection
-            request
-          </Text>
         </div>
       ) : (
         <Stack spacing="sm">

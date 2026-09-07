@@ -1,329 +1,134 @@
-import { useQuery, useMutation, useQueryClient, UseQueryResult, UseMutationResult } from '@tanstack/react-query';
-import { notificationAPI } from '../utils/api';
-import type { Notification, NotificationFilters } from '../types';
+import {
+  useMutation,
+  useQuery,
+  useQueryClient,
+  type UseQueryResult,
+} from "@tanstack/react-query";
+import { notificationAPI } from "../lib/api";
+import { notificationKeys } from "../lib/queryKeys";
+import type { Notification, NotificationFilters } from "../types";
 
-// ================================
-// Query Keys Configuration
-// ================================
-export const notificationKeys = {
-  all: ['notifications'] as const,
-  lists: () => [...notificationKeys.all, 'list'] as const,
-  list: (filters?: NotificationFilters) => [...notificationKeys.lists(), { filters }] as const,
-  unreadCount: () => [...notificationKeys.all, 'unread-count'] as const,
-};
+export { notificationKeys };
 
-// ================================
-// Constants
-// ================================
-const STALE_TIMES = {
-  NOTIFICATIONS: 30 * 1000,     // 30 seconds
-  UNREAD_COUNT: 15 * 1000,      // 15 seconds
-};
+const STALE_TIME = 30_000;
 
-// ================================
-// Types
-// ================================
-interface NotificationsResponse {
-  notifications: Notification[];
-}
-
-interface UnreadCountResponse {
-  count: number;
-}
-
-interface OptimisticSnapshot {
-  notifications?: Notification[];
-  unreadCount?: number;
-}
-
-// ================================
-// Query Hooks
-// ================================
-
-/**
- * Hook to fetch notifications list
- * Note: Polling has been removed. Use manual refresh instead.
- */
 export const useNotificationsList = (
-  options: NotificationFilters = {}
-): UseQueryResult<Notification[], Error> => {
-  return useQuery({
-    queryKey: notificationKeys.list(options),
-    queryFn: () => notificationAPI.getNotifications(options),
-    select: (data: NotificationsResponse) => data.notifications || [],
-    staleTime: STALE_TIMES.NOTIFICATIONS,
-    // Polling removed - manual refresh only
+  filters: NotificationFilters = {},
+): UseQueryResult<Notification[], Error> =>
+  useQuery({
+    queryKey: notificationKeys.list(filters),
+    queryFn: () => notificationAPI.list(filters).then((r) => r.notifications),
+    staleTime: STALE_TIME,
   });
-};
 
-/**
- * Hook to fetch unread notification count
- * Note: Polling has been removed. Use manual refresh instead.
- */
-export const useUnreadNotificationCount = (): UseQueryResult<number, Error> => {
-  return useQuery({
+export const useUnreadNotificationCount = (): UseQueryResult<number, Error> =>
+  useQuery({
     queryKey: notificationKeys.unreadCount(),
-    queryFn: notificationAPI.getUnreadCount,
-    select: (data: UnreadCountResponse) => data.count || 0,
-    staleTime: STALE_TIMES.UNREAD_COUNT,
-    // Polling removed - manual refresh only
+    queryFn: () => notificationAPI.unreadCount().then((r) => r.count),
+    staleTime: STALE_TIME,
   });
+
+type QueryClient = ReturnType<typeof useQueryClient>;
+
+const patchLists = (
+  queryClient: QueryClient,
+  updater: (list: Notification[]) => Notification[],
+): void => {
+  queryClient.setQueriesData<Notification[]>(
+    { queryKey: notificationKeys.lists() },
+    (old) => (old ? updater(old) : old),
+  );
 };
 
-// ================================
-// Mutation Helpers
-// ================================
-
-/**
- * Helper to handle optimistic updates for notification mutations
- */
-const createOptimisticUpdateHelpers = (queryClient: ReturnType<typeof useQueryClient>) => ({
-  async cancelQueries(): Promise<void> {
-    await queryClient.cancelQueries({ queryKey: notificationKeys.lists() });
-    await queryClient.cancelQueries({ queryKey: notificationKeys.unreadCount() });
-  },
-
-  getSnapshot(): OptimisticSnapshot {
-    return {
-      notifications: queryClient.getQueryData(notificationKeys.lists()),
-      unreadCount: queryClient.getQueryData(notificationKeys.unreadCount())
-    };
-  },
-
-  rollback(snapshot: OptimisticSnapshot): void {
-    if (snapshot?.notifications) {
-      queryClient.setQueryData(notificationKeys.lists(), snapshot.notifications);
-    }
-    if (snapshot?.unreadCount !== undefined) {
-      queryClient.setQueryData(notificationKeys.unreadCount(), snapshot.unreadCount);
-    }
-  },
-
-  invalidateAll(): void {
-    queryClient.invalidateQueries({ queryKey: notificationKeys.lists() });
-    queryClient.invalidateQueries({ queryKey: notificationKeys.unreadCount() });
-  },
-
-  updateNotificationInLists(updateFn: (notifications: Notification[]) => Notification[]): void {
-    queryClient.setQueriesData<Notification[]>(
-      { queryKey: notificationKeys.lists() },
-      (oldData) => {
-        if (!oldData || !Array.isArray(oldData)) return oldData;
-        return updateFn(oldData);
-      }
-    );
-  },
-
-  setUnreadCount(newCount: number): void {
-    queryClient.setQueryData(notificationKeys.unreadCount(), newCount);
-  },
-
-  decrementUnreadCount(): void {
-    queryClient.setQueryData<number>(
-      notificationKeys.unreadCount(),
-      (old) => Math.max(0, (old || 0) - 1)
-    );
-  }
-});
-
-// ================================
-// Mutation Hooks
-// ================================
-
-/**
- * Hook to mark a single notification as read
- */
-export const useMarkNotificationAsRead = (): UseMutationResult<
-  void,
-  Error,
-  string,
-  OptimisticSnapshot
-> => {
+export const useMarkNotificationAsRead = () => {
   const queryClient = useQueryClient();
-  const helpers = createOptimisticUpdateHelpers(queryClient);
-
   return useMutation({
-    mutationFn: notificationAPI.markAsRead,
-    
-    onMutate: async (notificationId: string) => {
-      await helpers.cancelQueries();
-      const snapshot = helpers.getSnapshot();
-
-      // Optimistic updates
-      helpers.updateNotificationInLists((notifications) =>
-        notifications.map(notification =>
-          notification.id === notificationId
-            ? { ...notification, isRead: true }
-            : notification
-        )
+    mutationFn: (notificationId: number) =>
+      notificationAPI.markRead(notificationId),
+    onMutate: (notificationId) => {
+      patchLists(queryClient, (list) =>
+        list.map((n) => (n.id === notificationId ? { ...n, isRead: true } : n)),
       );
-      helpers.decrementUnreadCount();
-
-      return snapshot;
+      queryClient.setQueryData<number>(notificationKeys.unreadCount(), (c) =>
+        Math.max(0, (c ?? 0) - 1),
+      );
     },
-    
-    onError: (_err, _notificationId, snapshot) => {
-      if (snapshot) {
-        helpers.rollback(snapshot);
-      }
-    },
-    
-    onSettled: () => {
-      helpers.invalidateAll();
-    },
+    onSettled: () =>
+      queryClient.invalidateQueries({ queryKey: notificationKeys.all }),
   });
 };
 
-/**
- * Hook to mark all notifications as read
- */
-export const useMarkAllNotificationsAsRead = (): UseMutationResult<
-  void,
-  Error,
-  void,
-  OptimisticSnapshot
-> => {
+export const useMarkAllNotificationsAsRead = () => {
   const queryClient = useQueryClient();
-  const helpers = createOptimisticUpdateHelpers(queryClient);
-
   return useMutation({
-    mutationFn: notificationAPI.markAllAsRead,
-    
-    onMutate: async () => {
-      await helpers.cancelQueries();
-      const snapshot = helpers.getSnapshot();
-
-      // Optimistic updates
-      helpers.updateNotificationInLists((notifications) =>
-        notifications.map(notification => ({ ...notification, isRead: true }))
+    mutationFn: () => notificationAPI.markAllRead(),
+    onMutate: () => {
+      patchLists(queryClient, (list) =>
+        list.map((n) => ({ ...n, isRead: true })),
       );
-      helpers.setUnreadCount(0);
-
-      return snapshot;
+      queryClient.setQueryData<number>(notificationKeys.unreadCount(), 0);
     },
-    
-    onError: (_err, _variables, snapshot) => {
-      if (snapshot) {
-        helpers.rollback(snapshot);
-      }
-    },
-    
-    onSettled: () => {
-      helpers.invalidateAll();
-    },
+    onSettled: () =>
+      queryClient.invalidateQueries({ queryKey: notificationKeys.all }),
   });
 };
 
-/**
- * Hook to delete a notification
- */
-export const useDeleteNotification = (): UseMutationResult<
-  void,
-  Error,
-  string,
-  OptimisticSnapshot
-> => {
+export const useDeleteNotification = () => {
   const queryClient = useQueryClient();
-  const helpers = createOptimisticUpdateHelpers(queryClient);
-
   return useMutation({
-    mutationFn: notificationAPI.deleteNotification,
-    
-    onMutate: async (notificationId: string) => {
-      await helpers.cancelQueries();
-      const snapshot = helpers.getSnapshot();
-
-      // Check if notification was unread
-      const notifications = snapshot.notifications;
-      const deletedNotification = Array.isArray(notifications) 
-        ? notifications.find(n => n.id === notificationId)
-        : null;
-      const wasUnread = deletedNotification && !deletedNotification.isRead;
-
-      // Optimistic updates
-      helpers.updateNotificationInLists((notifications) =>
-        notifications.filter(notification => notification.id !== notificationId)
-      );
-      
-      if (wasUnread) {
-        helpers.decrementUnreadCount();
-      }
-
-      return snapshot;
-    },
-    
-    onError: (_err, _notificationId, snapshot) => {
-      if (snapshot) {
-        helpers.rollback(snapshot);
-      }
-    },
-    
-    onSettled: () => {
-      helpers.invalidateAll();
-    },
+    mutationFn: (notificationId: number) =>
+      notificationAPI.remove(notificationId),
+    onMutate: (notificationId) =>
+      patchLists(queryClient, (list) =>
+        list.filter((n) => n.id !== notificationId),
+      ),
+    onSettled: () =>
+      queryClient.invalidateQueries({ queryKey: notificationKeys.all }),
   });
 };
 
-// ================================
-// Composite Hooks
-// ================================
+/** Invalidate every notification query (after connection actions, etc.). */
+export const useRefreshNotifications = () => {
+  const queryClient = useQueryClient();
+  return () =>
+    queryClient.invalidateQueries({ queryKey: notificationKeys.all });
+};
 
-interface UseNotificationsFeatureResult {
-  // Queries
+export interface NotificationsFeature {
   notifications: Notification[];
-  isLoadingNotifications: boolean;
-  notificationsError: Error | null;
   unreadCount: number;
-  isLoadingUnreadCount: boolean;
-  
-  // Mutations
-  markAsRead: (notificationId: string) => void;
+  isLoading: boolean;
+  isRefreshing: boolean;
+  refresh: () => void;
+  markAsRead: (id: number) => void;
   markAllAsRead: () => void;
-  deleteNotification: (notificationId: string) => void;
-  
-  // Loading states
+  deleteNotification: (id: number) => void;
   isMarkingAsRead: boolean;
   isMarkingAllAsRead: boolean;
   isDeleting: boolean;
-  
-  // Refetch functions
-  refetchNotifications: () => void;
-  refetchUnreadCount: () => void;
 }
 
-/**
- * Combined hook for common notification operations
- */
 export const useNotificationsFeature = (
-  options: NotificationFilters = {}
-): UseNotificationsFeatureResult => {
-  const notifications = useNotificationsList(options);
-  const unreadCount = useUnreadNotificationCount();
+  filters: NotificationFilters = {},
+): NotificationsFeature => {
+  const list = useNotificationsList(filters);
+  const count = useUnreadNotificationCount();
   const markAsRead = useMarkNotificationAsRead();
   const markAllAsRead = useMarkAllNotificationsAsRead();
-  const deleteNotificationMutation = useDeleteNotification();
+  const remove = useDeleteNotification();
+  const refresh = useRefreshNotifications();
 
   return {
-    // Queries
-    notifications: notifications.data || [],
-    isLoadingNotifications: notifications.isLoading,
-    notificationsError: notifications.error,
-    
-    unreadCount: unreadCount.data || 0,
-    isLoadingUnreadCount: unreadCount.isLoading,
-    
-    // Mutations
+    notifications: list.data ?? [],
+    unreadCount: count.data ?? 0,
+    isLoading: list.isLoading,
+    isRefreshing: list.isFetching || count.isFetching,
+    refresh,
     markAsRead: markAsRead.mutate,
     markAllAsRead: markAllAsRead.mutate,
-    deleteNotification: deleteNotificationMutation.mutate,
-    
-    // Loading states
+    deleteNotification: remove.mutate,
     isMarkingAsRead: markAsRead.isPending,
     isMarkingAllAsRead: markAllAsRead.isPending,
-    isDeleting: deleteNotificationMutation.isPending,
-    
-    // Refetch functions
-    refetchNotifications: () => { notifications.refetch(); },
-    refetchUnreadCount: () => { unreadCount.refetch(); },
+    isDeleting: remove.isPending,
   };
 };

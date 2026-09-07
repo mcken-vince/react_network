@@ -6,22 +6,21 @@
     "module": "ESNext",
     "skipLibCheck": true,
 
-    /* Bundler mode */
     "moduleResolution": "bundler",
     "allowImportingTsExtensions": true,
+    "allowJs": true, // TRANSITIONAL — remove once .jsx/.js are gone
+    "checkJs": false,
     "isolatedModules": true,
     "moduleDetection": "force",
     "noEmit": true,
     "jsx": "react-jsx",
 
-    /* Linting */
     "strict": true,
     "noUnusedLocals": true,
     "noUnusedParameters": true,
     "noFallthroughCasesInSwitch": true,
     "noUncheckedIndexedAccess": true,
 
-    /* Path mapping */
     "baseUrl": ".",
     "paths": {
       "@/*": ["src/*"],

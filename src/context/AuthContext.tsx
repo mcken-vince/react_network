@@ -1,26 +1,22 @@
-import React, { createContext, useState, ReactNode } from "react";
+import { createContext, useState, type ReactNode } from "react";
 import { useNavigate } from "@tanstack/react-router";
 import { useQueryClient } from "@tanstack/react-query";
-import { authAPI, userAPI } from "../utils/api";
-import { useCurrentUser, userKeys } from "../hooks/useUsers";
-import type { User } from "../types";
+import { ApiError, authAPI, userAPI } from "../lib/api";
+import { useCurrentUser } from "../hooks/useUsers";
+import { userKeys } from "../lib/queryKeys";
+import type {
+  AuthResponse,
+  LoginCredentials,
+  ProfileUpdateData,
+  SignupData,
+  User,
+  UserResponse,
+} from "../types";
 
-interface SignupData {
-  username: string;
-  password: string;
-  confirmPassword: string;
-  firstName: string;
-  lastName: string;
-  age: number;
-  location: string;
-  email?: string;
-  bio?: string;
-}
-
-interface LoginCredentials {
-  username: string;
-  password: string;
-}
+type SignupInput = Omit<SignupData, "age"> & {
+  age: number | string;
+  confirmPassword?: string;
+};
 
 interface AuthResult {
   success: boolean;
@@ -29,57 +25,60 @@ interface AuthResult {
 }
 
 interface AuthContextValue {
-  user: User | null | undefined;
+  user: User | null;
   isLoading: boolean;
-  error: string | null | undefined;
-  handleSignup: (userData: SignupData) => Promise<AuthResult>;
+  error: string | null;
+  handleSignup: (values: SignupInput) => Promise<AuthResult>;
   handleLogin: (credentials: LoginCredentials) => Promise<AuthResult>;
   handleLogout: () => void;
   updateUserProfile: (
     userId: number,
-    updateData: Partial<User>,
+    data: ProfileUpdateData,
   ) => Promise<AuthResult>;
-  refetchCurrentUser: () => Promise<any>;
+  refetchCurrentUser: () => void;
 }
 
-const AuthContext = createContext<AuthContextValue | null>(null);
+export const AuthContext = createContext<AuthContextValue | null>(null);
 
-export { AuthContext };
+const toFailure = (error: unknown): AuthResult =>
+  error instanceof ApiError
+    ? { success: false, message: error.message, errors: error.errors }
+    : { success: false, message: "Something went wrong" };
 
-interface AuthProviderProps {
-  children: ReactNode;
-}
-
-export function AuthProvider({ children }: AuthProviderProps) {
+export function AuthProvider({ children }: { children: ReactNode }) {
   const navigate = useNavigate();
   const queryClient = useQueryClient();
   const [error, setError] = useState<string | null>(null);
 
-  // Use React Query for current user data
-  const {
-    data: userData,
-    isLoading,
-    error: queryError,
-    refetch: refetchCurrentUser,
-  } = useCurrentUser();
+  const { data, isLoading, refetch } = useCurrentUser();
+  const user = data?.user ?? null;
 
-  const user = userData?.user;
+  const afterAuth = (res: AuthResponse): void => {
+    queryClient.setQueryData<UserResponse>(userKeys.current(), {
+      user: res.user,
+    });
+    navigate({ to: "/dashboard" });
+  };
 
-  const handleSignup = async (userData: SignupData): Promise<AuthResult> => {
+  const handleSignup = async (values: SignupInput): Promise<AuthResult> => {
     setError(null);
     try {
-      const response = await authAPI.signup(userData);
-
-      // Update the current user cache with the new user data
-      queryClient.setQueryData(userKeys.current(), response);
-
-      // Navigate to dashboard after successful signup
-      navigate({ to: "/dashboard" });
+      const payload: SignupData = {
+        username: values.username,
+        password: values.password,
+        firstName: values.firstName,
+        lastName: values.lastName,
+        age: Number(values.age),
+        location: values.location,
+        ...(values.email ? { email: values.email } : {}),
+        ...(values.bio ? { bio: values.bio } : {}),
+      };
+      afterAuth(await authAPI.signup(payload));
       return { success: true };
-    } catch (err: any) {
-      const message = err.message || "Signup failed";
-      setError(message);
-      return { success: false, message, errors: err.errors };
+    } catch (err) {
+      const failure = toFailure(err);
+      setError(failure.message ?? null);
+      return failure;
     }
   };
 
@@ -88,64 +87,55 @@ export function AuthProvider({ children }: AuthProviderProps) {
   ): Promise<AuthResult> => {
     setError(null);
     try {
-      const response = await authAPI.signin(credentials);
-
-      // Update the current user cache with the new user data
-      queryClient.setQueryData(userKeys.current(), response);
-
-      // Navigate to dashboard after successful login
-      navigate({ to: "/dashboard" });
+      afterAuth(await authAPI.signin(credentials));
       return { success: true };
-    } catch (err: any) {
-      const message = err.message || "Invalid username or password";
-      setError(message);
-      return { success: false, message, errors: err.errors };
+    } catch (err) {
+      const failure = toFailure(err);
+      setError(failure.message ?? null);
+      return failure;
     }
   };
 
   const handleLogout = (): void => {
     authAPI.signout();
-
-    // Clear all React Query caches
     queryClient.clear();
-
-    // Navigate to login page after logout
     navigate({ to: "/login" });
   };
 
   const updateUserProfile = async (
     userId: number,
-    updateData: Partial<User>,
+    profileData: ProfileUpdateData,
   ): Promise<AuthResult> => {
     setError(null);
     try {
-      const response = await userAPI.updateProfile(userId, updateData);
-
-      // Update React Query caches
-      queryClient.setQueryData(userKeys.detail(userId), response);
-
-      // Update current user cache if it's the same user
-      if (user && user.id === userId) {
-        queryClient.setQueryData(userKeys.current(), response);
-      }
-
+      const res = await userAPI.updateProfile(userId, profileData);
+      queryClient.setQueryData(userKeys.detail(userId), res);
+      queryClient.setQueryData<UserResponse | undefined>(
+        userKeys.current(),
+        (old) =>
+          old && old.user.id === userId ? { ...old, user: res.user } : old,
+      );
+      void queryClient.invalidateQueries({ queryKey: userKeys.lists() });
+      void queryClient.invalidateQueries({
+        queryKey: userKeys.withConnectionStatus(),
+      });
       return { success: true };
-    } catch (err: any) {
-      const message = err.message || "Failed to update profile";
-      setError(message);
-      return { success: false, message, errors: err.errors };
+    } catch (err) {
+      const failure = toFailure(err);
+      setError(failure.message ?? null);
+      return failure;
     }
   };
 
   const value: AuthContextValue = {
     user,
     isLoading,
-    error: error || (queryError as any)?.message,
+    error,
     handleSignup,
     handleLogin,
     handleLogout,
     updateUserProfile,
-    refetchCurrentUser,
+    refetchCurrentUser: () => void refetch(),
   };
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;
