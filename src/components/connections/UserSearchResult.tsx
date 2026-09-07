@@ -1,35 +1,36 @@
 import { Link } from "@tanstack/react-router";
 import { Card } from "../common";
-import { Button, Flex, Text, Stack } from "../atoms";
+import { Button, Flex, Stack, Text } from "../atoms";
+import type { UserWithConnectionStatus } from "../../types";
 
-const UserSearchResult = ({ user, onSendRequest, onMouseEnter }) => {
-  const getConnectionButton = () => {
-    const status = user.connectionStatus;
+interface UserSearchResultProps {
+  user: UserWithConnectionStatus;
+  onSendRequest: () => void;
+  onMouseEnter?: () => void;
+}
 
+const UserSearchResult = ({
+  user,
+  onSendRequest,
+  onMouseEnter,
+}: UserSearchResultProps) => {
+  const status = user.connectionStatus;
+
+  const connectionButton = () => {
     if (!status) {
-      // No connection exists
       return (
         <Button variant="primary" size="sm" onClick={onSendRequest}>
           Connect
         </Button>
       );
     }
-
     switch (status.status) {
       case "pending":
-        if (status.isRequester) {
-          return (
-            <Button variant="outline" size="sm" disabled>
-              Request Sent
-            </Button>
-          );
-        } else {
-          return (
-            <Button variant="outline" size="sm" disabled>
-              Request Received
-            </Button>
-          );
-        }
+        return (
+          <Button variant="outline" size="sm" disabled>
+            {status.isRequester ? "Request Sent" : "Request Received"}
+          </Button>
+        );
       case "accepted":
         return (
           <Button variant="outline" size="sm" disabled>
@@ -75,14 +76,13 @@ const UserSearchResult = ({ user, onSendRequest, onMouseEnter }) => {
             Age: {user.age}
           </Text>
         </Stack>
-
         <Flex gap="sm">
-          <Link to="/profile/$userId" params={{ userId: user.id.toString() }}>
+          <Link to="/profile/$userId" params={{ userId: String(user.id) }}>
             <Button variant="outline" size="sm">
               View Profile
             </Button>
           </Link>
-          {getConnectionButton()}
+          {connectionButton()}
         </Flex>
       </Flex>
     </Card>

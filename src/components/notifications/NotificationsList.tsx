@@ -1,9 +1,13 @@
 import { Button, Flex, Heading, Stack, Text } from "../atoms";
-import { useNotifications } from "../../hooks/useNotificationsContext";
+import { useNotificationsFeature } from "../../hooks/useNotifications";
 import NotificationCard from "./NotificationCard";
 import { LoadingSpinner } from "../ui/LoadingSpinner";
 
-const NotificationsList = () => {
+interface NotificationsListProps {
+  onNavigate?: () => void;
+}
+
+const NotificationsList = ({ onNavigate }: NotificationsListProps) => {
   const {
     notifications,
     isLoading,
@@ -11,7 +15,7 @@ const NotificationsList = () => {
     refresh,
     markAllAsRead,
     isMarkingAllAsRead,
-  } = useNotifications();
+  } = useNotificationsFeature();
 
   const unreadCount = notifications.filter((n) => !n.isRead).length;
 
@@ -70,6 +74,7 @@ const NotificationsList = () => {
             <NotificationCard
               key={notification.id}
               notification={notification}
+              onNavigate={onNavigate}
             />
           ))}
         </Stack>

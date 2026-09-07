@@ -1,18 +1,28 @@
 import { Link } from "@tanstack/react-router";
 import { Card } from "../common";
-import { Button, Flex, Text, Stack } from "../atoms";
+import { Button, Flex, Stack, Text } from "../atoms";
+import type { Connection } from "../../types";
+
+interface ConnectionCardProps {
+  connection: Connection;
+  currentUserId: number;
+  onRemove: () => void;
+}
 
 /**
- * An accepted connection. The server returns both `requester` and
- * `recipient`; we show whichever one isn't the current user.
+ * An accepted connection. The server embeds both `requester` and `recipient`;
+ * we show whichever one isn't the current user.
  */
-const ConnectionCard = ({ connection, currentUserId, onRemove }) => {
+const ConnectionCard = ({
+  connection,
+  currentUserId,
+  onRemove,
+}: ConnectionCardProps) => {
   const user =
     connection.requesterId === currentUserId
       ? connection.recipient
       : connection.requester;
-
-  if (!user) return null; // defensive: malformed row shouldn't take the page down
+  if (!user) return null;
 
   return (
     <Card>
@@ -34,7 +44,6 @@ const ConnectionCard = ({ connection, currentUserId, onRemove }) => {
             {new Date(connection.updatedAt).toLocaleDateString()}
           </Text>
         </Stack>
-
         <Flex gap="sm">
           <Link to="/profile/$userId" params={{ userId: String(user.id) }}>
             <Button variant="outline" size="sm">

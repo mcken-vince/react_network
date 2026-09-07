@@ -1,6 +1,15 @@
-import { Card } from "../common";
-import { Button, Flex, Text, Stack } from "../atoms";
 import { Link } from "@tanstack/react-router";
+import { Card } from "../common";
+import { Button, Flex, Stack, Text } from "../atoms";
+import type { Connection } from "../../types";
+
+interface ConnectionRequestCardProps {
+  request: Connection;
+  isSentRequest?: boolean;
+  onAccept?: () => void;
+  onReject?: () => void;
+  onCancel?: () => void;
+}
 
 const ConnectionRequestCard = ({
   request,
@@ -8,8 +17,9 @@ const ConnectionRequestCard = ({
   onAccept,
   onReject,
   onCancel,
-}) => {
+}: ConnectionRequestCardProps) => {
   const user = isSentRequest ? request.recipient : request.requester;
+  if (!user) return null;
 
   return (
     <Card>
@@ -31,9 +41,8 @@ const ConnectionRequestCard = ({
             {new Date(request.createdAt).toLocaleDateString()}
           </Text>
         </Stack>
-
         <Flex gap="sm">
-          <Link to="/profile/$userId" params={{ userId: user.id.toString() }}>
+          <Link to="/profile/$userId" params={{ userId: String(user.id) }}>
             <Button variant="outline" size="sm">
               View Profile
             </Button>

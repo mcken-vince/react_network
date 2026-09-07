@@ -1,84 +1,82 @@
 import { useState } from "react";
-import { Container, Heading, Stack, Flex } from "../atoms";
-import { useNotifications } from "../../hooks/useNotificationsContext";
+import { Container, Flex, Heading, Stack } from "../atoms";
 import {
-  usePendingRequests,
-  useSentRequests,
   useAcceptConnectionRequest,
+  useConnectionsList,
+  usePendingRequests,
   useRejectConnectionRequest,
   useRemoveConnection,
-  useConnectionsList,
+  useSentRequests,
 } from "../../hooks/useConnections";
+import { useRefreshNotifications } from "../../hooks/useNotifications";
 import ConnectionRequestCard from "./ConnectionRequestCard";
 import ConnectionCard from "./ConnectionCard";
 import UserSearchForm from "./UserSearchForm";
+import type { Connection, User } from "../../types";
 
-const TABS = [
+type TabId = "search" | "requests" | "sent" | "connections";
+
+const TABS: { id: TabId; label: string; icon: string }[] = [
   { id: "search", label: "Find Users", icon: "🔍" },
   { id: "requests", label: "Requests", icon: "📥" },
   { id: "sent", label: "Sent", icon: "📤" },
   { id: "connections", label: "Connections", icon: "🤝" },
 ];
 
-const ConnectionsPage = ({ user }) => {
-  const { refreshNotifications } = useNotifications();
-  const [activeTab, setActiveTab] = useState("search");
+const ConnectionsPage = ({ user }: { user: User }) => {
+  const refreshNotifications = useRefreshNotifications();
+  const [activeTab, setActiveTab] = useState<TabId>("search");
 
-  const { data: pendingRequests = [], isLoading: isPendingLoading } =
+  const { data: pendingRequests = [], isLoading: pendingLoading } =
     usePendingRequests();
-  const { data: sentRequests = [], isLoading: isSentLoading } =
-    useSentRequests();
-  const { data: connections = [], isLoading: isConnectionsLoading } =
+  const { data: sentRequests = [], isLoading: sentLoading } = useSentRequests();
+  const { data: connections = [], isLoading: connectionsLoading } =
     useConnectionsList();
 
-  const acceptRequestMutation = useAcceptConnectionRequest();
-  const rejectRequestMutation = useRejectConnectionRequest();
-  const removeConnectionMutation = useRemoveConnection();
+  const acceptRequest = useAcceptConnectionRequest();
+  const rejectRequest = useRejectConnectionRequest();
+  const removeConnection = useRemoveConnection();
 
-  const loading = isPendingLoading || isSentLoading || isConnectionsLoading;
+  const loading = pendingLoading || sentLoading || connectionsLoading;
 
-  const handleAcceptRequest = async (connectionId) => {
+  const handleAccept = async (id: number) => {
     try {
-      await acceptRequestMutation.mutateAsync(connectionId);
+      await acceptRequest.mutateAsync(id);
       refreshNotifications();
     } catch (error) {
       console.error("Error accepting request:", error);
     }
   };
-
-  const handleRejectRequest = async (connectionId) => {
+  const handleReject = async (id: number) => {
     try {
-      await rejectRequestMutation.mutateAsync(connectionId);
+      await rejectRequest.mutateAsync(id);
       refreshNotifications();
     } catch (error) {
       console.error("Error rejecting request:", error);
     }
   };
-
-  const handleCancelRequest = async (connectionId) => {
+  const handleCancel = async (id: number) => {
     try {
-      await removeConnectionMutation.mutateAsync(connectionId);
+      await removeConnection.mutateAsync(id);
     } catch (error) {
       console.error("Error cancelling request:", error);
     }
   };
-
-  const handleRemoveConnection = async (connection) => {
+  const handleRemove = async (connection: Connection) => {
     const other =
       connection.requesterId === user.id
         ? connection.recipient
         : connection.requester;
     const name = other ? `${other.firstName} ${other.lastName}` : "this user";
     if (!window.confirm(`Remove your connection with ${name}?`)) return;
-
     try {
-      await removeConnectionMutation.mutateAsync(connection.id);
+      await removeConnection.mutateAsync(connection.id);
     } catch (error) {
       console.error("Error removing connection:", error);
     }
   };
 
-  const renderTabContent = () => {
+  const renderTab = () => {
     if (loading) {
       return (
         <Flex justify="center" align="center" className="py-8">
@@ -86,16 +84,9 @@ const ConnectionsPage = ({ user }) => {
         </Flex>
       );
     }
-
     switch (activeTab) {
       case "search":
-        return (
-          <UserSearchForm
-            currentUser={user}
-            onConnectionUpdate={refreshNotifications}
-          />
-        );
-
+        return <UserSearchForm currentUser={user} />;
       case "requests":
         return (
           <Stack spacing="md">
@@ -108,14 +99,13 @@ const ConnectionsPage = ({ user }) => {
                 <ConnectionRequestCard
                   key={request.id}
                   request={request}
-                  onAccept={() => handleAcceptRequest(request.id)}
-                  onReject={() => handleRejectRequest(request.id)}
+                  onAccept={() => handleAccept(request.id)}
+                  onReject={() => handleReject(request.id)}
                 />
               ))
             )}
           </Stack>
         );
-
       case "sent":
         return (
           <Stack spacing="md">
@@ -129,13 +119,12 @@ const ConnectionsPage = ({ user }) => {
                   key={request.id}
                   request={request}
                   isSentRequest
-                  onCancel={() => handleCancelRequest(request.id)}
+                  onCancel={() => handleCancel(request.id)}
                 />
               ))
             )}
           </Stack>
         );
-
       case "connections":
         return (
           <Stack spacing="md">
@@ -149,13 +138,12 @@ const ConnectionsPage = ({ user }) => {
                   key={connection.id}
                   connection={connection}
                   currentUserId={user.id}
-                  onRemove={() => handleRemoveConnection(connection)}
+                  onRemove={() => handleRemove(connection)}
                 />
               ))
             )}
           </Stack>
         );
-
       default:
         return null;
     }
@@ -165,7 +153,6 @@ const ConnectionsPage = ({ user }) => {
     <Container size="medium" className="py-8">
       <Stack spacing="lg">
         <Heading level={1}>Connections</Heading>
-
         <div className="border-b border-gray-200">
           <nav className="-mb-px flex space-x-8">
             {TABS.map((tab) => (
@@ -189,8 +176,7 @@ const ConnectionsPage = ({ user }) => {
             ))}
           </nav>
         </div>
-
-        <div className="min-h-[400px]">{renderTabContent()}</div>
+        <div className="min-h-[400px]">{renderTab()}</div>
       </Stack>
     </Container>
   );

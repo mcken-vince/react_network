@@ -1,48 +1,43 @@
-import React, { useState, useRef, useEffect } from "react";
+import { useEffect, useRef, useState } from "react";
 import { Button, Text } from "../atoms";
-import { useNotifications } from "../../hooks/useNotificationsContext";
+import {
+  useRefreshNotifications,
+  useUnreadNotificationCount,
+} from "../../hooks/useNotifications";
 import NotificationsList from "./NotificationsList";
 
-const NotificationBell: React.FC = () => {
-  const { unreadCount, refreshNotifications } = useNotifications();
-  const [showDropdown, setShowDropdown] = useState(false);
-  const dropdownRef = useRef<HTMLDivElement>(null);
+const NotificationBell = () => {
+  const { data: unreadCount = 0 } = useUnreadNotificationCount();
+  const refresh = useRefreshNotifications();
+  const [open, setOpen] = useState(false);
+  const ref = useRef<HTMLDivElement>(null);
 
-  // Close dropdown when clicking outside
   useEffect(() => {
-    const handleClickOutside = (event: MouseEvent) => {
-      if (dropdownRef.current && !dropdownRef.current.contains(event.target as Node)) {
-        setShowDropdown(false);
+    if (!open) return;
+    const onClick = (event: MouseEvent) => {
+      if (ref.current && !ref.current.contains(event.target as Node)) {
+        setOpen(false);
       }
     };
-
-    if (showDropdown) {
-      document.addEventListener("mousedown", handleClickOutside);
-    }
-
-    return () => {
-      document.removeEventListener("mousedown", handleClickOutside);
-    };
-  }, [showDropdown]);
-
-  const handleToggleDropdown = () => {
-    setShowDropdown((prev) => {
-      if (!prev) {
-        // Refresh notifications when opening dropdown
-        refreshNotifications();
-      }
-      return !prev;
-    });
-  };
+    document.addEventListener("mousedown", onClick);
+    return () => document.removeEventListener("mousedown", onClick);
+  }, [open]);
 
   return (
-    <div className="relative" ref={dropdownRef}>
+    <div className="relative" ref={ref}>
       <Button
         variant="ghost"
         size="sm"
-        onClick={handleToggleDropdown}
         className="relative"
-        aria-label={`Notifications ${unreadCount > 0 ? `(${unreadCount} unread)` : ""}`}
+        aria-label={`Notifications${
+          unreadCount > 0 ? ` (${unreadCount} unread)` : ""
+        }`}
+        onClick={() =>
+          setOpen((prev) => {
+            if (!prev) refresh();
+            return !prev;
+          })
+        }
       >
         <span className="text-lg">🔔</span>
         {unreadCount > 0 && (
@@ -52,14 +47,13 @@ const NotificationBell: React.FC = () => {
         )}
       </Button>
 
-      {showDropdown && (
-        <div className="absolute right-0 mt-2 w-80 bg-white rounded-lg shadow-lg border border-gray-200 z-50 max-h-96 overflow-hidden">
+      {open && (
+        <div className="absolute right-0 mt-2 w-96 max-w-[90vw] bg-white rounded-lg shadow-lg border border-gray-200 z-50 max-h-[28rem] overflow-hidden">
           <div className="p-3 border-b border-gray-200">
             <Text weight="semibold">Notifications</Text>
           </div>
-
-          <div className="max-h-80 overflow-y-auto p-3">
-            <NotificationsList />
+          <div className="max-h-96 overflow-y-auto p-3">
+            <NotificationsList onNavigate={() => setOpen(false)} />
           </div>
         </div>
       )}

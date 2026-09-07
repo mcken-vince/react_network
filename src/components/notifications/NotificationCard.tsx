@@ -1,127 +1,135 @@
-import React, { useState } from "react";
-import { Button, Flex, Text, Stack } from "../atoms";
+import type { ReactNode } from "react";
+import { Link } from "@tanstack/react-router";
+import { Button, Flex, Stack, Text } from "../atoms";
 import { Card } from "../common";
-import { useNotifications } from "../../hooks/useNotificationsContext";
-import { NOTIFICATION_CONFIG } from "../../config/notificationTypes";
+import {
+  useDeleteNotification,
+  useMarkNotificationAsRead,
+} from "../../hooks/useNotifications";
+import { describeNotification } from "../../lib/notifications";
+import type { NotificationLink } from "../../lib/notifications";
 import type { Notification } from "../../types";
 
 interface NotificationCardProps {
   notification: Notification;
+  /** Called after navigating via the card's link (e.g. to close a dropdown). */
+  onNavigate?: () => void;
 }
 
-const NotificationCard: React.FC<NotificationCardProps> = ({ notification }) => {
-  const { markAsRead, deleteNotification } = useNotifications();
-  const [isActioning, setIsActioning] = useState(false);
+function NotificationLinkWrapper({
+  link,
+  onClick,
+  children,
+}: {
+  link: NotificationLink | null;
+  onClick?: () => void;
+  children: ReactNode;
+}) {
+  if (!link) return <>{children}</>;
+  const className =
+    "block -m-1 p-1 rounded-lg hover:bg-gray-50 transition-colors";
+  if (link.to === "/profile/$userId") {
+    return (
+      <Link
+        to="/profile/$userId"
+        params={link.params}
+        className={className}
+        onClick={onClick}
+      >
+        {children}
+      </Link>
+    );
+  }
+  return (
+    <Link to={link.to} className={className} onClick={onClick}>
+      {children}
+    </Link>
+  );
+}
 
-  const handleMarkAsRead = async () => {
-    if (notification.isRead) return;
+const NotificationCard = ({
+  notification,
+  onNavigate,
+}: NotificationCardProps) => {
+  const markAsRead = useMarkNotificationAsRead();
+  const deleteNotification = useDeleteNotification();
+  const { icon, title, body, actorName, link } =
+    describeNotification(notification);
 
-    setIsActioning(true);
-    try {
-      await markAsRead(notification.id);
-    } finally {
-      setIsActioning(false);
-    }
-  };
-
-  const handleDelete = async () => {
-    setIsActioning(true);
-    try {
-      await deleteNotification(notification.id);
-    } finally {
-      setIsActioning(false);
-    }
-  };
-
-  const getNotificationIcon = (): string => {
-    const config = NOTIFICATION_CONFIG[notification.type as keyof typeof NOTIFICATION_CONFIG];
-    return config ? config.icon : "📧";
-  };
-
-  const getNotificationColor = (): string => {
-    if (notification.isRead) return "muted";
-
-    const config = NOTIFICATION_CONFIG[notification.type as keyof typeof NOTIFICATION_CONFIG];
-    return config ? `${config.color}-600` : "gray-600";
-  };
-
-  // Safely access user properties with optional chaining
-  const getUserName = () => {
-    if (!notification.relatedUser) return null;
-    
-    const user = notification.relatedUser;
-    // Check for different possible name properties
-    if ('firstName' in user && 'lastName' in user) {
-      return `${user.firstName} ${user.lastName}`;
-    } else if ('fullName' in user) {
-      return user.fullName;
-    } else if ('username' in user) {
-      return user.username;
-    }
-    return 'Unknown User';
+  const handleOpen = () => {
+    if (!notification.isRead) markAsRead.mutate(notification.id);
+    onNavigate?.();
   };
 
   return (
     <Card
-      className={`${!notification.isRead ? "border-l-4 border-blue-500 bg-blue-50" : ""}`}
+      className={
+        notification.isRead ? "" : "border-l-4 border-blue-500 bg-blue-50"
+      }
     >
-      <Stack spacing="sm">
-        <Flex justify="between" align="start">
-          <Flex align="center" gap="sm">
-            <Text size="lg">{getNotificationIcon()}</Text>
-            <Stack spacing="xs">
-              <Text
-                weight={!notification.isRead ? "semibold" : "medium"}
-                color={getNotificationColor()}
-              >
-                {notification.type}
+      <Flex justify="between" align="start" gap="sm">
+        <div className="flex-1 min-w-0">
+          <NotificationLinkWrapper link={link} onClick={handleOpen}>
+            <Flex align="start" gap="sm">
+              <Text size="lg" aria-hidden>
+                {icon}
               </Text>
-              <Text
-                size="sm"
-                color={notification.isRead ? "muted" : "gray-700"}
-              >
-                {notification.message}
-              </Text>
-            </Stack>
-          </Flex>
+              <Stack spacing="xs" className="min-w-0">
+                <Text weight={notification.isRead ? "medium" : "semibold"}>
+                  {title}
+                </Text>
+                {body && body !== title && (
+                  <Text
+                    size="sm"
+                    color={notification.isRead ? "muted" : "gray-700"}
+                  >
+                    {body}
+                  </Text>
+                )}
+                <Flex gap="sm" align="center">
+                  <Text size="xs" color="muted">
+                    {new Date(notification.createdAt).toLocaleString()}
+                  </Text>
+                  {actorName && (
+                    <Text size="xs" color="muted">
+                      · {actorName}
+                    </Text>
+                  )}
+                  {link && (
+                    <Text size="xs" color="blue-600">
+                      · View
+                    </Text>
+                  )}
+                </Flex>
+              </Stack>
+            </Flex>
+          </NotificationLinkWrapper>
+        </div>
 
-          <Flex gap="xs">
-            {!notification.isRead && (
-              <Button
-                variant="ghost"
-                size="sm"
-                onClick={handleMarkAsRead}
-                disabled={isActioning}
-                title="Mark as read"
-              >
-                ✓
-              </Button>
-            )}
+        <Flex gap="xs">
+          {!notification.isRead && (
             <Button
               variant="ghost"
               size="sm"
-              onClick={handleDelete}
-              disabled={isActioning}
-              className="text-red-500 hover:text-red-700"
-              title="Delete notification"
+              title="Mark as read"
+              disabled={markAsRead.isPending}
+              onClick={() => markAsRead.mutate(notification.id)}
             >
-              ×
+              ✓
             </Button>
-          </Flex>
-        </Flex>
-
-        <Flex justify="between" align="center">
-          <Text size="xs" color="muted">
-            {new Date(notification.createdAt).toLocaleString()}
-          </Text>
-
-          {notification.relatedUser && (
-            <Text size="xs" color="muted">
-              From: {getUserName()}
-            </Text>
           )}
+          <Button
+            variant="ghost"
+            size="sm"
+            title="Delete notification"
+            className="text-red-500 hover:text-red-700"
+            disabled={deleteNotification.isPending}
+            onClick={() => deleteNotification.mutate(notification.id)}
+          >
+            ×
+          </Button>
         </Flex>
-      </Stack>
+      </Flex>
     </Card>
   );
 };
