@@ -28,23 +28,48 @@ function NotificationLinkWrapper({
   if (!link) return <>{children}</>;
   const className =
     "block -m-1 p-1 rounded-lg hover:bg-gray-50 transition-colors";
-  if (link.to === "/profile/$userId") {
-    return (
-      <Link
-        to="/profile/$userId"
-        params={link.params}
-        className={className}
-        onClick={onClick}
-      >
-        {children}
-      </Link>
-    );
+
+  switch (link.to) {
+    case "/profile/$userId":
+      return (
+        <Link
+          to="/profile/$userId"
+          params={link.params}
+          className={className}
+          onClick={onClick}
+        >
+          {children}
+        </Link>
+      );
+    case "/connections":
+      return (
+        <Link
+          to="/connections"
+          search={link.search}
+          className={className}
+          onClick={onClick}
+        >
+          {children}
+        </Link>
+      );
+    case "/messages":
+      return (
+        <Link
+          to="/messages"
+          search={link.search}
+          className={className}
+          onClick={onClick}
+        >
+          {children}
+        </Link>
+      );
+    case "/feed":
+      return (
+        <Link to="/feed" className={className} onClick={onClick}>
+          {children}
+        </Link>
+      );
   }
-  return (
-    <Link to={link.to} className={className} onClick={onClick}>
-      {children}
-    </Link>
-  );
 }
 
 const NotificationCard = ({

@@ -2,30 +2,39 @@ import { Link } from "@tanstack/react-router";
 import { Card } from "../common";
 import { Button, Flex, Stack, Text } from "../atoms";
 import type { Connection } from "../../types";
+import { useEffect, useRef } from "react";
 
 interface ConnectionCardProps {
   connection: Connection;
   currentUserId: number;
+  highlighted?: boolean;
   onRemove: () => void;
 }
-
-/**
- * An accepted connection. The server embeds both `requester` and `recipient`;
- * we show whichever one isn't the current user.
- */
 const ConnectionCard = ({
   connection,
   currentUserId,
+  highlighted = false,
   onRemove,
 }: ConnectionCardProps) => {
   const user =
     connection.requesterId === currentUserId
       ? connection.recipient
       : connection.requester;
+  const ref = useRef<HTMLDivElement>(null);
+  useEffect(() => {
+    if (highlighted) {
+      ref.current?.scrollIntoView({ behavior: "smooth", block: "center" });
+    }
+  }, [highlighted]);
   if (!user) return null;
-
   return (
-    <Card>
+    <div
+      ref={ref}
+      className={
+        highlighted ? "rounded-2xl ring-2 ring-blue-400 ring-offset-2" : undefined
+      }
+    >
+      <Card>
       <Flex justify="between" align="center">
         <Stack spacing="sm">
           <Text size="lg" weight="semibold">

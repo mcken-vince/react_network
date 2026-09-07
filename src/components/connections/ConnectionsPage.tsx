@@ -1,4 +1,3 @@
-import { useState } from "react";
 import { Container, Flex, Heading, Stack } from "../atoms";
 import {
   useAcceptConnectionRequest,
@@ -12,20 +11,30 @@ import { useRefreshNotifications } from "../../hooks/useNotifications";
 import ConnectionRequestCard from "./ConnectionRequestCard";
 import ConnectionCard from "./ConnectionCard";
 import UserSearchForm from "./UserSearchForm";
+import type { ConnectionsTab } from "../../lib/notifications";
 import type { Connection, User } from "../../types";
 
-type TabId = "search" | "requests" | "sent" | "connections";
-
-const TABS: { id: TabId; label: string; icon: string }[] = [
+const TABS: { id: ConnectionsTab; label: string; icon: string }[] = [
   { id: "search", label: "Find Users", icon: "🔍" },
   { id: "requests", label: "Requests", icon: "📥" },
   { id: "sent", label: "Sent", icon: "📤" },
   { id: "connections", label: "Connections", icon: "🤝" },
 ];
 
-const ConnectionsPage = ({ user }: { user: User }) => {
+interface ConnectionsPageProps {
+  user: User;
+  tab: ConnectionsTab;
+  highlightConnectionId: number | null;
+  onTabChange: (tab: ConnectionsTab) => void;
+}
+
+const ConnectionsPage = ({
+  user,
+  tab,
+  highlightConnectionId,
+  onTabChange,
+}: ConnectionsPageProps) => {
   const refreshNotifications = useRefreshNotifications();
-  const [activeTab, setActiveTab] = useState<TabId>("search");
 
   const { data: pendingRequests = [], isLoading: pendingLoading } =
     usePendingRequests();
@@ -84,7 +93,7 @@ const ConnectionsPage = ({ user }: { user: User }) => {
         </Flex>
       );
     }
-    switch (activeTab) {
+    switch (tab) {
       case "search":
         return <UserSearchForm currentUser={user} />;
       case "requests":
@@ -99,6 +108,7 @@ const ConnectionsPage = ({ user }: { user: User }) => {
                 <ConnectionRequestCard
                   key={request.id}
                   request={request}
+                  highlighted={request.id === highlightConnectionId}
                   onAccept={() => handleAccept(request.id)}
                   onReject={() => handleReject(request.id)}
                 />
@@ -119,6 +129,7 @@ const ConnectionsPage = ({ user }: { user: User }) => {
                   key={request.id}
                   request={request}
                   isSentRequest
+                  highlighted={request.id === highlightConnectionId}
                   onCancel={() => handleCancel(request.id)}
                 />
               ))
@@ -138,6 +149,7 @@ const ConnectionsPage = ({ user }: { user: User }) => {
                   key={connection.id}
                   connection={connection}
                   currentUserId={user.id}
+                  highlighted={connection.id === highlightConnectionId}
                   onRemove={() => handleRemove(connection)}
                 />
               ))
@@ -155,19 +167,19 @@ const ConnectionsPage = ({ user }: { user: User }) => {
         <Heading level={1}>Connections</Heading>
         <div className="border-b border-gray-200">
           <nav className="-mb-px flex space-x-8">
-            {TABS.map((tab) => (
+            {TABS.map((item) => (
               <button
-                key={tab.id}
-                onClick={() => setActiveTab(tab.id)}
+                key={item.id}
+                onClick={() => onTabChange(item.id)}
                 className={`py-2 px-1 border-b-2 font-medium text-sm whitespace-nowrap ${
-                  activeTab === tab.id
+                  tab === item.id
                     ? "border-blue-500 text-blue-600"
                     : "border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300"
                 }`}
               >
-                <span className="mr-2">{tab.icon}</span>
-                {tab.label}
-                {tab.id === "requests" && pendingRequests.length > 0 && (
+                <span className="mr-2">{item.icon}</span>
+                {item.label}
+                {item.id === "requests" && pendingRequests.length > 0 && (
                   <span className="ml-2 bg-red-100 text-red-600 text-xs rounded-full px-2 py-1">
                     {pendingRequests.length}
                   </span>

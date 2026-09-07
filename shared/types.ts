@@ -63,6 +63,30 @@ export interface Post {
   author?: UserSummary;
   createdAt: ISODateString;
   updatedAt: ISODateString;
+  likeCount: number;
+  commentCount: number;
+  likedByMe: boolean;
+}
+
+export interface PostComment {
+  id: string;
+  postId: string;
+  userId: number;
+  content: string; // 1..LIMITS.COMMENT_CONTENT_MAX
+  author?: UserSummary;
+  createdAt: ISODateString;
+  updatedAt: ISODateString;
+}
+
+export interface PostLikeResponse {
+  post: Post;
+} // POST/DELETE /posts/:id/like
+export interface CommentsResponse {
+  comments: PostComment[];
+  nextCursor?: string;
+}
+export interface CommentResponse {
+  comment: PostComment;
 }
 
 export type RelatedEntityType =

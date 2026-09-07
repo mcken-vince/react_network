@@ -1,16 +1,24 @@
 import { NOTIFICATION_CONFIG, NOTIFICATION_TYPES } from "../types";
 import type { Notification, NotificationType, UserSummary } from "../types";
 
-/** Typed, discriminated link target so TanStack Router's <Link> stays sound. */
+export type ConnectionsTab = "search" | "requests" | "sent" | "connections";
+
+/**
+ * Typed, discriminated link target. Each variant matches a real route's
+ * params/search so TanStack Router's <Link> type-checks.
+ */
 export type NotificationLink =
-  | { to: "/connections" | "/messages" | "/feed" }
+  | {
+      to: "/connections";
+      search: { tab: ConnectionsTab; highlight?: number };
+    }
+  | { to: "/messages"; search: { conversation?: string } }
+  | { to: "/feed" }
   | { to: "/profile/$userId"; params: { userId: string } };
 
 export interface NotificationPresentation {
   icon: string;
-  /** One-line, human-readable summary (includes the actor when known). */
   title: string;
-  /** Supporting detail (e.g. a message preview); "" when it adds nothing. */
   body: string;
   actorName: string | null;
   link: NotificationLink | null;
@@ -20,6 +28,11 @@ const fullName = (user: UserSummary | null | undefined): string | null => {
   if (!user) return null;
   const name = `${user.firstName} ${user.lastName}`.trim();
   return name || `@${user.username}`;
+};
+
+const positiveInt = (value: unknown): number | undefined => {
+  const n = Number(value);
+  return Number.isInteger(n) && n > 0 ? n : undefined;
 };
 
 const FALLBACK_TITLE: Partial<Record<NotificationType, string>> = {
@@ -36,7 +49,6 @@ const FALLBACK_TITLE: Partial<Record<NotificationType, string>> = {
   [NOTIFICATION_TYPES.ACCOUNT_UPDATE]: "Account update",
 };
 
-/** Types whose server `message` is boilerplate once the title names the actor. */
 const GENERIC_BODY = new Set<NotificationType>([
   NOTIFICATION_TYPES.CONNECTION_REQUEST,
   NOTIFICATION_TYPES.CONNECTION_ACCEPTED,
@@ -75,14 +87,39 @@ function linkFor(notification: Notification): NotificationLink | null {
     ? { to: "/profile/$userId", params: { userId: String(relatedUserId) } }
     : null;
 
+  const connectionId = positiveInt(notification.relatedEntityId);
+  const conversationId =
+    typeof notification.metadata?.conversationId === "string"
+      ? notification.metadata.conversationId
+      : undefined;
+
   switch (notification.type) {
+    // The action item IS the incoming request → Requests tab, that row.
     case NOTIFICATION_TYPES.CONNECTION_REQUEST:
-      return { to: "/connections" };
+      return {
+        to: "/connections",
+        search: {
+          tab: "requests",
+          ...(connectionId ? { highlight: connectionId } : {}),
+        },
+      };
+    // The item is the now-established connection → Connections tab, that row.
     case NOTIFICATION_TYPES.CONNECTION_ACCEPTED:
+      return {
+        to: "/connections",
+        search: {
+          tab: "connections",
+          ...(connectionId ? { highlight: connectionId } : {}),
+        },
+      };
+    // Nothing to act on; view the person.
     case NOTIFICATION_TYPES.CONNECTION_REJECTED:
-      return toProfile ?? { to: "/connections" };
+      return toProfile ?? { to: "/connections", search: { tab: "sent" } };
     case NOTIFICATION_TYPES.NEW_MESSAGE:
-      return { to: "/messages" };
+      return {
+        to: "/messages",
+        search: conversationId ? { conversation: conversationId } : {},
+      };
     case NOTIFICATION_TYPES.POST_LIKE:
     case NOTIFICATION_TYPES.POST_COMMENT:
     case NOTIFICATION_TYPES.POST_SHARE:

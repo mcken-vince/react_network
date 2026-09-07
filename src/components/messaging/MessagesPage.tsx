@@ -1,3 +1,4 @@
+import { useEffect } from "react";
 import {
   useActiveConversation,
   useConversations,
@@ -5,9 +6,22 @@ import {
 import { ConversationList } from "./ConversationList";
 import { ChatWindow } from "./ChatWindow";
 
-export function MessagesPage() {
-  const { activeConversationId } = useActiveConversation();
+interface MessagesPageProps {
+  initialConversationId?: string | null;
+}
+
+export function MessagesPage({
+  initialConversationId = null,
+}: MessagesPageProps) {
+  const { activeConversationId, setActiveConversationId } =
+    useActiveConversation();
   const { isLoading } = useConversations();
+
+  useEffect(() => {
+    if (initialConversationId) {
+      setActiveConversationId(initialConversationId);
+    }
+  }, [initialConversationId, setActiveConversationId]);
 
   if (isLoading) {
     return (
