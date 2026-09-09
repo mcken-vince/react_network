@@ -5,28 +5,24 @@
     "lib": ["ES2020", "DOM", "DOM.Iterable"],
     "module": "ESNext",
     "skipLibCheck": true,
-
     "moduleResolution": "bundler",
     "allowImportingTsExtensions": true,
-    "allowJs": true, // TRANSITIONAL — remove once .jsx/.js are gone
+    "allowJs": true,
     "checkJs": false,
     "isolatedModules": true,
     "moduleDetection": "force",
     "noEmit": true,
     "jsx": "react-jsx",
-
     "strict": true,
     "noUnusedLocals": true,
     "noUnusedParameters": true,
     "noFallthroughCasesInSwitch": true,
     "noUncheckedIndexedAccess": true,
-
     "baseUrl": ".",
     "paths": {
       "@/*": ["src/*"],
       "@shared/*": ["shared/*"]
     }
   },
-  "include": ["src", "shared"],
-  "references": [{ "path": "./tsconfig.node.json" }]
+  "include": ["src", "shared"]
 }
