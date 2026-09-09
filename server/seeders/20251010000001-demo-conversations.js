@@ -62,10 +62,10 @@ export default {
 
     // Create participants
     const participants = [];
-    conversationIds.forEach((conv, convIndex) => {
+      conversationIds.forEach((conv, convIndex) => {
       conv.participants.forEach((userId, userIndex) => {
         participants.push({
-          id: uuidv4(),
+          id: randomUUID(),
           conversationId: conv.id,
           userId: userId,
           joinedAt: new Date(now.getTime() - (3 - convIndex) * 24 * 60 * 60 * 1000),

@@ -170,29 +170,3 @@ export const useRemoveConnection = () => {
       ]),
   });
 };
-
-export const useConnectionsFeature = () => {
-  const pending = usePendingRequests();
-  const sent = useSentRequests();
-  const connections = useConnectionsList();
-  const send = useSendConnectionRequest();
-  const accept = useAcceptConnectionRequest();
-  const reject = useRejectConnectionRequest();
-  const remove = useRemoveConnection();
-  return {
-    pendingRequests: pending.data ?? [],
-    sentRequests: sent.data ?? [],
-    connections: connections.data ?? [],
-    isLoadingPending: pending.isLoading,
-    isLoadingSent: sent.isLoading,
-    isLoadingConnections: connections.isLoading,
-    sendRequest: send.mutate,
-    acceptRequest: accept.mutate,
-    rejectRequest: reject.mutate,
-    removeConnection: remove.mutate,
-    isSending: send.isPending,
-    isAccepting: accept.isPending,
-    isRejecting: reject.isPending,
-    isRemoving: remove.isPending,
-  };
-};

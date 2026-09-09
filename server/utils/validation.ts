@@ -1,4 +1,5 @@
 import { LIMITS } from "../../shared/limits";
+import type { FieldErrors } from "../lib/errors";
 import type {
   CreateDirectConversationData,
   CreateGroupConversationData,
@@ -16,7 +17,7 @@ import type {
 // Result types
 // ---------------------------------------------------------------------------
 
-export type FieldErrors = Record<string, string>;
+export type { FieldErrors };
 
 export interface ValidationFailure {
   message: string;

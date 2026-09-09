@@ -1,7 +1,7 @@
 import type { Response } from "express";
 import type { ValidationError } from "sequelize";
 import type { ErrorResponse } from "../../shared/types";
-import type { FieldErrors } from "./validation";
+import type { FieldErrors } from "../lib/errors";
 
 /** Standard error envelope for any status. */
 export function sendError(

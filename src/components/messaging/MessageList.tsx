@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useRef } from "react";
+import { useCallback, useEffect, useLayoutEffect, useRef } from "react";
 import { MessageBubble } from "./MessageBubble";
 import type { Message } from "../../types";
 
@@ -10,6 +10,8 @@ interface MessageListProps {
   onLoadMore: () => void;
   onReply: (content: string, replyToId?: string | null) => void;
 }
+
+const NEAR_BOTTOM_PX = 150;
 
 function groupByDate(
   messages: Message[],
@@ -47,15 +49,46 @@ export function MessageList({
 }: MessageListProps) {
   const containerRef = useRef<HTMLDivElement>(null);
   const bottomRef = useRef<HTMLDivElement>(null);
+  // Newest message id we've already scrolled to.
+  const lastSeenMessageId = useRef<string | null>(null);
+  // scrollHeight captured just before a "load older" fetch.
+  const scrollHeightBeforeLoad = useRef<number | null>(null);
 
+  // Keep the viewport anchored when older messages are prepended.
+  useLayoutEffect(() => {
+    const el = containerRef.current;
+    if (el && scrollHeightBeforeLoad.current !== null) {
+      el.scrollTop += el.scrollHeight - scrollHeightBeforeLoad.current;
+      scrollHeightBeforeLoad.current = null;
+    }
+  });
+
+  // Scroll to the bottom on first load, and on a new message only when the
+  // reader is already near the bottom — never yank them out of history.
   useEffect(() => {
-    bottomRef.current?.scrollIntoView({ behavior: "smooth" });
-  }, [messages.length]);
+    const el = containerRef.current;
+    const newest = messages[messages.length - 1];
+    if (!el || !newest || lastSeenMessageId.current === newest.id) return;
+
+    const isFirstRender = lastSeenMessageId.current === null;
+    const nearBottom =
+      el.scrollHeight - el.scrollTop - el.clientHeight < NEAR_BOTTOM_PX;
+    lastSeenMessageId.current = newest.id;
+
+    if (isFirstRender || nearBottom) {
+      bottomRef.current?.scrollIntoView({
+        behavior: isFirstRender ? "auto" : "smooth",
+      });
+    }
+  }, [messages]);
 
   const handleScroll = useCallback(() => {
     const el = containerRef.current;
     if (!el || isLoadingMore || !hasMore) return;
-    if (el.scrollTop <= 0) onLoadMore();
+    if (el.scrollTop <= 0) {
+      scrollHeightBeforeLoad.current = el.scrollHeight;
+      onLoadMore();
+    }
   }, [hasMore, isLoadingMore, onLoadMore]);
 
   if (messages.length === 0) {
@@ -91,7 +124,6 @@ export function MessageList({
           </span>
         </div>
       )}
-
       {groupByDate(messages).map((group) => (
         <div key={group.date}>
           <div className="flex justify-center my-4">

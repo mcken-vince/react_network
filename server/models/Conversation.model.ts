@@ -8,7 +8,7 @@ import {
   HasMany,
   Table,
 } from "sequelize-typescript";
-import { Op } from "sequelize";
+import { Op, literal } from "sequelize";
 import type { IncludeOptions, Transaction, WhereOptions } from "sequelize";
 import { BaseUuidModel } from "./BaseUuidModel";
 import User from "./User.model";
@@ -168,7 +168,7 @@ export default class Conversation extends BaseUuidModel<
       where: { id: { [Op.in]: memberships.map((m) => m.conversationId) } },
       include: [includeParticipants()],
       order: [
-        ["lastMessageAt", "DESC NULLS LAST"],
+        literal('"lastMessageAt" DESC NULLS LAST'),
         ["createdAt", "DESC"],
       ],
       limit,
