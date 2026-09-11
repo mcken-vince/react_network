@@ -40,7 +40,7 @@ const COLOR = {
  * @param {keyof COLOR} color
  * @param {'normal'|'medium'|'semibold'|'bold'} weight
  */
-export const Text = ({
+const Text = ({
   size = "base",
   color = "gray-700",
   weight = "normal",

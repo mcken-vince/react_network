@@ -3,8 +3,3 @@
 export * from "@shared/types";
 export * from "@shared/socketEvents";
 export * from "@shared/notificationTypes";
-
-import type { PaginationParams } from "@shared/types";
-
-/** Query params accepted by the post list endpoints. */
-export type PostFilters = PaginationParams;

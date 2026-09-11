@@ -4,7 +4,7 @@ import { WebSocketProvider } from "../context/WebSocketContext";
 import { MessagingProvider } from "../context/MessagingContext";
 import ErrorBoundary from "../components/common/ErrorBoundary";
 import RouteError from "../components/common/RouteError";
-
+import { TanStackRouterDevtools } from "@tanstack/react-router-devtools";
 export const Route = createRootRoute({
   component: RootComponent,
   errorComponent: RouteError,
@@ -20,6 +20,9 @@ function RootComponent() {
           <ErrorBoundary>
             <div className="app min-h-screen bg-slate-50">
               <Outlet />
+              {import.meta.env.DEV && (
+                <TanStackRouterDevtools position="bottom-right" />
+              )}
             </div>
           </ErrorBoundary>
         </MessagingProvider>

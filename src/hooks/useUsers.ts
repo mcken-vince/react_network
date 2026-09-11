@@ -7,8 +7,6 @@ import type {
   UserWithConnectionStatus,
 } from "../types";
 
-export { userKeys };
-
 const STALE = { user: 10 * 60_000, list: 5 * 60_000, status: 2 * 60_000 };
 
 export const useCurrentUser = () =>
@@ -20,7 +18,7 @@ export const useCurrentUser = () =>
     staleTime: STALE.user,
   });
 
-export const useUsers = () =>
+const useUsers = () =>
   useQuery({
     queryKey: userKeys.lists(),
     queryFn: () => userAPI.getAllUsers(),
@@ -66,7 +64,7 @@ export const usePrefetchUser = () => {
   };
 };
 
-export const useUpdateProfile = () => {
+const useUpdateProfile = () => {
   const queryClient = useQueryClient();
   return useMutation({
     mutationFn: (vars: { userId: number; data: ProfileUpdateData }) =>

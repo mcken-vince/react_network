@@ -5,7 +5,7 @@
  * @param {string} color - Icon color
  * @param {string} className - Additional CSS classes
  */
-export const Icon = ({
+const Icon = ({
   name,
   size = "medium",
   color = "current",

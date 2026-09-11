@@ -14,7 +14,7 @@ SPACING_STYLES.lg = SPACING_STYLES.large;
  * @param {'xs'|'small'|'medium'|'large'|'xl'|'sm'|'md'|'lg'} spacing
  * @param {string} as - HTML element to render
  */
-export const Stack = ({
+const Stack = ({
   spacing = "medium",
   as = "div",
   children,

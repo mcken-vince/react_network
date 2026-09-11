@@ -9,8 +9,6 @@ import type {
   UsersWithConnectionStatusResponse,
 } from "../types";
 
-export { connectionKeys };
-
 const STALE = { pending: 30_000, sent: 60_000, accepted: 5 * 60_000 };
 
 type QueryClient = ReturnType<typeof useQueryClient>;

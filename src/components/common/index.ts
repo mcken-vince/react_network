@@ -3,5 +3,3 @@
 export { default as Avatar } from "./Avatar.jsx";
 export { default as Card } from "./Card.jsx";
 export { default as UserInfo } from "./UserInfo.jsx";
-export { default as ErrorBoundary } from "./ErrorBoundary";
-export { default as RouteError } from "./RouteError";

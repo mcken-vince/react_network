@@ -30,7 +30,7 @@ GAP.lg = GAP.large;
  * @param {'start'|'center'|'end'|'between'|'around'} justify
  * @param {'none'|'xs'|'small'|'medium'|'large'|'xl'|'sm'|'md'|'lg'} gap
  */
-export const Flex = ({
+const Flex = ({
   direction = "row",
   align = "stretch",
   justify = "start",

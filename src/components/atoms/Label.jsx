@@ -5,17 +5,17 @@
  * @param {ReactNode} children - Label text content
  * @param {string} className - Additional CSS classes
  */
-export const Label = ({ 
+const Label = ({
   htmlFor,
   required = false,
-  children, 
-  className = '', 
-  ...props 
+  children,
+  className = "",
+  ...props
 }) => {
   return (
-    <label 
+    <label
       htmlFor={htmlFor}
-      className={`block text-sm font-medium text-gray-700 ${className}`} 
+      className={`block text-sm font-medium text-gray-700 ${className}`}
       {...props}
     >
       {children}

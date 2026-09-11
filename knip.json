@@ -1,6 +1,10 @@
 {
-  "$schema": "https://unpkg.com/knip@5/schema.json",
-  "entry": ["src/main.tsx", "src/routes/**/*.{ts,tsx,js,jsx}"],
+  "$schema": "https://unpkg.com/knip@6/schema.json",
+  "entry": ["src/routes/**/*.{ts,tsx,js,jsx}", "shared/**/*.ts"],
   "project": ["src/**/*.{ts,tsx,js,jsx}", "shared/**/*.ts"],
-  "ignore": ["src/routeTree.gen.ts"]
+  "ignore": [
+    "src/utils/validation.js",
+    "src/utils/validation/**",
+    "src/utils/dateUtils.js"
+  ]
 }

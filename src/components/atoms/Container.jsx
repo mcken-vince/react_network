@@ -6,33 +6,33 @@
  * @param {ReactNode} children - Container content
  * @param {string} className - Additional CSS classes
  */
-export const Container = ({ 
-  size = 'large',
+const Container = ({
+  size = "large",
   centered = true,
-  padding = 'medium',
-  children, 
-  className = '', 
-  ...props 
+  padding = "medium",
+  children,
+  className = "",
+  ...props
 }) => {
   const sizeStyles = {
-    small: 'max-w-2xl',
-    medium: 'max-w-4xl',
-    large: 'max-w-6xl',
-    full: 'max-w-full',
+    small: "max-w-2xl",
+    medium: "max-w-4xl",
+    large: "max-w-6xl",
+    full: "max-w-full",
   };
-  
+
   const paddingStyles = {
-    none: 'p-0',
-    small: 'p-4',
-    medium: 'p-6',
-    large: 'p-8',
+    none: "p-0",
+    small: "p-4",
+    medium: "p-6",
+    large: "p-8",
   };
-  
-  const centerStyle = centered ? 'mx-auto' : '';
-  
+
+  const centerStyle = centered ? "mx-auto" : "";
+
   return (
-    <div 
-      className={`${sizeStyles[size]} ${paddingStyles[padding]} ${centerStyle} ${className}`} 
+    <div
+      className={`${sizeStyles[size]} ${paddingStyles[padding]} ${centerStyle} ${className}`}
       {...props}
     >
       {children}

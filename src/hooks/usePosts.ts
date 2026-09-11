@@ -13,8 +13,6 @@ import type {
   UpdatePostData,
 } from "../types";
 
-export { postKeys };
-
 const PAGE_SIZE = 20;
 
 const nextOffset = (last: PostsResponse): number | undefined => {

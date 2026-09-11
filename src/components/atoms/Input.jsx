@@ -6,7 +6,7 @@
  * @param {boolean} fullWidth - Whether input should take full width
  * @param {string} className - Additional CSS classes
  */
-export const Input = ({
+const Input = ({
   type = "text",
   variant = "default",
   size = "medium",

@@ -9,7 +9,6 @@
 // Additionally, you should also exclude this file from your linter and/or formatter to prevent it from being checked or modified.
 
 import { Route as rootRouteImport } from './routes/__root'
-import { Route as TestErrorRouteImport } from './routes/test-error'
 import { Route as SignupRouteImport } from './routes/signup'
 import { Route as NotificationsRouteImport } from './routes/notifications'
 import { Route as MessagesRouteImport } from './routes/messages'
@@ -23,11 +22,6 @@ import { Route as IndexRouteImport } from './routes/index'
 import { Route as ProfileIndexRouteImport } from './routes/profile/index'
 import { Route as ProfileUserIdRouteImport } from './routes/profile/$userId'
 
-const TestErrorRoute = TestErrorRouteImport.update({
-  id: '/test-error',
-  path: '/test-error',
-  getParentRoute: () => rootRouteImport,
-} as any)
 const SignupRoute = SignupRouteImport.update({
   id: '/signup',
   path: '/signup',
@@ -100,7 +94,6 @@ export interface FileRoutesByFullPath {
   '/messages': typeof MessagesRoute
   '/notifications': typeof NotificationsRoute
   '/signup': typeof SignupRoute
-  '/test-error': typeof TestErrorRoute
   '/profile/$userId': typeof ProfileUserIdRoute
   '/profile': typeof ProfileIndexRoute
 }
@@ -115,7 +108,6 @@ export interface FileRoutesByTo {
   '/messages': typeof MessagesRoute
   '/notifications': typeof NotificationsRoute
   '/signup': typeof SignupRoute
-  '/test-error': typeof TestErrorRoute
   '/profile/$userId': typeof ProfileUserIdRoute
   '/profile': typeof ProfileIndexRoute
 }
@@ -131,7 +123,6 @@ export interface FileRoutesById {
   '/messages': typeof MessagesRoute
   '/notifications': typeof NotificationsRoute
   '/signup': typeof SignupRoute
-  '/test-error': typeof TestErrorRoute
   '/profile/$userId': typeof ProfileUserIdRoute
   '/profile/': typeof ProfileIndexRoute
 }
@@ -148,7 +139,6 @@ export interface FileRouteTypes {
     | '/messages'
     | '/notifications'
     | '/signup'
-    | '/test-error'
     | '/profile/$userId'
     | '/profile'
   fileRoutesByTo: FileRoutesByTo
@@ -163,7 +153,6 @@ export interface FileRouteTypes {
     | '/messages'
     | '/notifications'
     | '/signup'
-    | '/test-error'
     | '/profile/$userId'
     | '/profile'
   id:
@@ -178,7 +167,6 @@ export interface FileRouteTypes {
     | '/messages'
     | '/notifications'
     | '/signup'
-    | '/test-error'
     | '/profile/$userId'
     | '/profile/'
   fileRoutesById: FileRoutesById
@@ -194,20 +182,12 @@ export interface RootRouteChildren {
   MessagesRoute: typeof MessagesRoute
   NotificationsRoute: typeof NotificationsRoute
   SignupRoute: typeof SignupRoute
-  TestErrorRoute: typeof TestErrorRoute
   ProfileUserIdRoute: typeof ProfileUserIdRoute
   ProfileIndexRoute: typeof ProfileIndexRoute
 }
 
 declare module '@tanstack/react-router' {
   interface FileRoutesByPath {
-    '/test-error': {
-      id: '/test-error'
-      path: '/test-error'
-      fullPath: '/test-error'
-      preLoaderRoute: typeof TestErrorRouteImport
-      parentRoute: typeof rootRouteImport
-    }
     '/signup': {
       id: '/signup'
       path: '/signup'
@@ -306,7 +286,6 @@ const rootRouteChildren: RootRouteChildren = {
   MessagesRoute: MessagesRoute,
   NotificationsRoute: NotificationsRoute,
   SignupRoute: SignupRoute,
-  TestErrorRoute: TestErrorRoute,
   ProfileUserIdRoute: ProfileUserIdRoute,
   ProfileIndexRoute: ProfileIndexRoute,
 }

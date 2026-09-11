@@ -16,10 +16,7 @@ import type {
 // ---------------------------------------------------------------------------
 // Result types
 // ---------------------------------------------------------------------------
-
-export type { FieldErrors };
-
-export interface ValidationFailure {
+interface ValidationFailure {
   message: string;
   errors: FieldErrors;
 }

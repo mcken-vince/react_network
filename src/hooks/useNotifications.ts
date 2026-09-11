@@ -8,11 +8,9 @@ import { notificationAPI } from "../lib/api";
 import { notificationKeys } from "../lib/queryKeys";
 import type { Notification, NotificationFilters } from "../types";
 
-export { notificationKeys };
-
 const STALE_TIME = 30_000;
 
-export const useNotificationsList = (
+const useNotificationsList = (
   filters: NotificationFilters = {},
 ): UseQueryResult<Notification[], Error> =>
   useQuery({
@@ -58,7 +56,7 @@ export const useMarkNotificationAsRead = () => {
   });
 };
 
-export const useMarkAllNotificationsAsRead = () => {
+const useMarkAllNotificationsAsRead = () => {
   const queryClient = useQueryClient();
   return useMutation({
     mutationFn: () => notificationAPI.markAllRead(),

@@ -19,7 +19,7 @@ const COLOR = {
  * @param {1|2|3|4|5|6} level
  * @param {keyof COLOR} color
  */
-export const Heading = ({
+const Heading = ({
   level = 1,
   children,
   className = "",
