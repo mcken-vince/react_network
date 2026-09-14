@@ -1,0 +1,183 @@
+import type { FormEvent } from "react";
+import { LIMITS } from "@shared/limits";
+import { Card } from "../common";
+import FormField from "../forms/common/FormField";
+import ErrorBanner from "../forms/common/ErrorBanner";
+import ChangePasswordForm from "./ChangePasswordForm";
+import { Button, Grid, Heading, Stack } from "../atoms";
+import { useFormState } from "../../hooks/useFormState";
+import {
+  validateProfileUpdateForm,
+  type ProfileFormValues,
+} from "../../utils/validation";
+import { useAuth } from "../../hooks/useAuth";
+import type { User } from "../../types";
+
+interface ProfileEditProps {
+  user: User;
+  onSave: () => void;
+  onCancel: () => void;
+}
+
+/**
+ * Profile fields and password are two independent forms — the profile
+ * endpoint does not accept passwords.
+ */
+function ProfileEdit({ user, onSave, onCancel }: ProfileEditProps) {
+  const { updateUserProfile } = useAuth();
+
+  const initialFormData: ProfileFormValues = {
+    firstName: user.firstName,
+    lastName: user.lastName,
+    age: String(user.age),
+    location: user.location,
+    username: user.username,
+    email: user.email ?? "",
+    bio: user.bio ?? "",
+  };
+
+  const {
+    formData,
+    errors,
+    isSubmitting,
+    setIsSubmitting,
+    handleChange,
+    setErrors,
+  } = useFormState(initialFormData);
+
+  const handleSubmit = async (e: FormEvent<HTMLFormElement>): Promise<void> => {
+    e.preventDefault();
+
+    const validationErrors = validateProfileUpdateForm(formData);
+    if (Object.keys(validationErrors).length > 0) {
+      setErrors(validationErrors);
+      return;
+    }
+
+    setIsSubmitting(true);
+    const result = await updateUserProfile(user.id, {
+      firstName: formData.firstName,
+      lastName: formData.lastName,
+      age: parseInt(formData.age, 10),
+      location: formData.location,
+      username: formData.username,
+      email: formData.email,
+      bio: formData.bio,
+    });
+
+    if (result.success) {
+      onSave();
+    } else {
+      setErrors({
+        ...(result.errors ?? {}),
+        general: result.message ?? "Failed to update profile",
+      });
+    }
+    setIsSubmitting(false);
+  };
+
+  return (
+    <Stack spacing="large">
+      <Card className="p-6">
+        <Heading level={3} className="mb-6">
+          Edit Profile
+        </Heading>
+
+        <ErrorBanner message={errors.general} />
+
+        <form onSubmit={(e) => void handleSubmit(e)}>
+          <Stack spacing="medium">
+            <Grid cols={1} mdCols={2}>
+              <FormField
+                label="First Name"
+                name="firstName"
+                value={formData.firstName}
+                onChange={handleChange}
+                error={errors.firstName}
+              />
+              <FormField
+                label="Last Name"
+                name="lastName"
+                value={formData.lastName}
+                onChange={handleChange}
+                error={errors.lastName}
+              />
+            </Grid>
+            <Grid cols={1} mdCols={2}>
+              <FormField
+                label="Age"
+                type="number"
+                name="age"
+                value={formData.age}
+                onChange={handleChange}
+                min={LIMITS.AGE_MIN}
+                max={LIMITS.AGE_MAX}
+                error={errors.age}
+              />
+              <FormField
+                label="Location"
+                name="location"
+                value={formData.location}
+                onChange={handleChange}
+                error={errors.location}
+              />
+            </Grid>
+            <FormField
+              label="Username"
+              name="username"
+              value={formData.username}
+              onChange={handleChange}
+              error={errors.username}
+              autoComplete="username"
+            />
+            <FormField
+              label="Email (Optional)"
+              type="email"
+              name="email"
+              value={formData.email}
+              onChange={handleChange}
+              placeholder="Enter your email address"
+              error={errors.email}
+              autoComplete="email"
+            />
+            <FormField
+              label="Bio (Optional)"
+              name="bio"
+              value={formData.bio}
+              onChange={handleChange}
+              placeholder={`Tell us a bit about yourself (max ${LIMITS.BIO_MAX} characters)`}
+              multiline
+              rows={3}
+              error={errors.bio}
+              helperText={`${formData.bio.length}/${LIMITS.BIO_MAX} characters`}
+            />
+
+            <Grid cols={2} gap="medium" className="pt-4">
+              <Button
+                type="submit"
+                variant="primary"
+                fullWidth
+                isLoading={isSubmitting}
+                loadingText="Saving..."
+              >
+                Save Changes
+              </Button>
+              <Button
+                type="button"
+                variant="secondary"
+                fullWidth
+                onClick={onCancel}
+              >
+                Cancel
+              </Button>
+            </Grid>
+          </Stack>
+        </form>
+      </Card>
+
+      <ChangePasswordForm />
+    </Stack>
+  );
+}
+
+export default ProfileEdit;

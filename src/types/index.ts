@@ -3,3 +3,6 @@
 export * from "@shared/types";
 export * from "@shared/socketEvents";
 export * from "@shared/notificationTypes";
+
+/** Field → message map used by client forms. `general` feeds the banner. */
+export type FormErrors = Record<string, string | undefined>;

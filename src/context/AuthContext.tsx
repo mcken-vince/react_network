@@ -13,12 +13,11 @@ import type {
   UserResponse,
 } from "../types";
 
-type SignupInput = Omit<SignupData, "age"> & {
+export type SignupInput = Omit<SignupData, "age"> & {
   age: number | string;
   confirmPassword?: string;
 };
-
-interface AuthResult {
+export interface AuthResult {
   success: boolean;
   message?: string;
   errors?: Record<string, string>;
