@@ -1,7 +1,5 @@
 import {
-  createContext,
   useCallback,
-  useContext,
   useEffect,
   useMemo,
   useRef,
@@ -18,6 +16,10 @@ import {
   notificationKeys,
 } from "../lib/queryKeys";
 import { upsertConversation } from "../hooks/useMessaging";
+import {
+  WebSocketContext,
+  type WebSocketContextValue,
+} from "./WebSocketContext";
 import type {
   Conversation,
   Message,
@@ -25,19 +27,6 @@ import type {
   Notification,
   ServerToClientEvents,
 } from "../types";
-
-interface WebSocketContextValue {
-  isConnected: boolean;
-  onlineUserIds: ReadonlySet<number>;
-  isUserOnline: (userId: number) => boolean;
-  /** conversationId → userIds currently typing (excludes the current user). */
-  typingByConversation: Record<string, number[]>;
-  sendTyping: (conversationId: string, isTyping: boolean) => void;
-}
-
-const WebSocketContext = createContext<WebSocketContextValue | undefined>(
-  undefined,
-);
 
 const SERVER_EVENTS: (keyof ServerToClientEvents)[] = [
   "presence:snapshot",
@@ -52,6 +41,8 @@ const SERVER_EVENTS: (keyof ServerToClientEvents)[] = [
   "conversation:created",
   "message:typing",
 ];
+
+const TYPING_TIMEOUT_MS = 5_000;
 
 function useAuthToken(): string | null {
   const [token, setToken] = useState<string | null>(() => getAuthToken());
@@ -73,6 +64,9 @@ export function WebSocketProvider({ children }: { children: ReactNode }) {
   const typingTimers = useRef(new Map<string, ReturnType<typeof setTimeout>>());
 
   useEffect(() => {
+    // Captured once so the cleanup sees the same Map the handlers wrote to.
+    const timers = typingTimers.current;
+
     if (!token) {
       disconnectSocket();
       setIsConnected(false);
@@ -99,7 +93,7 @@ export function WebSocketProvider({ children }: { children: ReactNode }) {
       }),
     );
 
-    // ---- Notifications --------------------------------------------------
+    // ---- Notifications ---------------------------------------------------
     const patchNotifications = (
       updater: (list: Notification[]) => Notification[],
     ) =>
@@ -118,6 +112,7 @@ export function WebSocketProvider({ children }: { children: ReactNode }) {
         (c) => (c ?? 0) + 1,
       );
     });
+
     socket.on("notification:updated", (notification) => {
       patchNotifications((list) =>
         list.map((n) => (n.id === notification.id ? notification : n)),
@@ -126,18 +121,20 @@ export function WebSocketProvider({ children }: { children: ReactNode }) {
         queryKey: notificationKeys.unreadCount(),
       });
     });
+
     socket.on("notification:deleted", (notificationId) => {
       patchNotifications((list) => list.filter((n) => n.id !== notificationId));
       void queryClient.invalidateQueries({
         queryKey: notificationKeys.unreadCount(),
       });
     });
+
     socket.on("notification:allRead", () => {
       patchNotifications((list) => list.map((n) => ({ ...n, isRead: true })));
       queryClient.setQueryData<number>(notificationKeys.unreadCount(), 0);
     });
 
-    // ---- Messaging -----------------------------------------------------
+    // ---- Messaging -------------------------------------------------------
     const patchMessages = (
       conversationId: string,
       updater: (messages: Message[]) => Message[],
@@ -146,9 +143,9 @@ export function WebSocketProvider({ children }: { children: ReactNode }) {
       queryClient.setQueryData<InfiniteData<MessagesResponse>>(
         messageKeys.list(conversationId),
         (old) => {
-          if (!old || old.pages.length === 0) return old;
+          const [first, ...rest] = old?.pages ?? [];
+          if (!old || !first) return old;
           if (firstPageOnly) {
-            const [first, ...rest] = old.pages;
             return {
               ...old,
               pages: [{ ...first, messages: updater(first.messages) }, ...rest],
@@ -173,6 +170,7 @@ export function WebSocketProvider({ children }: { children: ReactNode }) {
             : [message, ...messages],
         true,
       );
+
       queryClient.setQueryData<Conversation[]>(
         conversationKeys.list(),
         (old) => {
@@ -216,6 +214,7 @@ export function WebSocketProvider({ children }: { children: ReactNode }) {
 
     socket.on("message:typing", ({ conversationId, userId, isTyping }) => {
       if (userId === currentUserId) return;
+
       setTypingByConversation((prev) => {
         const current = new Set(prev[conversationId] ?? []);
         if (isTyping) current.add(userId);
@@ -224,9 +223,9 @@ export function WebSocketProvider({ children }: { children: ReactNode }) {
       });
 
       const timerKey = `${conversationId}:${userId}`;
-      const timers = typingTimers.current;
       const pending = timers.get(timerKey);
       if (pending) clearTimeout(pending);
+
       if (isTyping) {
         timers.set(
           timerKey,
@@ -238,7 +237,7 @@ export function WebSocketProvider({ children }: { children: ReactNode }) {
               ),
             }));
             timers.delete(timerKey);
-          }, 5_000),
+          }, TYPING_TIMEOUT_MS),
         );
       }
     });
@@ -247,8 +246,8 @@ export function WebSocketProvider({ children }: { children: ReactNode }) {
       socket.off("connect", onConnect);
       socket.off("disconnect", onDisconnect);
       SERVER_EVENTS.forEach((event) => socket.off(event));
-      typingTimers.current.forEach((timer) => clearTimeout(timer));
-      typingTimers.current.clear();
+      timers.forEach((timer) => clearTimeout(timer));
+      timers.clear();
     };
   }, [token, currentUserId, queryClient]);
 
@@ -276,11 +275,3 @@ export function WebSocketProvider({ children }: { children: ReactNode }) {
     </WebSocketContext.Provider>
   );
 }
-
-export const useWebSocket = (): WebSocketContextValue => {
-  const ctx = useContext(WebSocketContext);
-  if (!ctx) {
-    throw new Error("useWebSocket must be used within a WebSocketProvider");
-  }
-  return ctx;
-};

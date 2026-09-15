@@ -18,14 +18,6 @@ export const useCurrentUser = () =>
     staleTime: STALE.user,
   });
 
-const useUsers = () =>
-  useQuery({
-    queryKey: userKeys.lists(),
-    queryFn: () => userAPI.getAllUsers(),
-    select: (data) => data.users,
-    staleTime: STALE.list,
-  });
-
 export const useUsersWithConnectionStatus = (enabled = true) =>
   useQuery({
     queryKey: userKeys.withConnectionStatus(),
@@ -64,7 +56,8 @@ export const usePrefetchUser = () => {
   };
 };
 
-const useUpdateProfile = () => {
+/** Update a profile and patch every cache that embeds that user. */
+export const useUpdateProfile = () => {
   const queryClient = useQueryClient();
   return useMutation({
     mutationFn: (vars: { userId: number; data: ProfileUpdateData }) =>

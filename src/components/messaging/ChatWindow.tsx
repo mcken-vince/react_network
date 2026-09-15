@@ -1,6 +1,6 @@
 import { useEffect } from "react";
 import { useAuth } from "../../hooks/useAuth";
-import { conversationTitle } from "./ConversationList";
+import { conversationTitle } from "../../lib/conversations";
 import {
   flattenMessages,
   useConversation,
@@ -8,7 +8,7 @@ import {
   useMessages,
   useSendMessage,
 } from "../../hooks/useMessaging";
-import { useWebSocket } from "../../context/WebSocketContext";
+import { useWebSocket } from "../../hooks/useWebSocket";
 import { MessageList } from "./MessageList";
 import { MessageInput } from "./MessageInput";
 import type { SendMessageData } from "../../types";

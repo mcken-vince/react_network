@@ -1,5 +1,4 @@
 export {
-  validateUsername,
   validatePassword,
   validatePasswordMatch,
   validateLoginForm,
@@ -15,4 +14,3 @@ export {
   getRemainingCharacters,
   isContentTooLong,
 } from "./post";
-export type { PostFormValues } from "./post";

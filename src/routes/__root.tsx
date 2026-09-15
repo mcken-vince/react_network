@@ -1,8 +1,8 @@
 import { createRootRoute, Outlet } from "@tanstack/react-router";
 import { TanStackRouterDevtools } from "@tanstack/react-router-devtools";
-import { AuthProvider } from "../context/AuthContext";
-import { WebSocketProvider } from "../context/WebSocketContext";
-import { MessagingProvider } from "../context/MessagingContext";
+import { AuthProvider } from "../context/AuthProvider";
+import { WebSocketProvider } from "../context/WebSocketProvider";
+import { MessagingProvider } from "../context/MessagingProvider";
 import ErrorBoundary from "../components/common/ErrorBoundary";
 import RouteError from "../components/common/RouteError";
 import NotFound from "../components/common/NotFound";

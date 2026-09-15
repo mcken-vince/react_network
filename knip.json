@@ -2,5 +2,5 @@
   "$schema": "https://unpkg.com/knip@6/schema.json",
   "entry": ["src/routes/**/*.{ts,tsx}", "shared/**/*.ts"],
   "project": ["src/**/*.{ts,tsx}", "shared/**/*.ts"],
-  "ignore": ["src/routeTree.gen.ts"]
+  "ignoreExportsUsedInFile": { "interface": true, "type": true }
 }

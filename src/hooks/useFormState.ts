@@ -3,10 +3,11 @@ import type { FormErrors } from "../types";
 
 type FieldElement = HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement;
 
+/** Any object whose values are all strings (interfaces included — no index signature needed). */
+type StringRecord<T> = { [K in keyof T]: string };
+
 /** Controlled-form state for flat string-valued forms. */
-export function useFormState<T extends Record<string, string>>(
-  initialState: T,
-) {
+export function useFormState<T extends StringRecord<T>>(initialState: T) {
   const [formData, setFormData] = useState<T>(initialState);
   const [errors, setErrors] = useState<FormErrors>({});
   const [isSubmitting, setIsSubmitting] = useState(false);

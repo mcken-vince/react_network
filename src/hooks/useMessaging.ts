@@ -102,8 +102,8 @@ const patchFirstPage = (
   queryClient.setQueryData<InfiniteData<MessagesResponse>>(
     messageKeys.list(conversationId),
     (old) => {
-      if (!old || old.pages.length === 0) return old;
-      const [first, ...rest] = old.pages;
+      const [first, ...rest] = old?.pages ?? [];
+      if (!old || !first) return old;
       return {
         ...old,
         pages: [{ ...first, messages: updater(first.messages) }, ...rest],

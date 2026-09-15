@@ -1,5 +1,5 @@
 import { useRef, useState } from "react";
-import { useWebSocket } from "../../context/WebSocketContext";
+import { useWebSocket } from "../../hooks/useWebSocket";
 
 interface MessageInputProps {
   conversationId: string;

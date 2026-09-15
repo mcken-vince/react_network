@@ -1,35 +1,54 @@
-import type { HTMLAttributes } from "react";
+import {
+  Bell,
+  Check,
+  CircleUser,
+  Handshake,
+  Info,
+  LayoutDashboard,
+  Link2,
+  LogOut,
+  MapPin,
+  Menu,
+  MessageCircle,
+  Newspaper,
+  Pencil,
+  Search,
+  TriangleAlert,
+  User,
+  X,
+  type LucideIcon,
+  type LucideProps,
+} from "lucide-react";
 import { cn } from "../../lib/cn";
-import { TEXT_COLORS, type TextColor } from "./Text";
+import { TEXT_COLORS, type TextColor } from "./colors";
 
-// Emoji/Unicode for now; swap for an icon library later without changing callers.
 const ICONS = {
-  location: "📍",
-  user: "👤",
-  edit: "✏️",
-  close: "❌",
-  check: "✓",
-  warning: "⚠️",
-  info: "ℹ️",
-  menu: "☰",
-  bell: "🔔",
-  logout: "🚪",
-  dashboard: "📊",
-  connections: "🔗",
-  notifications: "🔔",
-  profile: "👤",
-} as const;
+  location: MapPin,
+  user: User,
+  edit: Pencil,
+  close: X,
+  check: Check,
+  warning: TriangleAlert,
+  info: Info,
+  menu: Menu,
+  bell: Bell,
+  logout: LogOut,
+  dashboard: LayoutDashboard,
+  feed: Newspaper,
+  connections: Link2,
+  handshake: Handshake,
+  messages: MessageCircle,
+  notifications: Bell,
+  profile: CircleUser,
+  search: Search,
+} satisfies Record<string, LucideIcon>;
 
 export type IconName = keyof typeof ICONS;
 export type IconSize = "small" | "medium" | "large";
 
-const SIZE: Record<IconSize, string> = {
-  small: "w-4 h-4",
-  medium: "w-5 h-5",
-  large: "w-6 h-6",
-};
+const SIZE_PX: Record<IconSize, number> = { small: 16, medium: 20, large: 24 };
 
-interface IconProps extends HTMLAttributes<HTMLSpanElement> {
+interface IconProps extends Omit<LucideProps, "size" | "color"> {
   name: IconName;
   size?: IconSize;
   /** "current" inherits the surrounding text colour. */
@@ -42,19 +61,20 @@ const Icon = ({
   color = "current",
   className,
   ...props
-}: IconProps) => (
-  <span
-    className={cn(
-      "inline-block",
-      SIZE[size],
-      color !== "current" && TEXT_COLORS[color],
-      className,
-    )}
-    aria-label={name}
-    {...props}
-  >
-    {ICONS[name]}
-  </span>
-);
+}: IconProps) => {
+  const Component = ICONS[name];
+  return (
+    <Component
+      size={SIZE_PX[size]}
+      className={cn(
+        "inline-block flex-shrink-0",
+        color !== "current" && TEXT_COLORS[color],
+        className,
+      )}
+      aria-label={name}
+      {...props}
+    />
+  );
+};
 
 export default Icon;

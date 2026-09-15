@@ -10,6 +10,7 @@ import { NotificationBell } from "../notifications";
 import { useAuth } from "../../hooks/useAuth";
 import Loading from "../Loading";
 import { cn } from "../../lib/cn";
+import Icon, { IconName } from "../atoms/Icon";
 
 interface AuthenticatedLayoutProps {
   children: ReactNode;
@@ -50,43 +51,43 @@ function AuthenticatedLayout({ children }: AuthenticatedLayoutProps) {
     {
       href: "/dashboard",
       label: "Dashboard",
-      emoji: "📊",
+      icon: "dashboard",
       link: linkOptions({ to: "/dashboard" }),
     },
     {
       href: "/feed",
       label: "Feed",
-      emoji: "📰",
+      icon: "feed",
       link: linkOptions({ to: "/feed" }),
     },
     {
       href: "/connections",
       label: "Connections",
-      emoji: "🔗",
+      icon: "connections",
       link: linkOptions({ to: "/connections", search: { tab: "search" } }),
     },
     {
       href: "/messages",
       label: "Messages",
-      emoji: "💬",
+      icon: "messages",
       link: linkOptions({ to: "/messages" }),
     },
     {
       href: "/notifications",
       label: "Notifications",
-      emoji: "🔔",
+      icon: "notifications",
       link: linkOptions({ to: "/notifications" }),
     },
     {
       href: `/profile/${user.id}`,
       label: "Profile",
-      emoji: "👤",
+      icon: "profile",
       link: linkOptions({
         to: "/profile/$userId",
         params: { userId: String(user.id) },
       }),
     },
-  ];
+  ] satisfies { href: string; label: string; icon: IconName; link: unknown }[];
 
   const isActiveRoute = (href: string): boolean =>
     href === "/dashboard"
@@ -183,7 +184,7 @@ function AuthenticatedLayout({ children }: AuthenticatedLayoutProps) {
                       className={mobileLinkClass(item.href)}
                     >
                       <Flex align="center" gap="small">
-                        <span className="text-base">{item.emoji}</span>
+                        <Icon name={item.icon} size="small" />
                         <span>{item.label}</span>
                       </Flex>
                     </Link>
@@ -207,7 +208,7 @@ function AuthenticatedLayout({ children }: AuthenticatedLayoutProps) {
                     className="w-full"
                     aria-label="Logout"
                   >
-                    🚪 Logout
+                    <Icon name="logout" size="small" /> Logout
                   </Button>
                 </div>
               </div>

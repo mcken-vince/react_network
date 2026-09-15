@@ -1,15 +1,29 @@
 import { Link, linkOptions } from "@tanstack/react-router";
+import { Icon } from "../atoms";
+import type { IconName } from "../atoms/Icon";
 
-const SUGGESTIONS = [
-  { label: "Dashboard", icon: "📊", link: linkOptions({ to: "/dashboard" }) },
-  { label: "Feed", icon: "📰", link: linkOptions({ to: "/feed" }) },
+const SUGGESTIONS: {
+  label: string;
+  icon: IconName;
+  link: ReturnType<typeof linkOptions>;
+}[] = [
+  {
+    label: "Dashboard",
+    icon: "dashboard",
+    link: linkOptions({ to: "/dashboard" }),
+  },
+  { label: "Feed", icon: "feed", link: linkOptions({ to: "/feed" }) },
   {
     label: "Connections",
-    icon: "🤝",
+    icon: "handshake",
     link: linkOptions({ to: "/connections", search: { tab: "search" } }),
   },
-  { label: "Messages", icon: "💬", link: linkOptions({ to: "/messages" }) },
-  { label: "Profile", icon: "👤", link: linkOptions({ to: "/profile" }) },
+  {
+    label: "Messages",
+    icon: "messages",
+    link: linkOptions({ to: "/messages" }),
+  },
+  { label: "Profile", icon: "profile", link: linkOptions({ to: "/profile" }) },
 ];
 
 /** Rendered by the root route's `notFoundComponent` for any unmatched URL. */
@@ -58,7 +72,11 @@ function NotFound() {
                 {...item.link}
                 className="flex flex-col items-center p-4 bg-white rounded-lg shadow hover:shadow-md transition-shadow"
               >
-                <span className="text-3xl mb-2">{item.icon}</span>
+                <Icon
+                  name={item.icon}
+                  size="large"
+                  className="mb-2 text-blue-600"
+                />
                 <span className="text-sm font-medium text-gray-700">
                   {item.label}
                 </span>

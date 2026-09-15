@@ -4,29 +4,10 @@ import {
   useActiveConversation,
   useConversations,
 } from "../../hooks/useMessaging";
-import { useWebSocket } from "../../context/WebSocketContext";
+import { useWebSocket } from "../../hooks/useWebSocket";
+import { conversationTitle, otherParticipants } from "../../lib/conversations";
 import { CreateConversationModal } from "./CreateConversationModal";
-import type { Conversation, ConversationParticipant } from "../../types";
-
-function otherParticipants(
-  conversation: Conversation,
-  currentUserId: number | undefined,
-): ConversationParticipant[] {
-  return (conversation.participants ?? []).filter(
-    (p) => p.userId !== currentUserId,
-  );
-}
-
-export function conversationTitle(
-  conversation: Conversation,
-  currentUserId: number | undefined,
-): string {
-  if (conversation.type === "group") {
-    return conversation.name || "Group chat";
-  }
-  const other = otherParticipants(conversation, currentUserId)[0]?.user;
-  return other ? `${other.firstName} ${other.lastName}` : "Direct message";
-}
+import type { Conversation } from "../../types";
 
 function formatTime(timestamp: string | null | undefined): string {
   if (!timestamp) return "";
@@ -55,7 +36,6 @@ export function ConversationList() {
   const { activeConversationId, setActiveConversationId } =
     useActiveConversation();
   const { onlineUserIds } = useWebSocket();
-
   const [isCreateOpen, setIsCreateOpen] = useState(false);
   const [searchQuery, setSearchQuery] = useState("");
 
@@ -73,6 +53,7 @@ export function ConversationList() {
         <div className="flex items-center justify-between mb-4">
           <h2 className="text-xl font-semibold text-gray-900">Messages</h2>
           <button
+            type="button"
             onClick={() => setIsCreateOpen(true)}
             className="inline-flex items-center px-3 py-2 text-sm font-medium rounded-md text-white bg-primary-600 hover:bg-primary-700"
           >
@@ -99,8 +80,10 @@ export function ConversationList() {
             const online =
               conversation.type === "direct" &&
               others.some((p) => onlineUserIds.has(p.userId));
+
             return (
               <button
+                type="button"
                 key={conversation.id}
                 onClick={() => setActiveConversationId(conversation.id)}
                 className={`w-full text-left px-4 py-3 border-b border-gray-100 hover:bg-gray-50 ${

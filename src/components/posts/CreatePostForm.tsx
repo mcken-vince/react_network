@@ -5,7 +5,7 @@ import {
   getRemainingCharacters,
   isContentTooLong,
   validateCreatePost,
-} from "../../utils/validation/post";
+} from "../../utils/validation";
 import type {
   CreatePostData,
   FormErrors,

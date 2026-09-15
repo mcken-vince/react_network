@@ -37,8 +37,11 @@ export const useConnectionsList = () =>
     staleTime: STALE.accepted,
   });
 
-const invalidate = (queryClient: QueryClient, keys: readonly unknown[][]) =>
-  keys.forEach((queryKey) => queryClient.invalidateQueries({ queryKey }));
+const invalidate = (
+  queryClient: QueryClient,
+  keys: readonly (readonly unknown[])[],
+): void =>
+  keys.forEach((queryKey) => void queryClient.invalidateQueries({ queryKey }));
 
 const removeFromRequests = (
   queryClient: QueryClient,

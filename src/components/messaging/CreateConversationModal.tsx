@@ -71,7 +71,9 @@ export function CreateConversationModal({ onClose }: { onClose: () => void }) {
     setError(null);
     try {
       if (type === "direct") {
-        const { conversation } = await createDirect.mutateAsync(selected[0].id);
+        const target = selected[0];
+        if (!target) return;
+        const { conversation } = await createDirect.mutateAsync(target.id);
         setActiveConversationId(conversation.id);
       } else {
         const { conversation } = await createGroup.mutateAsync({

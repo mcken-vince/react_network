@@ -1,13 +1,5 @@
-import { createContext, useMemo, useState, type ReactNode } from "react";
-
-interface MessagingContextValue {
-  activeConversationId: string | null;
-  setActiveConversationId: (id: string | null) => void;
-}
-
-export const MessagingContext = createContext<MessagingContextValue | null>(
-  null,
-);
+import { useMemo, useState, type ReactNode } from "react";
+import { MessagingContext } from "./MessagingContext";
 
 export function MessagingProvider({ children }: { children: ReactNode }) {
   const [activeConversationId, setActiveConversationId] = useState<
