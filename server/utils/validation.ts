@@ -11,6 +11,9 @@ import type {
   SendMessageData,
   SignupData,
   UpdatePostData,
+  AddParticipantsData,
+  CreateCommentData,
+  RenameConversationData,
 } from "../../shared/types";
 
 // ---------------------------------------------------------------------------
@@ -421,4 +424,44 @@ export const validateGroupConversation = (
     name,
     participantIds: "ids" in parsed ? parsed.ids : [],
   });
+};
+
+// ---------------------------------------------------------------------------
+// Comments
+// ---------------------------------------------------------------------------
+
+export const validateComment = (
+  input: unknown,
+): ValidationResult<CreateCommentData> => {
+  const b = asBody(input);
+  const errors: FieldErrors = {};
+  const content = text(b.content).trim();
+  if (!content) errors.content = "Comment cannot be empty";
+  else if (content.length > LIMITS.COMMENT_CONTENT_MAX)
+    errors.content = `Comment must be less than ${LIMITS.COMMENT_CONTENT_MAX} characters`;
+  return finish(errors, { content });
+};
+
+// ---------------------------------------------------------------------------
+// Group management
+// ---------------------------------------------------------------------------
+
+export const validateConversationRename = (
+  input: unknown,
+): ValidationResult<RenameConversationData> => {
+  const b = asBody(input);
+  const errors: FieldErrors = {};
+  const name = text(b.name).trim();
+  addError(errors, "name", validateConversationName(name));
+  return finish(errors, { name });
+};
+
+export const validateAddParticipants = (
+  input: unknown,
+): ValidationResult<AddParticipantsData> => {
+  const b = asBody(input);
+  const errors: FieldErrors = {};
+  const parsed = parseParticipantIds(b.userIds);
+  if ("error" in parsed) errors.userIds = parsed.error;
+  return finish(errors, { userIds: "ids" in parsed ? parsed.ids : [] });
 };

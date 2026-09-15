@@ -10,7 +10,7 @@ import { NotificationBell } from "../notifications";
 import { useAuth } from "../../hooks/useAuth";
 import Loading from "../Loading";
 import { cn } from "../../lib/cn";
-import Icon, { IconName } from "../atoms/Icon";
+import Icon, { type IconName } from "../atoms/Icon";
 
 interface AuthenticatedLayoutProps {
   children: ReactNode;

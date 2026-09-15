@@ -7,7 +7,8 @@ import {
   ForeignKey,
   Table,
 } from "sequelize-typescript";
-import type { Transaction } from "sequelize";
+import { Op, literal, where as sqlWhere } from "sequelize";
+import type { Transaction, WhereOptions } from "sequelize";
 import { BaseModel } from "./BaseModel";
 import User from "./User.model";
 import { includeUser } from "./includes";
@@ -175,6 +176,29 @@ export default class Notification extends BaseModel<
     return notification;
   }
 
+  static async hasUnread(
+    where: WhereOptions<NotificationAttributes>,
+  ): Promise<boolean> {
+    return (await this.count({ where })) > 0;
+  }
+
+  /** Unread "new message" notifications for one conversation (normally 0 or 1). */
+  static findUnreadForConversation(
+    userId: number,
+    conversationId: string,
+  ): Promise<Notification[]> {
+    return this.findAll({
+      where: {
+        userId,
+        type: NOTIFICATION_TYPES.NEW_MESSAGE,
+        isRead: false,
+        [Op.and]: [
+          sqlWhere(literal(`"metadata"->>'conversationId'`), conversationId),
+        ],
+      },
+    });
+  }
+
   // --------------------------------------------------------------------------
   // Factories
   // --------------------------------------------------------------------------
@@ -271,6 +295,49 @@ export default class Notification extends BaseModel<
         relatedEntityType: "message",
         relatedEntityId: messageId,
         metadata: { conversationId },
+      },
+      { transaction },
+    );
+  }
+
+  static createPostLikeNotification(
+    userId: number,
+    fromUserId: number,
+    postId: string,
+    transaction?: Transaction,
+  ): Promise<Notification> {
+    return this.create(
+      {
+        userId,
+        type: NOTIFICATION_TYPES.POST_LIKE,
+        title: "New Like",
+        message: "Someone liked your post",
+        relatedUserId: fromUserId,
+        relatedEntityType: "post",
+        relatedEntityId: postId,
+      },
+      { transaction },
+    );
+  }
+
+  static createPostCommentNotification(
+    userId: number,
+    fromUserId: number,
+    postId: string,
+    commentId: string,
+    commentPreview: string,
+    transaction?: Transaction,
+  ): Promise<Notification> {
+    return this.create(
+      {
+        userId,
+        type: NOTIFICATION_TYPES.POST_COMMENT,
+        title: "New Comment",
+        message: commentPreview.substring(0, 100),
+        relatedUserId: fromUserId,
+        relatedEntityType: "post",
+        relatedEntityId: postId,
+        metadata: { commentId },
       },
       { transaction },
     );

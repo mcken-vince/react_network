@@ -9,6 +9,10 @@ import type {
   MessagesQuery,
   SendMessageData,
 } from "../types";
+import {
+  markConversationNotificationsRead,
+  notifyNewMessage,
+} from "./notificationService";
 
 /** Newest-first page; `nextCursor` is the id to pass as `beforeMessageId` for the next (older) page. */
 export async function listMessages(
@@ -41,7 +45,6 @@ export async function sendMessage(
   data: SendMessageData,
 ): Promise<MessageDto> {
   await assertParticipant(conversationId, senderId);
-
   if (data.replyToId) {
     const parent = await Message.findOne({
       where: { id: data.replyToId, conversationId },
@@ -51,7 +54,6 @@ export async function sendMessage(
       throw new NotFoundError("The message being replied to was not found");
     }
   }
-
   const created = await Message.create({
     conversationId,
     senderId,
@@ -62,7 +64,21 @@ export async function sendMessage(
   const full = (await Message.getMessageById(created.id)) ?? created;
   const dto = toWire<MessageDto>(full);
 
-  emitToUsers(await activeParticipantIds(conversationId), "message:new", dto);
+  const participantIds = await activeParticipantIds(conversationId);
+  emitToUsers(participantIds, "message:new", dto);
+  await Promise.all(
+    participantIds
+      .filter((id) => id !== senderId)
+      .map((id) =>
+        notifyNewMessage(
+          id,
+          senderId,
+          created.id,
+          conversationId,
+          data.content,
+        ),
+      ),
+  );
   return dto;
 }
 
@@ -101,8 +117,9 @@ export async function deleteMessage(
 }
 
 /**
- * Mark a conversation read for `userId` (drives unreadCount). Optionally also
- * record read receipts for specific messages.
+ * Mark a conversation read for `userId` (drives unreadCount), clear its
+ * message notifications, and optionally record read receipts for specific
+ * messages.
  * @throws ForbiddenError
  */
 export async function markConversationRead(
@@ -114,4 +131,5 @@ export async function markConversationRead(
   if (messageIds.length > 0) {
     await Message.markAsRead([...messageIds], userId);
   }
+  await markConversationNotificationsRead(userId, conversationId);
 }

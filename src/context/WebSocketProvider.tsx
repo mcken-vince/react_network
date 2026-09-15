@@ -15,7 +15,14 @@ import {
   messageKeys,
   notificationKeys,
 } from "../lib/queryKeys";
-import { upsertConversation } from "../hooks/useMessaging";
+import {
+  removeConversationFromCache,
+  upsertConversation,
+} from "../hooks/useMessaging";
+import {
+  patchNotificationLists,
+  prependNotification,
+} from "../hooks/useNotifications";
 import {
   WebSocketContext,
   type WebSocketContextValue,
@@ -24,7 +31,6 @@ import type {
   Conversation,
   Message,
   MessagesResponse,
-  Notification,
   ServerToClientEvents,
 } from "../types";
 
@@ -39,6 +45,8 @@ const SERVER_EVENTS: (keyof ServerToClientEvents)[] = [
   "message:updated",
   "message:deleted",
   "conversation:created",
+  "conversation:updated",
+  "conversation:removed",
   "message:typing",
 ];
 
@@ -94,43 +102,33 @@ export function WebSocketProvider({ children }: { children: ReactNode }) {
     );
 
     // ---- Notifications ---------------------------------------------------
-    const patchNotifications = (
-      updater: (list: Notification[]) => Notification[],
-    ) =>
-      queryClient.setQueriesData<Notification[]>(
-        { queryKey: notificationKeys.lists() },
-        (old) => (old ? updater(old) : old),
-      );
-
     socket.on("notification:new", (notification) => {
-      patchNotifications((list) => [
-        notification,
-        ...list.filter((n) => n.id !== notification.id),
-      ]);
+      prependNotification(queryClient, notification);
       queryClient.setQueryData<number>(
         notificationKeys.unreadCount(),
         (c) => (c ?? 0) + 1,
       );
     });
-
     socket.on("notification:updated", (notification) => {
-      patchNotifications((list) =>
+      patchNotificationLists(queryClient, (list) =>
         list.map((n) => (n.id === notification.id ? notification : n)),
       );
       void queryClient.invalidateQueries({
         queryKey: notificationKeys.unreadCount(),
       });
     });
-
     socket.on("notification:deleted", (notificationId) => {
-      patchNotifications((list) => list.filter((n) => n.id !== notificationId));
+      patchNotificationLists(queryClient, (list) =>
+        list.filter((n) => n.id !== notificationId),
+      );
       void queryClient.invalidateQueries({
         queryKey: notificationKeys.unreadCount(),
       });
     });
-
     socket.on("notification:allRead", () => {
-      patchNotifications((list) => list.map((n) => ({ ...n, isRead: true })));
+      patchNotificationLists(queryClient, (list) =>
+        list.map((n) => ({ ...n, isRead: true })),
+      );
       queryClient.setQueryData<number>(notificationKeys.unreadCount(), 0);
     });
 
@@ -170,7 +168,6 @@ export function WebSocketProvider({ children }: { children: ReactNode }) {
             : [message, ...messages],
         true,
       );
-
       queryClient.setQueryData<Conversation[]>(
         conversationKeys.list(),
         (old) => {
@@ -211,10 +208,15 @@ export function WebSocketProvider({ children }: { children: ReactNode }) {
     socket.on("conversation:created", (conversation) =>
       upsertConversation(queryClient, conversation),
     );
+    socket.on("conversation:updated", (conversation) =>
+      upsertConversation(queryClient, conversation),
+    );
+    socket.on("conversation:removed", (conversationId) =>
+      removeConversationFromCache(queryClient, conversationId),
+    );
 
     socket.on("message:typing", ({ conversationId, userId, isTyping }) => {
       if (userId === currentUserId) return;
-
       setTypingByConversation((prev) => {
         const current = new Set(prev[conversationId] ?? []);
         if (isTyping) current.add(userId);
@@ -225,7 +227,6 @@ export function WebSocketProvider({ children }: { children: ReactNode }) {
       const timerKey = `${conversationId}:${userId}`;
       const pending = timers.get(timerKey);
       if (pending) clearTimeout(pending);
-
       if (isTyping) {
         timers.set(
           timerKey,

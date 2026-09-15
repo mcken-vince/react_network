@@ -26,7 +26,9 @@ export default tseslint.config(
       ecmaVersion: 2020,
       globals: globals.browser,
       parserOptions: {
-        project: ["./tsconfig.json", "./tsconfig.node.json"],
+        // Anchor tsconfig discovery to this folder regardless of the editor's cwd.
+        projectService: true,
+        tsconfigRootDir: import.meta.dirname,
       },
     },
     plugins: {

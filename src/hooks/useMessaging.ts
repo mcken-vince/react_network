@@ -80,18 +80,44 @@ const byRecency = (a: Conversation, b: Conversation) =>
   new Date(b.lastMessageAt ?? b.createdAt).getTime() -
   new Date(a.lastMessageAt ?? a.createdAt).getTime();
 
+/**
+ * Insert or update a conversation in the list + detail caches. Enrichment
+ * fields (lastMessage / unreadCount) are kept from the cached copy when the
+ * incoming one lacks them — `conversation:updated` payloads don't carry them.
+ */
 export function upsertConversation(
   queryClient: QueryClient,
   conversation: Conversation,
 ): void {
   queryClient.setQueryData<Conversation[]>(conversationKeys.list(), (old) => {
+    const existing = (old ?? []).find((c) => c.id === conversation.id);
+    const merged: Conversation = {
+      ...existing,
+      ...conversation,
+      lastMessage: conversation.lastMessage ?? existing?.lastMessage ?? null,
+      unreadCount: conversation.unreadCount ?? existing?.unreadCount ?? 0,
+    };
     const without = (old ?? []).filter((c) => c.id !== conversation.id);
-    return [conversation, ...without].sort(byRecency);
+    return [merged, ...without].sort(byRecency);
   });
-  queryClient.setQueryData(
+  queryClient.setQueryData<Conversation>(
     conversationKeys.detail(conversation.id),
-    conversation,
+    (old) => ({ ...old, ...conversation }),
   );
+}
+
+/** The user was removed from (or left) a conversation: forget it entirely. */
+export function removeConversationFromCache(
+  queryClient: QueryClient,
+  conversationId: string,
+): void {
+  queryClient.setQueryData<Conversation[]>(conversationKeys.list(), (old) =>
+    old?.filter((c) => c.id !== conversationId),
+  );
+  queryClient.removeQueries({
+    queryKey: conversationKeys.detail(conversationId),
+  });
+  queryClient.removeQueries({ queryKey: messageKeys.list(conversationId) });
 }
 
 const patchFirstPage = (
@@ -227,5 +253,44 @@ export const useCreateGroupConversation = () => {
       messageAPI.createGroupConversation(data),
     onSuccess: (res: ConversationResponse) =>
       upsertConversation(queryClient, res.conversation),
+  });
+};
+
+// ---------------------------------------------------------------------------
+// Group management (the server also pushes conversation:updated / :removed;
+// the invalidations below cover a dropped socket)
+// ---------------------------------------------------------------------------
+
+export const useRenameConversation = () => {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: (vars: { conversationId: string; name: string }) =>
+      messageAPI.renameConversation(vars.conversationId, vars.name),
+    onSuccess: (res: ConversationResponse) =>
+      upsertConversation(queryClient, res.conversation),
+  });
+};
+
+export const useAddParticipants = () => {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: (vars: { conversationId: string; userIds: number[] }) =>
+      messageAPI.addParticipants(vars.conversationId, vars.userIds),
+    onSuccess: (res: ConversationResponse) =>
+      upsertConversation(queryClient, res.conversation),
+  });
+};
+
+export const useRemoveParticipant = () => {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: (vars: { conversationId: string; userId: number }) =>
+      messageAPI.removeParticipant(vars.conversationId, vars.userId),
+    onSuccess: (_res, { conversationId }) => {
+      void queryClient.invalidateQueries({ queryKey: conversationKeys.list() });
+      void queryClient.invalidateQueries({
+        queryKey: conversationKeys.detail(conversationId),
+      });
+    },
   });
 };

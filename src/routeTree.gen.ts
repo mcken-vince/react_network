@@ -19,6 +19,7 @@ import { Route as ConnectionsRouteImport } from './routes/connections'
 import { Route as IndexRouteImport } from './routes/index'
 import { Route as ProfileIndexRouteImport } from './routes/profile/index'
 import { Route as ProfileUserIdRouteImport } from './routes/profile/$userId'
+import { Route as PostsPostIdRouteImport } from './routes/posts/$postId'
 
 const SignupRoute = SignupRouteImport.update({
   id: '/signup',
@@ -70,6 +71,11 @@ const ProfileUserIdRoute = ProfileUserIdRouteImport.update({
   path: '/profile/$userId',
   getParentRoute: () => rootRouteImport,
 } as any)
+const PostsPostIdRoute = PostsPostIdRouteImport.update({
+  id: '/posts/$postId',
+  path: '/posts/$postId',
+  getParentRoute: () => rootRouteImport,
+} as any)
 
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
@@ -80,6 +86,7 @@ export interface FileRoutesByFullPath {
   '/messages': typeof MessagesRoute
   '/notifications': typeof NotificationsRoute
   '/signup': typeof SignupRoute
+  '/posts/$postId': typeof PostsPostIdRoute
   '/profile/$userId': typeof ProfileUserIdRoute
   '/profile': typeof ProfileIndexRoute
 }
@@ -92,6 +99,7 @@ export interface FileRoutesByTo {
   '/messages': typeof MessagesRoute
   '/notifications': typeof NotificationsRoute
   '/signup': typeof SignupRoute
+  '/posts/$postId': typeof PostsPostIdRoute
   '/profile/$userId': typeof ProfileUserIdRoute
   '/profile': typeof ProfileIndexRoute
 }
@@ -105,6 +113,7 @@ export interface FileRoutesById {
   '/messages': typeof MessagesRoute
   '/notifications': typeof NotificationsRoute
   '/signup': typeof SignupRoute
+  '/posts/$postId': typeof PostsPostIdRoute
   '/profile/$userId': typeof ProfileUserIdRoute
   '/profile/': typeof ProfileIndexRoute
 }
@@ -119,6 +128,7 @@ export interface FileRouteTypes {
     | '/messages'
     | '/notifications'
     | '/signup'
+    | '/posts/$postId'
     | '/profile/$userId'
     | '/profile'
   fileRoutesByTo: FileRoutesByTo
@@ -131,6 +141,7 @@ export interface FileRouteTypes {
     | '/messages'
     | '/notifications'
     | '/signup'
+    | '/posts/$postId'
     | '/profile/$userId'
     | '/profile'
   id:
@@ -143,6 +154,7 @@ export interface FileRouteTypes {
     | '/messages'
     | '/notifications'
     | '/signup'
+    | '/posts/$postId'
     | '/profile/$userId'
     | '/profile/'
   fileRoutesById: FileRoutesById
@@ -156,6 +168,7 @@ export interface RootRouteChildren {
   MessagesRoute: typeof MessagesRoute
   NotificationsRoute: typeof NotificationsRoute
   SignupRoute: typeof SignupRoute
+  PostsPostIdRoute: typeof PostsPostIdRoute
   ProfileUserIdRoute: typeof ProfileUserIdRoute
   ProfileIndexRoute: typeof ProfileIndexRoute
 }
@@ -232,6 +245,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof ProfileUserIdRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/posts/$postId': {
+      id: '/posts/$postId'
+      path: '/posts/$postId'
+      fullPath: '/posts/$postId'
+      preLoaderRoute: typeof PostsPostIdRouteImport
+      parentRoute: typeof rootRouteImport
+    }
   }
 }
 
@@ -244,6 +264,7 @@ const rootRouteChildren: RootRouteChildren = {
   MessagesRoute: MessagesRoute,
   NotificationsRoute: NotificationsRoute,
   SignupRoute: SignupRoute,
+  PostsPostIdRoute: PostsPostIdRoute,
   ProfileUserIdRoute: ProfileUserIdRoute,
   ProfileIndexRoute: ProfileIndexRoute,
 }

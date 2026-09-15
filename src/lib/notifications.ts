@@ -14,7 +14,8 @@ export type NotificationLink =
     }
   | { to: "/messages"; search: { conversation?: string } }
   | { to: "/feed" }
-  | { to: "/profile/$userId"; params: { userId: string } };
+  | { to: "/profile/$userId"; params: { userId: string } }
+  | { to: "/posts/$postId"; params: { postId: string } };
 
 export interface NotificationPresentation {
   icon: string;
@@ -86,12 +87,18 @@ function linkFor(notification: Notification): NotificationLink | null {
   const toProfile: NotificationLink | null = relatedUserId
     ? { to: "/profile/$userId", params: { userId: String(relatedUserId) } }
     : null;
-
   const connectionId = positiveInt(notification.relatedEntityId);
   const conversationId =
     typeof notification.metadata?.conversationId === "string"
       ? notification.metadata.conversationId
       : undefined;
+  const toPost: NotificationLink | null =
+    notification.relatedEntityType === "post" && notification.relatedEntityId
+      ? {
+          to: "/posts/$postId",
+          params: { postId: notification.relatedEntityId },
+        }
+      : null;
 
   switch (notification.type) {
     // The action item IS the incoming request → Requests tab, that row.
@@ -123,7 +130,7 @@ function linkFor(notification: Notification): NotificationLink | null {
     case NOTIFICATION_TYPES.POST_LIKE:
     case NOTIFICATION_TYPES.POST_COMMENT:
     case NOTIFICATION_TYPES.POST_SHARE:
-      return toProfile ?? { to: "/feed" };
+      return toPost ?? toProfile ?? { to: "/feed" };
     case NOTIFICATION_TYPES.USER_MENTION:
     case NOTIFICATION_TYPES.USER_FOLLOW:
       return toProfile;

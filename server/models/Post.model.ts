@@ -6,6 +6,7 @@ import {
   Default,
   ForeignKey,
   Table,
+  HasMany,
 } from "sequelize-typescript";
 import { Op } from "sequelize";
 import type { FindOptions, Order, Transaction, WhereOptions } from "sequelize";
@@ -17,6 +18,8 @@ import { NotFoundError } from "../lib/errors";
 import { LIMITS } from "../../shared/limits";
 import type { PostVisibility } from "../../shared/types";
 import type { PostAttributes, PostCreationAttributes } from "./types";
+import PostLike from "./PostLike.model";
+import PostComment from "./PostComment.model";
 
 const ALL_VISIBILITIES: readonly PostVisibility[] = [
   "public",
@@ -93,6 +96,12 @@ export default class Post extends BaseUuidModel<
 
   @BelongsTo(() => User, { foreignKey: "userId", as: "author" })
   author?: User;
+
+  @HasMany(() => PostLike, { foreignKey: "postId", as: "likes" })
+  likes?: PostLike[];
+
+  @HasMany(() => PostComment, { foreignKey: "postId", as: "comments" })
+  comments?: PostComment[];
 
   // --------------------------------------------------------------------------
   // Visibility policy — the single source of truth for who can see what

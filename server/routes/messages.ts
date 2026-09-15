@@ -8,11 +8,15 @@ import {
   queryString,
   uuidParam,
   validated,
+  intParam,
 } from "../lib/http";
 import { toWire } from "../lib/serialize";
 import {
+  addParticipants,
   getConversation,
   listConversations,
+  removeParticipant,
+  renameGroup,
   startDirectConversation,
   startGroupConversation,
 } from "../services/conversationService";
@@ -24,6 +28,8 @@ import {
   sendMessage,
 } from "../services/messageService";
 import {
+  validateAddParticipants,
+  validateConversationRename,
   validateDirectConversation,
   validateGroupConversation,
   validateMessage,
@@ -108,6 +114,54 @@ router.put(
     );
     res.json({
       message: "Conversation marked as read",
+    } satisfies SuccessMessageResponse);
+  }),
+);
+
+// ---------------------------------------------------------------------------
+// Group management
+// ---------------------------------------------------------------------------
+
+// PUT /conversations/:id  { name } — admins only
+router.put(
+  "/conversations/:conversationId",
+  authed(async (req, res) => {
+    const { name } = validated(validateConversationRename(req.body));
+    const conversation = await renameGroup(
+      uuidParam(req, "conversationId"),
+      req.userId,
+      name,
+    );
+    res.json({ conversation } satisfies ConversationResponse);
+  }),
+);
+
+// POST /conversations/:id/participants  { userIds } — admins only
+router.post(
+  "/conversations/:conversationId/participants",
+  authed(async (req, res) => {
+    const { userIds } = validated(validateAddParticipants(req.body));
+    const conversation = await addParticipants(
+      uuidParam(req, "conversationId"),
+      req.userId,
+      userIds,
+    );
+    res.json({ conversation } satisfies ConversationResponse);
+  }),
+);
+
+// DELETE /conversations/:id/participants/:userId — admin removes a member,
+// or a member removes themselves (leave)
+router.delete(
+  "/conversations/:conversationId/participants/:userId",
+  authed(async (req, res) => {
+    await removeParticipant(
+      uuidParam(req, "conversationId"),
+      req.userId,
+      intParam(req, "userId"),
+    );
+    res.json({
+      message: "Participant removed",
     } satisfies SuccessMessageResponse);
   }),
 );

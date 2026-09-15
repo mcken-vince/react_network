@@ -87,6 +87,7 @@ export const useSendConnectionRequest = () => {
       invalidate(queryClient, [
         connectionKeys.sent(),
         statusKey,
+        userKeys.searches(),
         notificationKeys.all,
       ]),
   });
@@ -109,6 +110,7 @@ export const useAcceptConnectionRequest = () => {
         key,
         connectionKeys.accepted(),
         userKeys.withConnectionStatus(),
+        userKeys.searches(),
         notificationKeys.all,
       ]),
   });
@@ -130,6 +132,7 @@ export const useRejectConnectionRequest = () => {
       invalidate(queryClient, [
         key,
         userKeys.withConnectionStatus(),
+        userKeys.searches(),
         notificationKeys.all,
       ]),
   });
@@ -168,6 +171,7 @@ export const useRemoveConnection = () => {
         acceptedKey,
         sentKey,
         userKeys.withConnectionStatus(),
+        userKeys.searches(),
       ]),
   });
 };

@@ -69,6 +69,17 @@ function NotificationLinkWrapper({
           {children}
         </Link>
       );
+    case "/posts/$postId":
+      return (
+        <Link
+          to="/posts/$postId"
+          params={link.params}
+          className={className}
+          onClick={onClick}
+        >
+          {children}
+        </Link>
+      );
   }
 }
 

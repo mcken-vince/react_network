@@ -76,3 +76,13 @@ export const useUpdateProfile = () => {
     },
   });
 };
+
+/** Server-side search (never includes the caller). Disabled for an empty term. */
+export const useSearchUsers = (term: string) =>
+  useQuery({
+    queryKey: userKeys.search(term),
+    queryFn: () => userAPI.searchUsersWithConnectionStatus(term),
+    select: (data) => data.users,
+    enabled: term.length > 0,
+    staleTime: STALE.status,
+  });

@@ -10,14 +10,16 @@ interface NotificationsListProps {
 const NotificationsList = ({ onNavigate }: NotificationsListProps) => {
   const {
     notifications,
+    unreadCount,
     isLoading,
     isRefreshing,
+    hasMore,
+    isLoadingMore,
+    loadMore,
     refresh,
     markAllAsRead,
     isMarkingAllAsRead,
   } = useNotificationsFeature();
-
-  const unreadCount = notifications.filter((n) => !n.isRead).length;
 
   if (isLoading && notifications.length === 0) {
     return (
@@ -77,6 +79,18 @@ const NotificationsList = ({ onNavigate }: NotificationsListProps) => {
               onNavigate={onNavigate}
             />
           ))}
+          {hasMore && (
+            <Flex justify="center" className="pt-2">
+              <Button
+                variant="ghost"
+                size="sm"
+                onClick={loadMore}
+                disabled={isLoadingMore}
+              >
+                {isLoadingMore ? "Loading…" : "Load more"}
+              </Button>
+            </Flex>
+          )}
         </Stack>
       )}
     </Stack>

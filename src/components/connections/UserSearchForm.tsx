@@ -1,10 +1,7 @@
-import { useMemo, useState, type ChangeEvent } from "react";
+import { useState, type ChangeEvent } from "react";
 import { Button, Flex, Input, Stack, Text } from "../atoms";
 import { Card } from "../common";
-import {
-  usePrefetchUser,
-  useUsersWithConnectionStatus,
-} from "../../hooks/useUsers";
+import { usePrefetchUser, useSearchUsers } from "../../hooks/useUsers";
 import { useSendConnectionRequest } from "../../hooks/useConnections";
 import { useRefreshNotifications } from "../../hooks/useNotifications";
 import UserSearchResult from "./UserSearchResult";
@@ -14,25 +11,15 @@ interface UserSearchFormProps {
   currentUser: User;
 }
 
-const UserSearchForm = ({ currentUser }: UserSearchFormProps) => {
+/** Server-side search against /users/search (the server never returns the caller). */
+const UserSearchForm = (_props: UserSearchFormProps) => {
   const [term, setTerm] = useState("");
   const [submitted, setSubmitted] = useState("");
 
-  const { data: users = [], isLoading } = useUsersWithConnectionStatus();
+  const { data: results = [], isLoading, isError } = useSearchUsers(submitted);
   const sendRequest = useSendConnectionRequest();
   const refreshNotifications = useRefreshNotifications();
   const prefetchUser = usePrefetchUser();
-
-  const results = useMemo(() => {
-    const q = submitted.trim().toLowerCase();
-    if (!q) return [];
-    return users.filter((user) => {
-      if (user.id === currentUser.id) return false;
-      const haystack =
-        `${user.firstName} ${user.lastName} ${user.username} ${user.location ?? ""}`.toLowerCase();
-      return haystack.includes(q);
-    });
-  }, [users, submitted, currentUser.id]);
 
   const handleSend = async (userId: number): Promise<void> => {
     try {
@@ -49,7 +36,7 @@ const UserSearchForm = ({ currentUser }: UserSearchFormProps) => {
         <form
           onSubmit={(e) => {
             e.preventDefault();
-            setSubmitted(term);
+            setSubmitted(term.trim());
           }}
         >
           <Stack spacing="md">
@@ -67,19 +54,25 @@ const UserSearchForm = ({ currentUser }: UserSearchFormProps) => {
                 className="flex-1"
               />
               <Button type="submit" disabled={isLoading || !term.trim()}>
-                {isLoading ? "Loading..." : "Search"}
+                {isLoading ? "Searching..." : "Search"}
               </Button>
             </Flex>
           </Stack>
         </form>
       </Card>
 
-      {submitted.trim() && (
+      {submitted && (
         <Stack spacing="md">
           {isLoading ? (
             <Card>
               <Text color="muted" className="text-center py-4">
-                Loading users…
+                Searching…
+              </Text>
+            </Card>
+          ) : isError ? (
+            <Card>
+              <Text color="red-600" className="text-center py-4">
+                Search failed. Please try again.
               </Text>
             </Card>
           ) : results.length === 0 ? (

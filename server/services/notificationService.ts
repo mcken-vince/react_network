@@ -2,6 +2,7 @@ import { Notification } from "../models";
 import { includeUser } from "../models/includes";
 import { toWire } from "../lib/serialize";
 import { emitToUser } from "../websocket/io";
+import { NOTIFICATION_TYPES } from "../../shared/notificationTypes";
 import type {
   Notification as NotificationDto,
   NotificationFilters,
@@ -16,14 +17,17 @@ async function hydrate(notification: Notification): Promise<Notification> {
 }
 
 /**
- * Persist and push a notification. Never throws — a failed notification must
- * not fail the action that triggered it.
+ * Persist and push a notification. `create` may return null to skip (dedupe).
+ * Never throws — a failed notification must not fail the action that
+ * triggered it.
  */
 async function deliver(
-  create: () => Promise<Notification>,
+  create: () => Promise<Notification | null>,
 ): Promise<Notification | null> {
   try {
-    const notification = await hydrate(await create());
+    const created = await create();
+    if (!created) return null;
+    const notification = await hydrate(created);
     emitToUser(
       notification.userId,
       "notification:new",
@@ -37,7 +41,7 @@ async function deliver(
 }
 
 // ---------------------------------------------------------------------------
-// Triggers
+// Triggers — connections
 // ---------------------------------------------------------------------------
 
 export function notifyConnectionRequested(
@@ -78,6 +82,98 @@ export function notifyConnectionRejected(
       requesterId,
       rejecterId,
       connectionId,
+    ),
+  );
+}
+
+// ---------------------------------------------------------------------------
+// Triggers — messaging
+// ---------------------------------------------------------------------------
+
+/**
+ * At most one unread "new message" notification per conversation per user.
+ * It is cleared by `markConversationNotificationsRead` when they open the chat.
+ */
+export function notifyNewMessage(
+  recipientId: number,
+  senderId: number,
+  messageId: string,
+  conversationId: string,
+  preview: string,
+): Promise<Notification | null> {
+  return deliver(async () => {
+    const existing = await Notification.findUnreadForConversation(
+      recipientId,
+      conversationId,
+    );
+    if (existing.length > 0) return null;
+    return Notification.createMessageNotification(
+      recipientId,
+      senderId,
+      messageId,
+      conversationId,
+      preview,
+    );
+  });
+}
+
+/** Mark this conversation's unread message notifications read and push the change. */
+export async function markConversationNotificationsRead(
+  userId: number,
+  conversationId: string,
+): Promise<void> {
+  const unread = await Notification.findUnreadForConversation(
+    userId,
+    conversationId,
+  );
+  for (const notification of unread) {
+    await notification.update({ isRead: true });
+    emitToUser(
+      userId,
+      "notification:updated",
+      toWire<NotificationDto>(await hydrate(notification)),
+    );
+  }
+}
+
+// ---------------------------------------------------------------------------
+// Triggers — posts
+// ---------------------------------------------------------------------------
+
+/** Like toggling shouldn't spam: skip if an unread like from this user on this post exists. */
+export function notifyPostLiked(
+  ownerId: number,
+  likerId: number,
+  postId: string,
+): Promise<Notification | null> {
+  return deliver(async () => {
+    const duplicate = await Notification.hasUnread({
+      userId: ownerId,
+      type: NOTIFICATION_TYPES.POST_LIKE,
+      isRead: false,
+      relatedUserId: likerId,
+      relatedEntityType: "post",
+      relatedEntityId: postId,
+    });
+    if (duplicate) return null;
+    return Notification.createPostLikeNotification(ownerId, likerId, postId);
+  });
+}
+
+export function notifyPostCommented(
+  ownerId: number,
+  commenterId: number,
+  postId: string,
+  commentId: string,
+  preview: string,
+): Promise<Notification | null> {
+  return deliver(() =>
+    Notification.createPostCommentNotification(
+      ownerId,
+      commenterId,
+      postId,
+      commentId,
+      preview,
     ),
   );
 }

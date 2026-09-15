@@ -49,38 +49,52 @@ async function connectionStatusByUser(
   );
 }
 
+async function withConnectionStatus(
+  users: User[],
+  viewerId: number,
+): Promise<UsersWithConnectionStatusResponse> {
+  const statusByUser = await connectionStatusByUser(viewerId);
+  return {
+    users: users.map((u) => ({
+      ...toWire<UserDto>(u),
+      connectionStatus: statusByUser.get(u.id) ?? null,
+    })),
+  };
+}
+
 // GET /users?includeConnectionStatus=true
 router.get(
   "/",
   authed(async (req, res) => {
     const users = await User.getAllUsers(pagination(req));
-
     if (!queryBool(req, "includeConnectionStatus")) {
       res.json({
         users: users.map((u) => toWire<UserDto>(u)),
       } satisfies UsersResponse);
       return;
     }
-
-    const statusByUser = await connectionStatusByUser(req.userId);
-    res.json({
-      users: users.map((u) => ({
-        ...toWire<UserDto>(u),
-        connectionStatus: statusByUser.get(u.id) ?? null,
-      })),
-    } satisfies UsersWithConnectionStatusResponse);
+    res.json(await withConnectionStatus(users, req.userId));
   }),
 );
 
-// GET /users/search?q=
+// GET /users/search?q=&includeConnectionStatus=true  (never returns the caller)
 router.get(
   "/search",
   authed(async (req, res) => {
     const term = queryString(req, "q")?.trim() ?? "";
-    const users = term ? await User.searchUsers(term, pagination(req)) : [];
-    res.json({
-      users: users.map((u) => toWire<UserDto>(u)),
-    } satisfies UsersResponse);
+    const users = term
+      ? await User.searchUsers(term, {
+          ...pagination(req),
+          excludeUserId: req.userId,
+        })
+      : [];
+    if (!queryBool(req, "includeConnectionStatus")) {
+      res.json({
+        users: users.map((u) => toWire<UserDto>(u)),
+      } satisfies UsersResponse);
+      return;
+    }
+    res.json(await withConnectionStatus(users, req.userId));
   }),
 );
 

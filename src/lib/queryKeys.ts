@@ -5,6 +5,8 @@ export const userKeys = {
   lists: () => [...userKeys.all, "list"] as const,
   withConnectionStatus: () =>
     [...userKeys.all, "with-connection-status"] as const,
+  searches: () => [...userKeys.all, "search"] as const,
+  search: (term: string) => [...userKeys.searches(), term] as const,
   details: () => [...userKeys.all, "detail"] as const,
   detail: (id: number | string) => [...userKeys.details(), Number(id)] as const,
   current: () => [...userKeys.all, "current"] as const,
@@ -28,9 +30,12 @@ export const notificationKeys = {
 
 export const postKeys = {
   all: ["posts"] as const,
-  feed: () => [...postKeys.all, "feed"] as const,
-  user: (userId: number) => [...postKeys.all, "user", userId] as const,
+  /** Every paginated post list (feed + per-user) — target for cache patches. */
+  lists: () => [...postKeys.all, "list"] as const,
+  feed: () => [...postKeys.lists(), "feed"] as const,
+  user: (userId: number) => [...postKeys.lists(), "user", userId] as const,
   detail: (postId: string) => [...postKeys.all, "detail", postId] as const,
+  comments: (postId: string) => [...postKeys.all, "comments", postId] as const,
 };
 
 export const conversationKeys = {

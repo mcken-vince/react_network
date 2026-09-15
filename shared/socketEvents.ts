@@ -29,6 +29,10 @@ export interface ServerToClientEvents {
     isTyping: boolean;
   }) => void;
   "conversation:created": (conversation: Conversation) => void;
+  /** Name / membership changed. Sent to every remaining active participant. */
+  "conversation:updated": (conversation: Conversation) => void;
+  /** Sent only to a user who was removed from (or left) a conversation. */
+  "conversation:removed": (conversationId: string) => void;
 
   // Presence — derived purely from open sockets.
   /** Sent once to a socket right after it connects: every user currently online. */

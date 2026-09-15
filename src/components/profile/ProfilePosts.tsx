@@ -21,8 +21,8 @@ function ProfilePosts({
   isOwnProfile,
 }: ProfilePostsProps) {
   const query = useUserPosts(userId);
-  const updatePost = useUpdatePost(userId);
-  const deletePost = useDeletePost(userId);
+  const updatePost = useUpdatePost();
+  const deletePost = useDeletePost();
   const [editingPost, setEditingPost] = useState<Post | null>(null);
 
   const posts = flattenPosts(query.data);

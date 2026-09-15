@@ -143,3 +143,31 @@ export type MessageCreationAttributes = Optional<
   MessageAttributes,
   AutoKeys | "messageType" | "isEdited" | "readBy"
 >;
+
+// ---------------------------------------------------------------------------
+// postLikes
+// ---------------------------------------------------------------------------
+export interface PostLikeAttributes {
+  id: number;
+  postId: string;
+  userId: number;
+  createdAt: Date;
+  updatedAt: Date;
+}
+export type PostLikeCreationAttributes = Optional<PostLikeAttributes, AutoKeys>;
+
+// ---------------------------------------------------------------------------
+// postComments
+// ---------------------------------------------------------------------------
+export interface PostCommentAttributes {
+  id: string;
+  postId: string;
+  userId: number;
+  content: string;
+  createdAt: Date;
+  updatedAt: Date;
+}
+export type PostCommentCreationAttributes = Optional<
+  PostCommentAttributes,
+  AutoKeys
+>;

@@ -9,6 +9,8 @@ import Conversation from "./Conversation.model";
 import ConversationParticipant from "./ConversationParticipant.model";
 import Message from "./Message.model";
 import Post from "./Post.model";
+import PostLike from "./PostLike.model";
+import PostComment from "./PostComment.model";
 
 const envName = process.env.NODE_ENV ?? "development";
 const isEnv = (value: string): value is Env => value in config;
@@ -28,6 +30,8 @@ export const sequelize = new Sequelize({
     ConversationParticipant,
     Message,
     Post,
+    PostLike,
+    PostComment,
   ],
   logging: process.env.DB_LOGGING === "true" ? console.log : false,
 });
@@ -40,4 +44,6 @@ export {
   ConversationParticipant,
   Message,
   Post,
+  PostLike,
+  PostComment,
 };

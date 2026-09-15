@@ -29,6 +29,11 @@ import type {
   UserResponse,
   UsersResponse,
   UsersWithConnectionStatusResponse,
+  CommentResponse,
+  CommentsQuery,
+  CommentsResponse,
+  CreateCommentData,
+  PostLikeResponse,
 } from "../types";
 
 // ---------------------------------------------------------------------------
@@ -167,6 +172,10 @@ export const userAPI = {
   searchUsers: (q: string, params: PaginationParams = {}) =>
     getJson<UsersResponse>(`/users/search${query({ q, ...params })}`),
 
+  searchUsersWithConnectionStatus: (q: string, params: PaginationParams = {}) =>
+    getJson<UsersWithConnectionStatusResponse>(
+      `/users/search${query({ q, ...params, includeConnectionStatus: true })}`,
+    ),
   updateProfile: (userId: number, data: ProfileUpdateData) =>
     putJson<UserResponse>(`/users/${userId}`, data),
 
@@ -240,6 +249,17 @@ export const postAPI = {
 
   deletePost: (postId: string) =>
     del<SuccessMessageResponse>(`/posts/${postId}`),
+
+  likePost: (postId: string) =>
+    postJson<PostLikeResponse>(`/posts/${postId}/like`),
+  unlikePost: (postId: string) =>
+    del<PostLikeResponse>(`/posts/${postId}/like`),
+  getComments: (postId: string, q: CommentsQuery = {}) =>
+    getJson<CommentsResponse>(`/posts/${postId}/comments${query({ ...q })}`),
+  addComment: (postId: string, data: CreateCommentData) =>
+    postJson<CommentResponse>(`/posts/${postId}/comments`, data),
+  deleteComment: (postId: string, commentId: string) =>
+    del<SuccessMessageResponse>(`/posts/${postId}/comments/${commentId}`),
 };
 
 // ---------------------------------------------------------------------------
@@ -281,4 +301,17 @@ export const messageAPI = {
 
   deleteMessage: (messageId: string) =>
     del<SuccessMessageResponse>(`/messages/${messageId}`),
+
+  renameConversation: (conversationId: string, name: string) =>
+    putJson<ConversationResponse>(`/conversations/${conversationId}`, { name }),
+  addParticipants: (conversationId: string, userIds: number[]) =>
+    postJson<ConversationResponse>(
+      `/conversations/${conversationId}/participants`,
+      { userIds },
+    ),
+  /** Admins remove others; pass your own id to leave. */
+  removeParticipant: (conversationId: string, userId: number) =>
+    del<SuccessMessageResponse>(
+      `/conversations/${conversationId}/participants/${userId}`,
+    ),
 };

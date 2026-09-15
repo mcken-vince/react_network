@@ -1,7 +1,9 @@
 import { useState } from "react";
 import { Link } from "@tanstack/react-router";
 import { formatPostDate } from "../../utils/dateUtils";
+import { useToggleLike } from "../../hooks/usePosts";
 import PostVisibilityBadge from "./PostVisibilityBadge";
+import PostComments from "./PostComments";
 import type { Post } from "../../types";
 
 interface PostCardProps {
@@ -9,6 +11,8 @@ interface PostCardProps {
   currentUserId?: number;
   onEdit: (post: Post) => void;
   onDelete: (postId: string) => Promise<unknown>;
+  /** Open the comments panel immediately (used on the post detail page). */
+  defaultShowComments?: boolean;
 }
 
 export default function PostCard({
@@ -16,9 +20,12 @@ export default function PostCard({
   currentUserId,
   onEdit,
   onDelete,
+  defaultShowComments = false,
 }: PostCardProps) {
   const [showMenu, setShowMenu] = useState(false);
   const [isDeleting, setIsDeleting] = useState(false);
+  const [showComments, setShowComments] = useState(defaultShowComments);
+  const toggleLike = useToggleLike();
 
   const isOwnPost = post.userId === currentUserId;
   const author = post.author;
@@ -68,7 +75,6 @@ export default function PostCard({
           ) : (
             <div className="flex-shrink-0">{avatar}</div>
           )}
-
           <div className="flex-1 min-w-0">
             {author ? (
               <Link
@@ -87,10 +93,8 @@ export default function PostCard({
           </div>
         </div>
 
-        {/* Actions */}
         <div className="flex items-center space-x-2">
           <PostVisibilityBadge visibility={post.visibility} />
-
           {isOwnPost && (
             <div className="relative">
               <button
@@ -108,7 +112,6 @@ export default function PostCard({
                   <path d="M10 6a2 2 0 110-4 2 2 0 010 4zM10 12a2 2 0 110-4 2 2 0 010 4zM10 18a2 2 0 110-4 2 2 0 010 4z" />
                 </svg>
               </button>
-
               {showMenu && (
                 <div className="absolute right-0 mt-2 w-48 bg-white rounded-md shadow-lg z-10 border border-gray-200">
                   <button
@@ -155,20 +158,29 @@ export default function PostCard({
 
       {/* Footer */}
       <div className="flex items-center justify-between pt-3 border-t border-gray-100">
-        <div className="text-sm text-gray-500">
+        <Link
+          to="/posts/$postId"
+          params={{ postId: post.id }}
+          className="text-sm text-gray-500 hover:text-blue-600"
+        >
           {formatPostDate(post.createdAt)}
-        </div>
+        </Link>
 
-        {/* Like / Comment — wired up in Phase 2 (likes & comments slice). */}
         <div className="flex items-center space-x-4">
           <button
             type="button"
-            className="flex items-center space-x-1 text-gray-400 hover:text-blue-600 transition-colors"
-            disabled
+            onClick={() => toggleLike.mutate(post)}
+            disabled={toggleLike.isPending}
+            aria-pressed={post.likedByMe}
+            className={`flex items-center space-x-1 transition-colors ${
+              post.likedByMe
+                ? "text-red-600"
+                : "text-gray-400 hover:text-red-600"
+            }`}
           >
             <svg
               className="w-5 h-5"
-              fill="none"
+              fill={post.likedByMe ? "currentColor" : "none"}
               stroke="currentColor"
               viewBox="0 0 24 24"
               aria-hidden
@@ -180,12 +192,20 @@ export default function PostCard({
                 d="M4.318 6.318a4.5 4.5 0 000 6.364L12 20.364l7.682-7.682a4.5 4.5 0 00-6.364-6.364L12 7.636l-1.318-1.318a4.5 4.5 0 00-6.364 0z"
               />
             </svg>
-            <span className="text-sm">Like</span>
+            <span className="text-sm">
+              {post.likeCount > 0 ? post.likeCount : "Like"}
+            </span>
           </button>
+
           <button
             type="button"
-            className="flex items-center space-x-1 text-gray-400 hover:text-blue-600 transition-colors"
-            disabled
+            onClick={() => setShowComments((open) => !open)}
+            aria-expanded={showComments}
+            className={`flex items-center space-x-1 transition-colors ${
+              showComments
+                ? "text-blue-600"
+                : "text-gray-400 hover:text-blue-600"
+            }`}
           >
             <svg
               className="w-5 h-5"
@@ -201,10 +221,20 @@ export default function PostCard({
                 d="M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.418-4.03 8-9 8a9.863 9.863 0 01-4.255-.949L3 20l1.395-3.72C3.512 15.042 3 13.574 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z"
               />
             </svg>
-            <span className="text-sm">Comment</span>
+            <span className="text-sm">
+              {post.commentCount > 0 ? post.commentCount : "Comment"}
+            </span>
           </button>
         </div>
       </div>
+
+      {showComments && (
+        <PostComments
+          postId={post.id}
+          postOwnerId={post.userId}
+          currentUserId={currentUserId}
+        />
+      )}
 
       {showMenu && (
         <div className="fixed inset-0 z-0" onClick={() => setShowMenu(false)} />

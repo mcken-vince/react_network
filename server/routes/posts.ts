@@ -1,19 +1,36 @@
 import { Router } from "express";
 import { Connection, Post } from "../models";
-import { includeUser } from "../models/includes";
 import { authenticateToken } from "../middleware/auth";
 import {
   authed,
   intParam,
   pagination,
+  queryInt,
+  queryString,
   uuidParam,
   validated,
 } from "../lib/http";
-import { toWire } from "../lib/serialize";
-import { ForbiddenError, NotFoundError } from "../lib/errors";
-import { validateCreatePost, validateUpdatePost } from "../utils/validation";
+import {
+  addComment,
+  decoratePost,
+  decoratePosts,
+  deleteComment,
+  findOwnedPost,
+  getVisiblePost,
+  likePost,
+  listComments,
+  loadPostWithAuthor,
+  unlikePost,
+} from "../services/postService";
+import {
+  validateComment,
+  validateCreatePost,
+  validateUpdatePost,
+} from "../utils/validation";
 import type {
-  Post as PostDto,
+  CommentResponse,
+  CommentsResponse,
+  PostLikeResponse,
   PostResponse,
   PostsResponse,
   SuccessMessageResponse,
@@ -22,31 +39,19 @@ import type {
 const router = Router();
 router.use(authenticateToken);
 
-const postsResponse = (
+const postsResponse = async (
   posts: Post[],
+  viewerId: number,
   limit: number,
   offset: number,
-): PostsResponse => ({
-  posts: posts.map((p) => toWire<PostDto>(p)),
+): Promise<PostsResponse> => ({
+  posts: await decoratePosts(posts, viewerId),
   pagination: { limit, offset, count: posts.length },
 });
 
-async function loadPostWithAuthor(postId: string): Promise<Post> {
-  const post = await Post.findPostById(postId, {
-    include: [includeUser("author")],
-  });
-  if (!post) throw new NotFoundError("Post not found");
-  return post;
-}
-
-/** @throws NotFoundError, ForbiddenError */
-async function findOwnedPost(postId: string, userId: number): Promise<Post> {
-  const post = await Post.findByPk(postId);
-  if (!post) throw new NotFoundError("Post not found");
-  if (post.userId !== userId)
-    throw new ForbiddenError("Not authorized to modify this post");
-  return post;
-}
+// ---------------------------------------------------------------------------
+// Lists
+// ---------------------------------------------------------------------------
 
 // Own posts (all visibilities) + public/friends posts from accepted connections
 router.get(
@@ -59,7 +64,7 @@ router.get(
       offset,
       includeAuthor: true,
     });
-    res.json(postsResponse(posts, limit, offset));
+    res.json(await postsResponse(posts, req.userId, limit, offset));
   }),
 );
 
@@ -79,20 +84,84 @@ router.get(
       includeAuthor: true,
       visibility,
     });
-    res.json(postsResponse(posts, limit, offset));
+    res.json(await postsResponse(posts, req.userId, limit, offset));
   }),
 );
 
-// A single post, 404 if the caller may not see it (don't reveal it exists)
+// ---------------------------------------------------------------------------
+// Likes
+// ---------------------------------------------------------------------------
+
+router.post(
+  "/:postId/like",
+  authed(async (req, res) => {
+    const post = await likePost(uuidParam(req, "postId"), req.userId);
+    res.json({ post } satisfies PostLikeResponse);
+  }),
+);
+
+router.delete(
+  "/:postId/like",
+  authed(async (req, res) => {
+    const post = await unlikePost(uuidParam(req, "postId"), req.userId);
+    res.json({ post } satisfies PostLikeResponse);
+  }),
+);
+
+// ---------------------------------------------------------------------------
+// Comments
+// ---------------------------------------------------------------------------
+
+// GET /posts/:id/comments?limit&beforeCommentId — newest first
+router.get(
+  "/:postId/comments",
+  authed(async (req, res) => {
+    const result = await listComments(uuidParam(req, "postId"), req.userId, {
+      limit: queryInt(req, "limit"),
+      beforeCommentId: queryString(req, "beforeCommentId"),
+    });
+    res.json(result satisfies CommentsResponse);
+  }),
+);
+
+router.post(
+  "/:postId/comments",
+  authed(async (req, res) => {
+    const { content } = validated(validateComment(req.body));
+    const comment = await addComment(
+      uuidParam(req, "postId"),
+      req.userId,
+      content,
+    );
+    res.status(201).json({ comment } satisfies CommentResponse);
+  }),
+);
+
+router.delete(
+  "/:postId/comments/:commentId",
+  authed(async (req, res) => {
+    await deleteComment(
+      uuidParam(req, "postId"),
+      uuidParam(req, "commentId"),
+      req.userId,
+    );
+    res.json({
+      message: "Comment deleted successfully",
+    } satisfies SuccessMessageResponse);
+  }),
+);
+
+// ---------------------------------------------------------------------------
+// Single post CRUD
+// ---------------------------------------------------------------------------
+
 router.get(
   "/:postId",
   authed(async (req, res) => {
-    const postId = uuidParam(req, "postId");
-    if (!(await Post.canUserAccessPost(postId, req.userId))) {
-      throw new NotFoundError("Post not found");
-    }
-    const post = await loadPostWithAuthor(postId);
-    res.json({ post: toWire<PostDto>(post) } satisfies PostResponse);
+    const post = await getVisiblePost(uuidParam(req, "postId"), req.userId);
+    res.json({
+      post: await decoratePost(post, req.userId),
+    } satisfies PostResponse);
   }),
 );
 
@@ -109,7 +178,7 @@ router.post(
     const post = await loadPostWithAuthor(created.id);
     res.status(201).json({
       message: "Post created successfully",
-      post: toWire<PostDto>(post),
+      post: await decoratePost(post, req.userId),
     } satisfies PostResponse);
   }),
 );
@@ -124,7 +193,7 @@ router.put(
     const post = await loadPostWithAuthor(postId);
     res.json({
       message: "Post updated successfully",
-      post: toWire<PostDto>(post),
+      post: await decoratePost(post, req.userId),
     } satisfies PostResponse);
   }),
 );

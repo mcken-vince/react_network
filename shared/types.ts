@@ -213,6 +213,24 @@ export interface CreatePostData {
 
 export type UpdatePostData = Partial<CreatePostData>;
 
+export interface CreateCommentData {
+  content: string;
+}
+
+export interface CommentsQuery {
+  limit?: number;
+  /** Cursor: return comments created before this comment id. */
+  beforeCommentId?: string;
+}
+
+export interface RenameConversationData {
+  name: string;
+}
+
+export interface AddParticipantsData {
+  userIds: number[];
+}
+
 export interface NotificationFilters extends PaginationParams {
   unreadOnly?: boolean;
 }
@@ -300,8 +318,7 @@ export interface PostsResponse {
   pagination: Pagination;
 }
 
-// Target shapes for the messaging routes (implemented in step 1.8; the
-// routes currently return { success, data } and will be changed to these).
+// Messaging
 export interface ConversationsResponse {
   conversations: Conversation[];
 }

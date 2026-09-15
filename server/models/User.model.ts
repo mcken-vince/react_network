@@ -313,12 +313,13 @@ export default class User extends BaseModel<
 
   static searchUsers(
     searchTerm: string,
-    options: { limit?: number; offset?: number } = {},
+    options: { limit?: number; offset?: number; excludeUserId?: number } = {},
   ): Promise<User[]> {
-    const { limit = 20, offset = 0 } = options;
+    const { limit = 20, offset = 0, excludeUserId } = options;
     const pattern = `%${searchTerm}%`;
     return this.scope("public").findAll({
       where: {
+        ...(excludeUserId !== undefined && { id: { [Op.ne]: excludeUserId } }),
         [Op.or]: [
           { username: { [Op.iLike]: pattern } },
           { firstName: { [Op.iLike]: pattern } },
