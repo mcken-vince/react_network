@@ -1,11 +1,16 @@
-import { useRef, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { useWebSocket } from "../../hooks/useWebSocket";
+import type { Message } from "../../types";
 
 interface MessageInputProps {
   conversationId: string;
   onSendMessage: (content: string) => void | Promise<void>;
   disabled?: boolean;
   placeholder?: string;
+  /** Message the next send will reply to; rendered as a dismissible chip. */
+  replyTo?: Message | null;
+  currentUserId?: number;
+  onCancelReply?: () => void;
 }
 
 export function MessageInput({
@@ -13,11 +18,20 @@ export function MessageInput({
   onSendMessage,
   disabled = false,
   placeholder = "Type a message…",
+  replyTo = null,
+  currentUserId,
+  onCancelReply,
 }: MessageInputProps) {
   const [content, setContent] = useState("");
   const { sendTyping } = useWebSocket();
   const typingRef = useRef(false);
   const stopTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const textareaRef = useRef<HTMLTextAreaElement>(null);
+
+  // Tagging a message should drop you straight into the composer.
+  useEffect(() => {
+    if (replyTo) textareaRef.current?.focus();
+  }, [replyTo]);
 
   const signalTyping = (): void => {
     if (!typingRef.current) {
@@ -47,8 +61,32 @@ export function MessageInput({
     await onSendMessage(trimmed);
   };
 
+  const replyAuthor =
+    replyTo?.senderId === currentUserId
+      ? "yourself"
+      : (replyTo?.sender?.firstName ?? "someone");
+
   return (
     <div className="p-4">
+      {replyTo && (
+        <div className="flex items-start gap-2 mb-2 pl-3 pr-2 py-2 rounded-md bg-gray-50 border-l-2 border-primary-500">
+          <div className="flex-1 min-w-0">
+            <p className="text-xs font-medium text-primary-700">
+              Replying to {replyAuthor}
+            </p>
+            <p className="text-xs text-gray-500 truncate">{replyTo.content}</p>
+          </div>
+          <button
+            type="button"
+            onClick={onCancelReply}
+            className="text-gray-400 hover:text-gray-600 text-sm leading-none p-1"
+            aria-label="Cancel reply"
+          >
+            ✕
+          </button>
+        </div>
+      )}
+
       <form
         onSubmit={(e) => {
           e.preventDefault();
@@ -57,6 +95,7 @@ export function MessageInput({
         className="flex items-end gap-3"
       >
         <textarea
+          ref={textareaRef}
           value={content}
           onChange={(e) => {
             setContent(e.target.value);
@@ -67,6 +106,8 @@ export function MessageInput({
             if (e.key === "Enter" && !e.shiftKey) {
               e.preventDefault();
               void submit();
+            } else if (e.key === "Escape" && replyTo) {
+              onCancelReply?.();
             }
           }}
           placeholder={placeholder}
@@ -79,7 +120,7 @@ export function MessageInput({
           disabled={disabled || !content.trim()}
           className="p-3 rounded-lg bg-primary-600 text-white disabled:bg-gray-200 disabled:text-gray-400"
         >
-          Send
+          {replyTo ? "Reply" : "Send"}
         </button>
       </form>
     </div>

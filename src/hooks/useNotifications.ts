@@ -40,7 +40,7 @@ const useNotificationsList = (filters: NotificationFilters = {}) =>
   });
 
 /** Flat, de-duplicated (a socket prepend can overlap the next fetched page). */
-export const flattenNotifications = (
+const flattenNotifications = (
   data: NotificationPages | undefined,
 ): Notification[] => {
   const seen = new Set<number>();

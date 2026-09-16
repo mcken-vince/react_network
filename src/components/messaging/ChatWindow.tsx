@@ -13,7 +13,7 @@ import { useWebSocket } from "../../hooks/useWebSocket";
 import { MessageList } from "./MessageList";
 import { MessageInput } from "./MessageInput";
 import { GroupSettings } from "./GroupSettings";
-import type { SendMessageData } from "../../types";
+import type { Message, SendMessageData } from "../../types";
 
 export function ChatWindow({ conversationId }: { conversationId: string }) {
   const { user } = useAuth();
@@ -23,7 +23,10 @@ export function ChatWindow({ conversationId }: { conversationId: string }) {
   const sendMessage = useSendMessage(conversationId);
   const markRead = useMarkConversationRead();
   const { typingByConversation } = useWebSocket();
+
   const [showSettings, setShowSettings] = useState(false);
+  /** The message the next send will reply to, if any. */
+  const [replyTo, setReplyTo] = useState<Message | null>(null);
 
   const messages = flattenMessages(messagesQuery.data);
   const typingUserIds = (typingByConversation[conversationId] ?? []).filter(
@@ -32,9 +35,17 @@ export function ChatWindow({ conversationId }: { conversationId: string }) {
 
   useEffect(() => {
     setShowSettings(false);
+    setReplyTo(null);
     markRead.mutate({ conversationId });
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [conversationId]);
+
+  // Drop the reply target if that message disappears (deleted elsewhere).
+  useEffect(() => {
+    if (replyTo && !messages.some((m) => m.id === replyTo.id)) {
+      setReplyTo(null);
+    }
+  }, [messages, replyTo]);
 
   // Removed from / left the conversation, or it no longer exists.
   if (error) {
@@ -64,11 +75,13 @@ export function ChatWindow({ conversationId }: { conversationId: string }) {
     : "Loading…";
   const isGroup = conversation?.type === "group";
 
-  const handleSend = async (
-    content: string,
-    replyToId?: string | null,
-  ): Promise<void> => {
-    const data: SendMessageData = { content, replyToId: replyToId ?? null };
+  /** The only place a message is created; `replyTo` is consumed and cleared. */
+  const handleSend = async (content: string): Promise<void> => {
+    const data: SendMessageData = {
+      content,
+      replyToId: replyTo?.id ?? null,
+    };
+    setReplyTo(null);
     await sendMessage.mutateAsync(data);
   };
 
@@ -114,7 +127,8 @@ export function ChatWindow({ conversationId }: { conversationId: string }) {
             hasMore={Boolean(messagesQuery.hasNextPage)}
             isLoadingMore={messagesQuery.isFetchingNextPage}
             onLoadMore={() => messagesQuery.fetchNextPage()}
-            onReply={handleSend}
+            replyToId={replyTo?.id ?? null}
+            onReply={setReplyTo}
           />
         )}
         {typingUserIds.length > 0 && (
@@ -129,7 +143,10 @@ export function ChatWindow({ conversationId }: { conversationId: string }) {
           conversationId={conversationId}
           disabled={sendMessage.isPending}
           placeholder={`Message ${title}…`}
-          onSendMessage={(content) => handleSend(content)}
+          replyTo={replyTo}
+          currentUserId={user?.id}
+          onCancelReply={() => setReplyTo(null)}
+          onSendMessage={handleSend}
         />
       </div>
     </div>

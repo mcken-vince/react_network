@@ -1,30 +1,19 @@
-import { Link, linkOptions } from "@tanstack/react-router";
+import { Link } from "@tanstack/react-router";
 import { Icon } from "../atoms";
 import type { IconName } from "../atoms/Icon";
+import type { ReactNode } from "react";
 
-const SUGGESTIONS: {
-  label: string;
-  icon: IconName;
-  link: ReturnType<typeof linkOptions>;
-}[] = [
-  {
-    label: "Dashboard",
-    icon: "dashboard",
-    link: linkOptions({ to: "/dashboard" }),
-  },
-  { label: "Feed", icon: "feed", link: linkOptions({ to: "/feed" }) },
-  {
-    label: "Connections",
-    icon: "handshake",
-    link: linkOptions({ to: "/connections", search: { tab: "search" } }),
-  },
-  {
-    label: "Messages",
-    icon: "messages",
-    link: linkOptions({ to: "/messages" }),
-  },
-  { label: "Profile", icon: "profile", link: linkOptions({ to: "/profile" }) },
-];
+const TILE_CLASS =
+  "flex flex-col items-center p-4 bg-white rounded-lg shadow hover:shadow-md transition-shadow";
+
+function Tile({ icon, label }: { icon: IconName; label: string }): ReactNode {
+  return (
+    <>
+      <Icon name={icon} size="large" className="mb-2 text-blue-600" />
+      <span className="text-sm font-medium text-gray-700">{label}</span>
+    </>
+  );
+}
 
 /** Rendered by the root route's `notFoundComponent` for any unmatched URL. */
 function NotFound() {
@@ -65,23 +54,28 @@ function NotFound() {
           <h2 className="text-lg font-semibold text-gray-700 mb-4">
             Popular Pages
           </h2>
+          {/* Written out rather than mapped: each target has its own
+              params/search type, which a shared array would widen away. */}
           <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-5 gap-4 max-w-2xl mx-auto">
-            {SUGGESTIONS.map((item) => (
-              <Link
-                key={item.label}
-                {...item.link}
-                className="flex flex-col items-center p-4 bg-white rounded-lg shadow hover:shadow-md transition-shadow"
-              >
-                <Icon
-                  name={item.icon}
-                  size="large"
-                  className="mb-2 text-blue-600"
-                />
-                <span className="text-sm font-medium text-gray-700">
-                  {item.label}
-                </span>
-              </Link>
-            ))}
+            <Link to="/dashboard" className={TILE_CLASS}>
+              <Tile icon="dashboard" label="Dashboard" />
+            </Link>
+            <Link to="/feed" className={TILE_CLASS}>
+              <Tile icon="feed" label="Feed" />
+            </Link>
+            <Link
+              to="/connections"
+              search={{ tab: "search" }}
+              className={TILE_CLASS}
+            >
+              <Tile icon="handshake" label="Connections" />
+            </Link>
+            <Link to="/messages" search={{}} className={TILE_CLASS}>
+              <Tile icon="messages" label="Messages" />
+            </Link>
+            <Link to="/profile" className={TILE_CLASS}>
+              <Tile icon="profile" label="Profile" />
+            </Link>
           </div>
         </div>
 

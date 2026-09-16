@@ -6,13 +6,16 @@ interface MessageBubbleProps {
   message: Message;
   isOwn: boolean;
   isConsecutive: boolean;
-  onReply: (content: string, replyToId?: string | null) => void;
+  /** This message is the pending reply target. */
+  isReplyTarget: boolean;
+  onReply: (message: Message) => void;
 }
 
 export function MessageBubble({
   message,
   isOwn,
   isConsecutive,
+  isReplyTarget,
   onReply,
 }: MessageBubbleProps) {
   const editMessage = useEditMessage();
@@ -45,7 +48,11 @@ export function MessageBubble({
   };
 
   return (
-    <div className={`flex ${isOwn ? "justify-end" : "justify-start"} group`}>
+    <div
+      className={`flex ${isOwn ? "justify-end" : "justify-start"} group ${
+        isReplyTarget ? "bg-primary-50/60 rounded-lg -mx-2 px-2 py-1" : ""
+      }`}
+    >
       <div className={`max-w-xs lg:max-w-md ${isOwn ? "order-2" : "order-1"}`}>
         {!isConsecutive && !isOwn && (
           <div className="flex items-center gap-2 mb-1">
@@ -120,13 +127,15 @@ export function MessageBubble({
 
       {!isEditing && (
         <div
-          className={`flex items-start gap-1 mx-2 opacity-0 group-hover:opacity-100 ${
+          className={`flex items-start gap-1 mx-2 opacity-0 group-hover:opacity-100 focus-within:opacity-100 ${
             isOwn ? "order-1" : "order-2"
           }`}
         >
           <button
-            onClick={() => onReply(message.content, message.id)}
-            className="p-1 text-gray-400 hover:text-gray-600"
+            type="button"
+            onClick={() => onReply(message)}
+            aria-label="Reply to this message"
+            className="p-1 text-gray-400 hover:text-gray-600 focus:opacity-100"
             title="Reply"
           >
             ↩

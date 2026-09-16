@@ -8,7 +8,10 @@ interface MessageListProps {
   hasMore: boolean;
   isLoadingMore: boolean;
   onLoadMore: () => void;
-  onReply: (content: string, replyToId?: string | null) => void;
+  /** Currently tagged reply target — highlighted in the list. */
+  replyToId: string | null;
+  /** Tag a message as the reply target (does not send anything). */
+  onReply: (message: Message) => void;
 }
 
 const NEAR_BOTTOM_PX = 150;
@@ -45,6 +48,7 @@ export function MessageList({
   hasMore,
   isLoadingMore,
   onLoadMore,
+  replyToId,
   onReply,
 }: MessageListProps) {
   const containerRef = useRef<HTMLDivElement>(null);
@@ -146,6 +150,7 @@ export function MessageList({
                   message={message}
                   isOwn={message.senderId === currentUserId}
                   isConsecutive={isConsecutive}
+                  isReplyTarget={message.id === replyToId}
                   onReply={onReply}
                 />
               );
