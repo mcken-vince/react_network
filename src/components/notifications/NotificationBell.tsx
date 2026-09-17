@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from "react";
-import { Button, Text } from "../atoms";
+import { Button, Icon, Text } from "../atoms";
 import {
   useRefreshNotifications,
   useUnreadNotificationCount,
@@ -39,7 +39,7 @@ const NotificationBell = () => {
           })
         }
       >
-        <span className="text-lg">🔔</span>
+        <Icon name="bell" size="medium" />
         {unreadCount > 0 && (
           <span className="absolute -top-1 -right-1 bg-red-500 text-white text-xs rounded-full min-w-[20px] h-5 flex items-center justify-center px-1">
             {unreadCount > 99 ? "99+" : unreadCount}

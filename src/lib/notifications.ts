@@ -1,5 +1,6 @@
-import { NOTIFICATION_CONFIG, NOTIFICATION_TYPES } from "../types";
+import { NOTIFICATION_TYPES } from "../types";
 import type { Notification, NotificationType, UserSummary } from "../types";
+import type { IconName } from "../components/atoms/Icon";
 
 export type ConnectionsTab = "search" | "requests" | "sent" | "connections";
 
@@ -12,18 +13,33 @@ export type NotificationLink =
       to: "/connections";
       search: { tab: ConnectionsTab; highlight?: number };
     }
-  | { to: "/messages"; search: { conversation?: string } }
+  | { to: "/messages"; search: { conversation?: string; message?: string } }
   | { to: "/feed" }
   | { to: "/profile/$userId"; params: { userId: string } }
   | { to: "/posts/$postId"; params: { postId: string } };
 
 export interface NotificationPresentation {
-  icon: string;
+  icon: IconName;
   title: string;
   body: string;
   actorName: string | null;
   link: NotificationLink | null;
 }
+
+const ICONS: Record<NotificationType, IconName> = {
+  connection_request: "userPlus",
+  connection_accepted: "userCheck",
+  connection_rejected: "userX",
+  new_message: "messages",
+  message_reply: "reply",
+  post_like: "heart",
+  post_comment: "comment",
+  post_share: "share",
+  user_mention: "atSign",
+  user_follow: "user",
+  system_announcement: "megaphone",
+  account_update: "settings",
+};
 
 const fullName = (user: UserSummary | null | undefined): string | null => {
   if (!user) return null;
@@ -36,11 +52,20 @@ const positiveInt = (value: unknown): number | undefined => {
   return Number.isInteger(n) && n > 0 ? n : undefined;
 };
 
+const metaString = (
+  notification: Notification,
+  key: string,
+): string | undefined => {
+  const value = notification.metadata?.[key];
+  return typeof value === "string" && value ? value : undefined;
+};
+
 const FALLBACK_TITLE: Partial<Record<NotificationType, string>> = {
   [NOTIFICATION_TYPES.CONNECTION_REQUEST]: "New connection request",
   [NOTIFICATION_TYPES.CONNECTION_ACCEPTED]: "Connection accepted",
   [NOTIFICATION_TYPES.CONNECTION_REJECTED]: "Connection declined",
   [NOTIFICATION_TYPES.NEW_MESSAGE]: "New message",
+  [NOTIFICATION_TYPES.MESSAGE_REPLY]: "New reply to your message",
   [NOTIFICATION_TYPES.POST_LIKE]: "New like on your post",
   [NOTIFICATION_TYPES.POST_COMMENT]: "New comment on your post",
   [NOTIFICATION_TYPES.POST_SHARE]: "Your post was shared",
@@ -50,10 +75,12 @@ const FALLBACK_TITLE: Partial<Record<NotificationType, string>> = {
   [NOTIFICATION_TYPES.ACCOUNT_UPDATE]: "Account update",
 };
 
+/** Types whose server `message` is boilerplate once we have an actor name. */
 const GENERIC_BODY = new Set<NotificationType>([
   NOTIFICATION_TYPES.CONNECTION_REQUEST,
   NOTIFICATION_TYPES.CONNECTION_ACCEPTED,
   NOTIFICATION_TYPES.CONNECTION_REJECTED,
+  NOTIFICATION_TYPES.POST_LIKE,
 ]);
 
 function actorTitle(type: NotificationType, actor: string): string | null {
@@ -66,6 +93,8 @@ function actorTitle(type: NotificationType, actor: string): string | null {
       return `${actor} declined your connection request`;
     case NOTIFICATION_TYPES.NEW_MESSAGE:
       return `New message from ${actor}`;
+    case NOTIFICATION_TYPES.MESSAGE_REPLY:
+      return `${actor} replied to your message`;
     case NOTIFICATION_TYPES.POST_LIKE:
       return `${actor} liked your post`;
     case NOTIFICATION_TYPES.POST_COMMENT:
@@ -88,10 +117,7 @@ function linkFor(notification: Notification): NotificationLink | null {
     ? { to: "/profile/$userId", params: { userId: String(relatedUserId) } }
     : null;
   const connectionId = positiveInt(notification.relatedEntityId);
-  const conversationId =
-    typeof notification.metadata?.conversationId === "string"
-      ? notification.metadata.conversationId
-      : undefined;
+  const conversationId = metaString(notification, "conversationId");
   const toPost: NotificationLink | null =
     notification.relatedEntityType === "post" && notification.relatedEntityId
       ? {
@@ -122,11 +148,23 @@ function linkFor(notification: Notification): NotificationLink | null {
     // Nothing to act on; view the person.
     case NOTIFICATION_TYPES.CONNECTION_REJECTED:
       return toProfile ?? { to: "/connections", search: { tab: "sent" } };
+    // Open the conversation, scrolled to the message in question.
     case NOTIFICATION_TYPES.NEW_MESSAGE:
+    case NOTIFICATION_TYPES.MESSAGE_REPLY: {
+      const messageId =
+        notification.relatedEntityType === "message"
+          ? (notification.relatedEntityId ?? undefined)
+          : undefined;
       return {
         to: "/messages",
-        search: conversationId ? { conversation: conversationId } : {},
+        search: conversationId
+          ? {
+              conversation: conversationId,
+              ...(messageId ? { message: messageId } : {}),
+            }
+          : {},
       };
+    }
     case NOTIFICATION_TYPES.POST_LIKE:
     case NOTIFICATION_TYPES.POST_COMMENT:
     case NOTIFICATION_TYPES.POST_SHARE:
@@ -142,25 +180,20 @@ function linkFor(notification: Notification): NotificationLink | null {
 export function describeNotification(
   notification: Notification,
 ): NotificationPresentation {
-  const config = NOTIFICATION_CONFIG[notification.type];
   const actorName = fullName(notification.relatedUser);
-
   const composed = actorName ? actorTitle(notification.type, actorName) : null;
   const serverTitle = notification.title?.trim();
-
   const title =
     composed ??
     (serverTitle && serverTitle.length > 0
       ? serverTitle
       : (FALLBACK_TITLE[notification.type] ?? "Notification"));
-
   const body =
     composed && GENERIC_BODY.has(notification.type)
       ? ""
       : (notification.message ?? "");
-
   return {
-    icon: config?.icon ?? "🔔",
+    icon: ICONS[notification.type] ?? "bell",
     title,
     body,
     actorName,

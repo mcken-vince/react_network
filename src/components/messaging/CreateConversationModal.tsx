@@ -7,6 +7,7 @@ import {
   useCreateGroupConversation,
 } from "../../hooks/useMessaging";
 import type { User } from "../../types";
+import { Icon } from "../atoms";
 
 export function CreateConversationModal({ onClose }: { onClose: () => void }) {
   const { user } = useAuth();
@@ -102,7 +103,7 @@ export function CreateConversationModal({ onClose }: { onClose: () => void }) {
             onClick={onClose}
             className="text-gray-400 hover:text-gray-600"
           >
-            ✕
+            <Icon name="close" size="small" />
           </button>
         </div>
 
@@ -154,7 +155,13 @@ export function CreateConversationModal({ onClose }: { onClose: () => void }) {
                 className="inline-flex items-center gap-1 px-2 py-1 rounded-full text-xs bg-primary-100 text-primary-800"
               >
                 {u.firstName} {u.lastName}
-                <button onClick={() => toggle(u)}>×</button>
+                <button
+                  type="button"
+                  onClick={() => toggle(u)}
+                  aria-label={`Remove ${u.firstName}`}
+                >
+                  <Icon name="close" size="small" className="h-3 w-3" />
+                </button>
               </span>
             ))}
           </div>

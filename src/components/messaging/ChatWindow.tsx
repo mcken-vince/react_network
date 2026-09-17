@@ -15,7 +15,16 @@ import { MessageInput } from "./MessageInput";
 import { GroupSettings } from "./GroupSettings";
 import type { Message, SendMessageData } from "../../types";
 
-export function ChatWindow({ conversationId }: { conversationId: string }) {
+interface ChatWindowProps {
+  conversationId: string;
+  /** Deep link: scroll to this message after the first page loads. */
+  jumpToMessageId?: string | null;
+}
+
+export function ChatWindow({
+  conversationId,
+  jumpToMessageId = null,
+}: ChatWindowProps) {
   const { user } = useAuth();
   const { setActiveConversationId } = useActiveConversation();
   const { data: conversation, error } = useConversation(conversationId);
@@ -129,6 +138,7 @@ export function ChatWindow({ conversationId }: { conversationId: string }) {
             onLoadMore={() => messagesQuery.fetchNextPage()}
             replyToId={replyTo?.id ?? null}
             onReply={setReplyTo}
+            jumpToMessageId={jumpToMessageId}
           />
         )}
         {typingUserIds.length > 0 && (

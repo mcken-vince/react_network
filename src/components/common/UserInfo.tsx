@@ -1,4 +1,4 @@
-import { Heading, Stack, Text } from "../atoms";
+import { Heading, Icon, Stack, Text } from "../atoms";
 import type { StackSpacing } from "../atoms/Stack";
 import type { User } from "../../types";
 
@@ -37,13 +37,14 @@ function UserInfo({ user, variant = "compact", className }: UserInfoProps) {
         @{username}
       </Text>
       {location && (
-        <Text size="sm" color="gray-600" className="my-0">
-          📍 {location}
+        <Text size="sm" color="muted" className="flex items-center gap-1">
+          <Icon name="location" size="small" className="h-3.5 w-3.5" />
+          {user.location}
         </Text>
       )}
       {variant === "detailed" && age !== undefined && (
         <Text size="sm" color="gray-600" className="my-0">
-          🎂 {age} years old
+          {age} years old
         </Text>
       )}
     </Stack>

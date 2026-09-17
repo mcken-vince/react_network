@@ -1,7 +1,7 @@
 import { useEffect, useRef } from "react";
 import { Link } from "@tanstack/react-router";
 import { Card } from "../common";
-import { Button, Flex, Stack, Text } from "../atoms";
+import { Button, Flex, Icon, Stack, Text } from "../atoms";
 import type { Connection } from "../../types";
 
 interface ConnectionCardProps {
@@ -51,8 +51,9 @@ const ConnectionCard = ({
               @{user.username}
             </Text>
             {user.location && (
-              <Text size="sm" color="muted">
-                📍 {user.location}
+              <Text size="sm" color="muted" className="flex items-center gap-1">
+                <Icon name="location" size="small" className="h-3.5 w-3.5" />
+                {user.location}
               </Text>
             )}
             <Text size="xs" color="muted">

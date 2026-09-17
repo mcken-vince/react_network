@@ -8,10 +8,12 @@ import { ChatWindow } from "./ChatWindow";
 
 interface MessagesPageProps {
   initialConversationId?: string | null;
+  initialMessageId?: string | null;
 }
 
 export function MessagesPage({
   initialConversationId = null,
+  initialMessageId = null,
 }: MessagesPageProps) {
   const { activeConversationId, setActiveConversationId } =
     useActiveConversation();
@@ -41,7 +43,14 @@ export function MessagesPage({
       </div>
       <div className="flex-1 flex flex-col">
         {activeConversationId ? (
-          <ChatWindow conversationId={activeConversationId} />
+          <ChatWindow
+            conversationId={activeConversationId}
+            jumpToMessageId={
+              activeConversationId === initialConversationId
+                ? initialMessageId
+                : null
+            }
+          />
         ) : (
           <div className="flex items-center justify-center h-full bg-gray-50">
             <div className="text-center">

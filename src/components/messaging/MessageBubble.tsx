@@ -1,22 +1,31 @@
 import { useState } from "react";
+import { Icon } from "../atoms";
 import { useDeleteMessage, useEditMessage } from "../../hooks/useMessaging";
+import { messageDomId } from "./MessageList";
 import type { Message } from "../../types";
 
 interface MessageBubbleProps {
   message: Message;
   isOwn: boolean;
+  currentUserId: number | undefined;
   isConsecutive: boolean;
   /** This message is the pending reply target. */
   isReplyTarget: boolean;
+  /** Briefly highlighted after a jump-to. */
+  isFlashing: boolean;
   onReply: (message: Message) => void;
+  onJumpTo: (messageId: string) => void;
 }
 
 export function MessageBubble({
   message,
   isOwn,
+  currentUserId,
   isConsecutive,
   isReplyTarget,
+  isFlashing,
   onReply,
+  onJumpTo,
 }: MessageBubbleProps) {
   const editMessage = useEditMessage();
   const deleteMessage = useDeleteMessage(message.conversationId);
@@ -47,11 +56,30 @@ export function MessageBubble({
     setIsEditing(false);
   };
 
+  const cancelEdit = (): void => {
+    setIsEditing(false);
+    setEditContent(message.content);
+  };
+
+  const parent = message.replyTo ?? null;
+  const parentAuthor = !parent
+    ? null
+    : parent.senderId === currentUserId
+      ? "You"
+      : parent.sender
+        ? `${parent.sender.firstName} ${parent.sender.lastName}`
+        : "Unknown user";
+
+  const highlight = isFlashing
+    ? "bg-yellow-100"
+    : isReplyTarget
+      ? "bg-primary-50/60"
+      : "";
+
   return (
     <div
-      className={`flex ${isOwn ? "justify-end" : "justify-start"} group ${
-        isReplyTarget ? "bg-primary-50/60 rounded-lg -mx-2 px-2 py-1" : ""
-      }`}
+      id={messageDomId(message.id)}
+      className={`flex ${isOwn ? "justify-end" : "justify-start"} group scroll-mt-4 rounded-lg -mx-2 px-2 py-1 transition-colors duration-500 ${highlight}`}
     >
       <div className={`max-w-xs lg:max-w-md ${isOwn ? "order-2" : "order-1"}`}>
         {!isConsecutive && !isOwn && (
@@ -63,11 +91,31 @@ export function MessageBubble({
           </div>
         )}
 
-        {message.replyTo && (
-          <div className="mb-1 pl-3 border-l-2 border-gray-300 text-xs text-gray-500 truncate">
-            {message.replyTo.content}
+        {/* Quoted parent: author + excerpt, links to the original. */}
+        {parent ? (
+          <button
+            type="button"
+            onClick={() => onJumpTo(parent.id)}
+            title="Go to the original message"
+            className={`mb-1 w-full text-left pl-3 pr-2 py-1 border-l-2 rounded-r-md text-xs transition-colors ${
+              isOwn
+                ? "border-primary-300 bg-primary-50 hover:bg-primary-100"
+                : "border-gray-300 bg-gray-50 hover:bg-gray-100"
+            }`}
+          >
+            <span className="flex items-center gap-1 font-medium text-gray-700">
+              <Icon name="reply" size="small" className="h-3 w-3" />
+              {parentAuthor}
+            </span>
+            <span className="block truncate text-gray-500">
+              {parent.content}
+            </span>
+          </button>
+        ) : message.replyToId ? (
+          <div className="mb-1 pl-3 border-l-2 border-gray-200 text-xs italic text-gray-400">
+            Original message was deleted
           </div>
-        )}
+        ) : null}
 
         {isEditing ? (
           <div className="bg-white border border-gray-300 rounded-lg p-2">
@@ -79,8 +127,7 @@ export function MessageBubble({
                   e.preventDefault();
                   void submitEdit();
                 } else if (e.key === "Escape") {
-                  setIsEditing(false);
-                  setEditContent(message.content);
+                  cancelEdit();
                 }
               }}
               rows={2}
@@ -89,15 +136,14 @@ export function MessageBubble({
             />
             <div className="flex justify-end gap-2 mt-1 text-xs">
               <button
-                onClick={() => {
-                  setIsEditing(false);
-                  setEditContent(message.content);
-                }}
+                type="button"
+                onClick={cancelEdit}
                 className="text-gray-500"
               >
                 Cancel
               </button>
               <button
+                type="button"
                 onClick={() => void submitEdit()}
                 className="text-primary-600"
               >
@@ -135,41 +181,45 @@ export function MessageBubble({
             type="button"
             onClick={() => onReply(message)}
             aria-label="Reply to this message"
-            className="p-1 text-gray-400 hover:text-gray-600 focus:opacity-100"
             title="Reply"
+            className="p-1 rounded text-gray-400 hover:text-gray-600 hover:bg-gray-100"
           >
-            ↩
+            <Icon name="reply" size="small" />
           </button>
           {isOwn && (
             <div className="relative">
               <button
+                type="button"
                 onClick={() => setMenuOpen((o) => !o)}
-                className="p-1 text-gray-400 hover:text-gray-600"
+                aria-label="More actions"
                 title="More"
+                className="p-1 rounded text-gray-400 hover:text-gray-600 hover:bg-gray-100"
               >
-                ⋯
+                <Icon name="more" size="small" />
               </button>
               {menuOpen && (
-                <div className="absolute right-0 top-7 bg-white border border-gray-200 rounded-md shadow-lg py-1 z-10 min-w-24">
+                <div className="absolute right-0 top-7 bg-white border border-gray-200 rounded-md shadow-lg py-1 z-10 min-w-28">
                   <button
+                    type="button"
                     onClick={() => {
                       setIsEditing(true);
                       setMenuOpen(false);
                     }}
-                    className="block w-full text-left px-3 py-2 text-sm text-gray-700 hover:bg-gray-100"
+                    className="flex items-center gap-2 w-full text-left px-3 py-2 text-sm text-gray-700 hover:bg-gray-100"
                   >
-                    Edit
+                    <Icon name="edit" size="small" /> Edit
                   </button>
                   <button
+                    type="button"
                     onClick={() => {
                       if (window.confirm("Delete this message?")) {
                         deleteMessage.mutate(message.id);
                       }
                       setMenuOpen(false);
                     }}
-                    className="block w-full text-left px-3 py-2 text-sm text-red-600 hover:bg-gray-100"
+                    className="flex items-center gap-2 w-full text-left px-3 py-2 text-sm text-red-600 hover:bg-gray-100"
                   >
-                    Delete
+                    <Icon name="trash" size="small" /> Delete
                   </button>
                 </div>
               )}

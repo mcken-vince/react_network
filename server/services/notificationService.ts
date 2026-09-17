@@ -117,6 +117,30 @@ export function notifyNewMessage(
   });
 }
 
+/**
+ * Someone replied to the recipient's own message. Not deduped: each reply is
+ * a specific, actionable event (unlike a generic "new message").
+ */
+export function notifyMessageReply(
+  recipientId: number,
+  senderId: number,
+  messageId: string,
+  conversationId: string,
+  repliedToMessageId: string,
+  preview: string,
+): Promise<Notification | null> {
+  return deliver(() =>
+    Notification.createMessageReplyNotification(
+      recipientId,
+      senderId,
+      messageId,
+      conversationId,
+      repliedToMessageId,
+      preview,
+    ),
+  );
+}
+
 /** Mark this conversation's unread message notifications read and push the change. */
 export async function markConversationNotificationsRead(
   userId: number,

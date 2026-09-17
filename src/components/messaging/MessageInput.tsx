@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState } from "react";
 import { useWebSocket } from "../../hooks/useWebSocket";
 import type { Message } from "../../types";
+import { Icon } from "../atoms";
 
 interface MessageInputProps {
   conversationId: string;
@@ -71,7 +72,8 @@ export function MessageInput({
       {replyTo && (
         <div className="flex items-start gap-2 mb-2 pl-3 pr-2 py-2 rounded-md bg-gray-50 border-l-2 border-primary-500">
           <div className="flex-1 min-w-0">
-            <p className="text-xs font-medium text-primary-700">
+            <p className="flex items-center gap-1 text-xs font-medium text-primary-700">
+              <Icon name="reply" size="small" className="h-3 w-3" />
               Replying to {replyAuthor}
             </p>
             <p className="text-xs text-gray-500 truncate">{replyTo.content}</p>
@@ -79,10 +81,10 @@ export function MessageInput({
           <button
             type="button"
             onClick={onCancelReply}
-            className="text-gray-400 hover:text-gray-600 text-sm leading-none p-1"
+            className="p-1 rounded text-gray-400 hover:text-gray-600 hover:bg-gray-100"
             aria-label="Cancel reply"
           >
-            ✕
+            <Icon name="close" size="small" />
           </button>
         </div>
       )}
@@ -118,9 +120,11 @@ export function MessageInput({
         <button
           type="submit"
           disabled={disabled || !content.trim()}
-          className="p-3 rounded-lg bg-primary-600 text-white disabled:bg-gray-200 disabled:text-gray-400"
+          aria-label={replyTo ? "Send reply" : "Send message"}
+          title={replyTo ? "Send reply" : "Send message"}
+          className="p-3 rounded-lg bg-primary-600 text-white hover:bg-primary-700 disabled:bg-gray-200 disabled:text-gray-400"
         >
-          {replyTo ? "Reply" : "Send"}
+          <Icon name={replyTo ? "reply" : "send"} size="medium" />
         </button>
       </form>
     </div>

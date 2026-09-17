@@ -11,6 +11,7 @@ import type {
 } from "../types";
 import {
   markConversationNotificationsRead,
+  notifyMessageReply,
   notifyNewMessage,
 } from "./notificationService";
 
@@ -45,20 +46,23 @@ export async function sendMessage(
   data: SendMessageData,
 ): Promise<MessageDto> {
   await assertParticipant(conversationId, senderId);
+
+  let parent: Message | null = null;
   if (data.replyToId) {
-    const parent = await Message.findOne({
+    parent = await Message.findOne({
       where: { id: data.replyToId, conversationId },
-      attributes: ["id"],
+      attributes: ["id", "senderId"],
     });
     if (!parent) {
       throw new NotFoundError("The message being replied to was not found");
     }
   }
+
   const created = await Message.create({
     conversationId,
     senderId,
     content: data.content,
-    replyToId: data.replyToId ?? null,
+    replyToId: parent?.id ?? null,
     readBy: [senderId],
   });
   const full = (await Message.getMessageById(created.id)) ?? created;
@@ -66,17 +70,31 @@ export async function sendMessage(
 
   const participantIds = await activeParticipantIds(conversationId);
   emitToUsers(participantIds, "message:new", dto);
+
+  // The replied-to author gets a specific "replied to you"; everyone else
+  // (and the replied-to author if they're the sender) gets the generic one.
+  const replyTarget =
+    parent && parent.senderId !== senderId ? parent.senderId : null;
   await Promise.all(
     participantIds
       .filter((id) => id !== senderId)
       .map((id) =>
-        notifyNewMessage(
-          id,
-          senderId,
-          created.id,
-          conversationId,
-          data.content,
-        ),
+        id === replyTarget && parent
+          ? notifyMessageReply(
+              id,
+              senderId,
+              created.id,
+              conversationId,
+              parent.id,
+              data.content,
+            )
+          : notifyNewMessage(
+              id,
+              senderId,
+              created.id,
+              conversationId,
+              data.content,
+            ),
       ),
   );
   return dto;

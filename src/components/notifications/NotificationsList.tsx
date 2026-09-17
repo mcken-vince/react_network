@@ -1,4 +1,4 @@
-import { Button, Flex, Heading, Stack, Text } from "../atoms";
+import { Button, Flex, Heading, Icon, Stack, Text } from "../atoms";
 import { useNotificationsFeature } from "../../hooks/useNotifications";
 import NotificationCard from "./NotificationCard";
 import { LoadingSpinner } from "../ui/LoadingSpinner";
@@ -44,7 +44,11 @@ const NotificationsList = ({ onNavigate }: NotificationsListProps) => {
             disabled={isRefreshing}
             className="flex items-center gap-2"
           >
-            {isRefreshing ? <LoadingSpinner size="sm" /> : <span>🔄</span>}
+            {isRefreshing ? (
+              <LoadingSpinner size="sm" />
+            ) : (
+              <Icon name="refresh" size="small" />
+            )}
             <span>Refresh</span>
           </Button>
           {unreadCount > 0 && (

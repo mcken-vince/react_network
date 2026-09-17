@@ -12,6 +12,7 @@ import type {
   PostVisibility,
   UpdatePostData,
 } from "../../types";
+import { Icon } from "../atoms";
 
 interface EditPostModalProps {
   post: Post | null;
@@ -127,20 +128,7 @@ export default function EditPostModal({
               className="text-gray-400 hover:text-gray-600 transition-colors"
               aria-label="Close"
             >
-              <svg
-                className="w-6 h-6"
-                fill="none"
-                stroke="currentColor"
-                viewBox="0 0 24 24"
-                aria-hidden
-              >
-                <path
-                  strokeLinecap="round"
-                  strokeLinejoin="round"
-                  strokeWidth={2}
-                  d="M6 18L18 6M6 6l12 12"
-                />
-              </svg>
+              <Icon name="close" size="large" />
             </button>
           </div>
 

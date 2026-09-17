@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { Button, Stack, Text } from "../atoms";
+import { Button, Icon, Stack, Text } from "../atoms";
 import { useRefreshNotifications } from "../../hooks/useNotifications";
 import {
   useAcceptConnectionRequest,
@@ -55,7 +55,13 @@ const ConnectionStatusButton = ({
       disabled={busy}
       onClick={() => run(() => sendRequest.mutateAsync(targetUserId))}
     >
-      {busy ? "Sending..." : "🤝 Connect"}
+      {busy ? (
+        "Sending..."
+      ) : (
+        <>
+          <Icon name="userPlus" size="small" /> Connect
+        </>
+      )}
     </Button>
   );
 
@@ -66,7 +72,7 @@ const ConnectionStatusButton = ({
       return connectionStatus.isRequester ? (
         <Stack spacing="xs">
           <Button variant="outline" size="sm" disabled>
-            ⏳ Request Sent
+            <Icon name="clock" size="small" /> Request Sent
           </Button>
           <Text size="xs" color="muted" className="text-center">
             Waiting for response
@@ -83,7 +89,7 @@ const ConnectionStatusButton = ({
                 run(() => acceptRequest.mutateAsync(connectionStatus.id))
               }
             >
-              ✅ Accept
+              <Icon name="check" size="small" /> Accept
             </Button>
             <Button
               variant="outline"
@@ -94,7 +100,7 @@ const ConnectionStatusButton = ({
                 run(() => rejectRequest.mutateAsync(connectionStatus.id))
               }
             >
-              ❌ Decline
+              <Icon name="close" size="small" /> Decline
             </Button>
           </div>
           <Text size="xs" color="muted" className="text-center">
@@ -118,7 +124,7 @@ const ConnectionStatusButton = ({
               );
             }}
           >
-            ✅ Connected
+            <Icon name="userCheck" size="small" /> Connected
           </Button>
           <Text size="xs" color="muted" className="text-center">
             Click to remove connection

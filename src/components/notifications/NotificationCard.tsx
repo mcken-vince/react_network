@@ -1,6 +1,6 @@
 import type { ReactNode } from "react";
 import { Link } from "@tanstack/react-router";
-import { Button, Flex, Stack, Text } from "../atoms";
+import { Button, Flex, Stack, Text, Icon } from "../atoms";
 import { Card } from "../common";
 import {
   useDeleteNotification,
@@ -107,9 +107,15 @@ const NotificationCard = ({
         <div className="flex-1 min-w-0">
           <NotificationLinkWrapper link={link} onClick={handleOpen}>
             <Flex align="start" gap="sm">
-              <Text size="lg" aria-hidden>
-                {icon}
-              </Text>
+              <span
+                className={`mt-0.5 p-1.5 rounded-full ${
+                  notification.isRead
+                    ? "bg-gray-100 text-gray-500"
+                    : "bg-blue-100 text-blue-600"
+                }`}
+              >
+                <Icon name={icon} size="small" />
+              </span>
               <Stack spacing="xs" className="min-w-0">
                 <Text weight={notification.isRead ? "medium" : "semibold"}>
                   {title}
@@ -148,21 +154,23 @@ const NotificationCard = ({
               variant="ghost"
               size="sm"
               title="Mark as read"
+              aria-label="Mark as read"
               disabled={markAsRead.isPending}
               onClick={() => markAsRead.mutate(notification.id)}
             >
-              ✓
+              <Icon name="check" size="small" />
             </Button>
           )}
           <Button
             variant="ghost"
             size="sm"
             title="Delete notification"
+            aria-label="Delete notification"
             className="text-red-500 hover:text-red-700"
             disabled={deleteNotification.isPending}
             onClick={() => deleteNotification.mutate(notification.id)}
           >
-            ×
+            <Icon name="close" size="small" />
           </Button>
         </Flex>
       </Flex>

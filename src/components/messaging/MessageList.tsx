@@ -1,4 +1,10 @@
-import { useCallback, useEffect, useLayoutEffect, useRef } from "react";
+import {
+  useCallback,
+  useEffect,
+  useLayoutEffect,
+  useRef,
+  useState,
+} from "react";
 import { MessageBubble } from "./MessageBubble";
 import type { Message } from "../../types";
 
@@ -12,9 +18,17 @@ interface MessageListProps {
   replyToId: string | null;
   /** Tag a message as the reply target (does not send anything). */
   onReply: (message: Message) => void;
+  /** Deep link: jump to this message once it's available. */
+  jumpToMessageId?: string | null;
 }
 
 const NEAR_BOTTOM_PX = 150;
+/** How many older pages we'll pull in while hunting for a jump target. */
+const MAX_JUMP_PAGES = 20;
+const FLASH_MS = 1_600;
+
+export const messageDomId = (messageId: string): string =>
+  `message-${messageId}`;
 
 function groupByDate(
   messages: Message[],
@@ -50,6 +64,7 @@ export function MessageList({
   onLoadMore,
   replyToId,
   onReply,
+  jumpToMessageId = null,
 }: MessageListProps) {
   const containerRef = useRef<HTMLDivElement>(null);
   const bottomRef = useRef<HTMLDivElement>(null);
@@ -58,7 +73,54 @@ export function MessageList({
   // scrollHeight captured just before a "load older" fetch.
   const scrollHeightBeforeLoad = useRef<number | null>(null);
 
-  // Keep the viewport anchored when older messages are prepended.
+  // ---- Jump-to-message -----------------------------------------------------
+  // A jump target may live in a page we haven't loaded yet; we keep fetching
+  // older pages until it shows up (or we give up).
+  const pendingJump = useRef<{ id: string; pagesLoaded: number } | null>(null);
+  const [jumpTick, setJumpTick] = useState(0);
+  const [flashId, setFlashId] = useState<string | null>(null);
+  const flashTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  const jumpTo = useCallback((messageId: string) => {
+    pendingJump.current = { id: messageId, pagesLoaded: 0 };
+    setJumpTick((t) => t + 1);
+  }, []);
+
+  useEffect(() => {
+    if (jumpToMessageId) jumpTo(jumpToMessageId);
+  }, [jumpToMessageId, jumpTo]);
+
+  useEffect(() => {
+    const pending = pendingJump.current;
+    if (!pending) return;
+    const el = document.getElementById(messageDomId(pending.id));
+    if (el) {
+      pendingJump.current = null;
+      el.scrollIntoView({ behavior: "smooth", block: "center" });
+      setFlashId(pending.id);
+      if (flashTimer.current) clearTimeout(flashTimer.current);
+      flashTimer.current = setTimeout(() => setFlashId(null), FLASH_MS);
+      return;
+    }
+    if (isLoadingMore) return;
+    if (hasMore && pending.pagesLoaded < MAX_JUMP_PAGES) {
+      pending.pagesLoaded += 1;
+      onLoadMore();
+    } else {
+      pendingJump.current = null; // not found — give up quietly
+    }
+  }, [messages, hasMore, isLoadingMore, onLoadMore, jumpTick]);
+
+  useEffect(
+    () => () => {
+      if (flashTimer.current) clearTimeout(flashTimer.current);
+    },
+    [],
+  );
+
+  // ---- Scroll management ---------------------------------------------------
+
+  // Keep the viewport anchored when older messages are prepended by scrolling.
   useLayoutEffect(() => {
     const el = containerRef.current;
     if (el && scrollHeightBeforeLoad.current !== null) {
@@ -73,13 +135,11 @@ export function MessageList({
     const el = containerRef.current;
     const newest = messages[messages.length - 1];
     if (!el || !newest || lastSeenMessageId.current === newest.id) return;
-
     const isFirstRender = lastSeenMessageId.current === null;
     const nearBottom =
       el.scrollHeight - el.scrollTop - el.clientHeight < NEAR_BOTTOM_PX;
     lastSeenMessageId.current = newest.id;
-
-    if (isFirstRender || nearBottom) {
+    if ((isFirstRender && !pendingJump.current) || nearBottom) {
       bottomRef.current?.scrollIntoView({
         behavior: isFirstRender ? "auto" : "smooth",
       });
@@ -128,6 +188,7 @@ export function MessageList({
           </span>
         </div>
       )}
+
       {groupByDate(messages).map((group) => (
         <div key={group.date}>
           <div className="flex justify-center my-4">
@@ -149,9 +210,12 @@ export function MessageList({
                   key={message.id}
                   message={message}
                   isOwn={message.senderId === currentUserId}
+                  currentUserId={currentUserId}
                   isConsecutive={isConsecutive}
                   isReplyTarget={message.id === replyToId}
+                  isFlashing={message.id === flashId}
                   onReply={onReply}
+                  onJumpTo={jumpTo}
                 />
               );
             })}

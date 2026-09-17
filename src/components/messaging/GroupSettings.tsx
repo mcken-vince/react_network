@@ -7,6 +7,7 @@ import {
   useRenameConversation,
 } from "../../hooks/useMessaging";
 import type { Conversation, User } from "../../types";
+import { Icon } from "../atoms";
 
 interface GroupSettingsProps {
   conversation: Conversation;
@@ -90,7 +91,7 @@ export function GroupSettings({
           className="text-gray-400 hover:text-gray-600"
           aria-label="Close group settings"
         >
-          ✕
+          <Icon name="close" size="small" />
         </button>
       </div>
 

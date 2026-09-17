@@ -182,7 +182,7 @@ export default class Notification extends BaseModel<
     return (await this.count({ where })) > 0;
   }
 
-  /** Unread "new message" notifications for one conversation (normally 0 or 1). */
+  /** Unread message/reply notifications for one conversation; cleared when it's read. */
   static findUnreadForConversation(
     userId: number,
     conversationId: string,
@@ -190,7 +190,12 @@ export default class Notification extends BaseModel<
     return this.findAll({
       where: {
         userId,
-        type: NOTIFICATION_TYPES.NEW_MESSAGE,
+        type: {
+          [Op.in]: [
+            NOTIFICATION_TYPES.NEW_MESSAGE,
+            NOTIFICATION_TYPES.MESSAGE_REPLY,
+          ],
+        },
         isRead: false,
         [Op.and]: [
           sqlWhere(literal(`"metadata"->>'conversationId'`), conversationId),
@@ -202,6 +207,30 @@ export default class Notification extends BaseModel<
   // --------------------------------------------------------------------------
   // Factories
   // --------------------------------------------------------------------------
+
+  static createMessageReplyNotification(
+    userId: number,
+    fromUserId: number,
+    messageId: string,
+    conversationId: string,
+    repliedToMessageId: string,
+    messagePreview: string,
+    transaction?: Transaction,
+  ): Promise<Notification> {
+    return this.create(
+      {
+        userId,
+        type: NOTIFICATION_TYPES.MESSAGE_REPLY,
+        title: "New Reply",
+        message: messagePreview.substring(0, 100),
+        relatedUserId: fromUserId,
+        relatedEntityType: "message",
+        relatedEntityId: messageId,
+        metadata: { conversationId, repliedToMessageId },
+      },
+      { transaction },
+    );
+  }
 
   private static createConnectionNotification(
     type: NotificationType,

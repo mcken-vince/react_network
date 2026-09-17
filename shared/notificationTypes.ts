@@ -5,6 +5,7 @@ export const NOTIFICATION_TYPES = {
   CONNECTION_REJECTED: "connection_rejected",
   // Messaging
   NEW_MESSAGE: "new_message",
+  MESSAGE_REPLY: "message_reply",
   // Posts
   POST_LIKE: "post_like",
   POST_COMMENT: "post_comment",
@@ -62,6 +63,12 @@ export const NOTIFICATION_CONFIG: Record<
   },
   new_message: {
     icon: "💬",
+    color: "blue",
+    actionable: true,
+    category: "messaging",
+  },
+  message_reply: {
+    icon: "↩️",
     color: "blue",
     actionable: true,
     category: "messaging",
