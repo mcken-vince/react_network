@@ -1,4 +1,8 @@
-import type { NotificationFilters } from "../types";
+import type {
+  NotificationFilters,
+  ReactionTargetType,
+  ReactionType,
+} from "../types";
 
 export const userKeys = {
   all: ["users"] as const,
@@ -48,4 +52,21 @@ export const messageKeys = {
   all: ["messages"] as const,
   list: (conversationId: string) =>
     [...messageKeys.all, "list", conversationId] as const,
+};
+
+/** "Who reacted" lists. Reaction *summaries* live on the posts/comments/messages themselves. */
+export const reactionKeys = {
+  all: ["reactions"] as const,
+  /** Every reactor list for one target (all type tabs) — invalidation target. */
+  target: (targetType: ReactionTargetType, targetId: string) =>
+    [...reactionKeys.all, targetType, targetId] as const,
+  reactors: (
+    targetType: ReactionTargetType,
+    targetId: string,
+    type?: ReactionType,
+  ) =>
+    [
+      ...reactionKeys.target(targetType, targetId),
+      { type: type ?? null },
+    ] as const,
 };

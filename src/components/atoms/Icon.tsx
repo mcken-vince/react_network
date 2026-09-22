@@ -34,6 +34,9 @@ import {
   SendHorizontal,
   Settings,
   Share2,
+  Smile,
+  SmilePlus,
+  ThumbsUp,
   Trash2,
   User,
   UserCheck,
@@ -90,6 +93,10 @@ const ICONS = {
   share: Share2,
   globe: Globe,
   lock: Lock,
+  // reactions
+  smile: Smile,
+  smilePlus: SmilePlus,
+  thumbsUp: ThumbsUp,
   // social
   userPlus: UserPlus,
   userCheck: UserCheck,

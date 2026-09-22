@@ -1,4 +1,5 @@
 import { LIMITS } from "../../shared/limits";
+import { REACTION_TYPES, isReactionType } from "../../shared/reactions";
 import type { FieldErrors } from "../lib/errors";
 import type {
   CreateDirectConversationData,
@@ -14,6 +15,7 @@ import type {
   AddParticipantsData,
   CreateCommentData,
   RenameConversationData,
+  SetReactionData,
 } from "../../shared/types";
 
 // ---------------------------------------------------------------------------
@@ -464,4 +466,21 @@ export const validateAddParticipants = (
   const parsed = parseParticipantIds(b.userIds);
   if ("error" in parsed) errors.userIds = parsed.error;
   return finish(errors, { userIds: "ids" in parsed ? parsed.ids : [] });
+};
+
+// ---------------------------------------------------------------------------
+// Reactions
+// ---------------------------------------------------------------------------
+
+export const validateReaction = (
+  input: unknown,
+): ValidationResult<SetReactionData> => {
+  const b = asBody(input);
+  if (!isReactionType(b.type)) {
+    return finish<SetReactionData>(
+      { type: `Reaction type must be one of: ${REACTION_TYPES.join(", ")}` },
+      { type: "like" }, // unreachable on failure
+    );
+  }
+  return finish<SetReactionData>({}, { type: b.type });
 };

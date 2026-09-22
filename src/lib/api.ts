@@ -1,5 +1,6 @@
 import { API_BASE_URL } from "./env";
 import { clearAuthToken, getAuthToken, setAuthToken } from "./authToken";
+import type { ReactionTargetRef } from "./reactions";
 import type {
   AuthResponse,
   ConnectionRequestsResponse,
@@ -21,7 +22,12 @@ import type {
   PostResponse,
   PostsResponse,
   ProfileUpdateData,
+  ReactionResponse,
+  ReactionType,
+  ReactorsQuery,
+  ReactorsResponse,
   SendMessageData,
+  SetReactionData,
   SignupData,
   SuccessMessageResponse,
   UnreadCountResponse,
@@ -33,7 +39,6 @@ import type {
   CommentsQuery,
   CommentsResponse,
   CreateCommentData,
-  PostLikeResponse,
 } from "../types";
 
 // ---------------------------------------------------------------------------
@@ -79,7 +84,6 @@ function query(params: Record<string, QueryValue>): string {
 
 async function request<T>(path: string, options: RequestInit = {}): Promise<T> {
   const token = getAuthToken();
-
   let response: globalThis.Response;
   try {
     response = await fetch(`${API_BASE_URL}${path}`, {
@@ -93,13 +97,10 @@ async function request<T>(path: string, options: RequestInit = {}): Promise<T> {
   } catch {
     throw new ApiError(0, "Network error — is the server reachable?");
   }
-
   if (response.status === 204) {
     return undefined as T;
   }
-
   const body = (await response.json().catch(() => null)) as unknown;
-
   if (!response.ok) {
     const { error, errors } = (body ?? {}) as ErrorBody;
     if (response.status === 401) clearAuthToken();
@@ -109,21 +110,17 @@ async function request<T>(path: string, options: RequestInit = {}): Promise<T> {
       errors,
     );
   }
-
   return body as T;
 }
 
 const getJson = <T>(path: string): Promise<T> => request<T>(path);
-
 const del = <T>(path: string): Promise<T> =>
   request<T>(path, { method: "DELETE" });
-
 const postJson = <T>(path: string, body?: unknown): Promise<T> =>
   request<T>(path, {
     method: "POST",
     body: body === undefined ? undefined : JSON.stringify(body),
   });
-
 const putJson = <T>(path: string, body?: unknown): Promise<T> =>
   request<T>(path, {
     method: "PUT",
@@ -176,6 +173,7 @@ export const userAPI = {
     getJson<UsersWithConnectionStatusResponse>(
       `/users/search${query({ q, ...params, includeConnectionStatus: true })}`,
     ),
+
   updateProfile: (userId: number, data: ProfileUpdateData) =>
     putJson<UserResponse>(`/users/${userId}`, data),
 
@@ -250,16 +248,44 @@ export const postAPI = {
   deletePost: (postId: string) =>
     del<SuccessMessageResponse>(`/posts/${postId}`),
 
-  likePost: (postId: string) =>
-    postJson<PostLikeResponse>(`/posts/${postId}/like`),
-  unlikePost: (postId: string) =>
-    del<PostLikeResponse>(`/posts/${postId}/like`),
   getComments: (postId: string, q: CommentsQuery = {}) =>
     getJson<CommentsResponse>(`/posts/${postId}/comments${query({ ...q })}`),
+
   addComment: (postId: string, data: CreateCommentData) =>
     postJson<CommentResponse>(`/posts/${postId}/comments`, data),
+
   deleteComment: (postId: string, commentId: string) =>
     del<SuccessMessageResponse>(`/posts/${postId}/comments/${commentId}`),
+};
+
+// ---------------------------------------------------------------------------
+// Reactions  (posts, comments, messages share one shape)
+// ---------------------------------------------------------------------------
+
+function reactionPath(ref: ReactionTargetRef): string {
+  switch (ref.targetType) {
+    case "post":
+      return `/posts/${ref.postId}/reactions`;
+    case "comment":
+      return `/posts/${ref.postId}/comments/${ref.commentId}/reactions`;
+    case "message":
+      return `/messages/${ref.messageId}/reactions`;
+  }
+}
+
+export const reactionAPI = {
+  /** Add (multi) or set (single) my reaction. */
+  set: (ref: ReactionTargetRef, type: ReactionType) =>
+    putJson<ReactionResponse>(reactionPath(ref), {
+      type,
+    } satisfies SetReactionData),
+
+  /** Remove my reaction; `type` only matters under a "multi" policy. */
+  clear: (ref: ReactionTargetRef, type?: ReactionType) =>
+    del<ReactionResponse>(`${reactionPath(ref)}${query({ type })}`),
+
+  listReactors: (ref: ReactionTargetRef, q: ReactorsQuery = {}) =>
+    getJson<ReactorsResponse>(`${reactionPath(ref)}${query({ ...q })}`),
 };
 
 // ---------------------------------------------------------------------------
@@ -304,11 +330,13 @@ export const messageAPI = {
 
   renameConversation: (conversationId: string, name: string) =>
     putJson<ConversationResponse>(`/conversations/${conversationId}`, { name }),
+
   addParticipants: (conversationId: string, userIds: number[]) =>
     postJson<ConversationResponse>(
       `/conversations/${conversationId}/participants`,
       { userIds },
     ),
+
   /** Admins remove others; pass your own id to leave. */
   removeParticipant: (conversationId: string, userId: number) =>
     del<SuccessMessageResponse>(

@@ -1,5 +1,6 @@
 import type { Optional } from "sequelize";
 import type { NotificationType } from "../../shared/notificationTypes";
+import type { ReactionTargetType, ReactionType } from "../../shared/reactions";
 import type {
   ConnectionStatus,
   ConversationType,
@@ -14,6 +15,7 @@ type AutoKeys = "id" | "createdAt" | "updatedAt";
 // ---------------------------------------------------------------------------
 // users
 // ---------------------------------------------------------------------------
+
 export interface UserAttributes {
   id: number;
   username: string;
@@ -27,11 +29,13 @@ export interface UserAttributes {
   createdAt: Date;
   updatedAt: Date;
 }
+
 export type UserCreationAttributes = Optional<UserAttributes, AutoKeys>;
 
 // ---------------------------------------------------------------------------
 // connections
 // ---------------------------------------------------------------------------
+
 export interface ConnectionAttributes {
   id: number;
   requesterId: number;
@@ -40,6 +44,7 @@ export interface ConnectionAttributes {
   createdAt: Date;
   updatedAt: Date;
 }
+
 export type ConnectionCreationAttributes = Optional<
   ConnectionAttributes,
   AutoKeys | "status"
@@ -48,6 +53,7 @@ export type ConnectionCreationAttributes = Optional<
 // ---------------------------------------------------------------------------
 // posts
 // ---------------------------------------------------------------------------
+
 export interface PostAttributes {
   id: string;
   userId: number;
@@ -57,6 +63,7 @@ export interface PostAttributes {
   createdAt: Date;
   updatedAt: Date;
 }
+
 export type PostCreationAttributes = Optional<
   PostAttributes,
   AutoKeys | "visibility"
@@ -65,6 +72,7 @@ export type PostCreationAttributes = Optional<
 // ---------------------------------------------------------------------------
 // notifications
 // ---------------------------------------------------------------------------
+
 export interface NotificationAttributes {
   id: number;
   userId: number;
@@ -79,6 +87,7 @@ export interface NotificationAttributes {
   createdAt: Date;
   updatedAt: Date;
 }
+
 export type NotificationCreationAttributes = Optional<
   NotificationAttributes,
   AutoKeys | "isRead"
@@ -87,6 +96,7 @@ export type NotificationCreationAttributes = Optional<
 // ---------------------------------------------------------------------------
 // conversations
 // ---------------------------------------------------------------------------
+
 export interface ConversationAttributes {
   id: string;
   type: ConversationType;
@@ -96,6 +106,7 @@ export interface ConversationAttributes {
   createdAt: Date;
   updatedAt: Date;
 }
+
 export type ConversationCreationAttributes = Optional<
   ConversationAttributes,
   AutoKeys | "type"
@@ -104,6 +115,7 @@ export type ConversationCreationAttributes = Optional<
 // ---------------------------------------------------------------------------
 // conversationParticipants
 // ---------------------------------------------------------------------------
+
 export interface ConversationParticipantAttributes {
   id: string;
   conversationId: string;
@@ -116,6 +128,7 @@ export interface ConversationParticipantAttributes {
   createdAt: Date;
   updatedAt: Date;
 }
+
 export type ConversationParticipantCreationAttributes = Optional<
   ConversationParticipantAttributes,
   AutoKeys | "isAdmin" | "isActive" | "joinedAt"
@@ -124,6 +137,7 @@ export type ConversationParticipantCreationAttributes = Optional<
 // ---------------------------------------------------------------------------
 // messages
 // ---------------------------------------------------------------------------
+
 export interface MessageAttributes {
   id: string;
   conversationId: string;
@@ -139,26 +153,16 @@ export interface MessageAttributes {
   createdAt: Date;
   updatedAt: Date;
 }
+
 export type MessageCreationAttributes = Optional<
   MessageAttributes,
   AutoKeys | "messageType" | "isEdited" | "readBy"
 >;
 
 // ---------------------------------------------------------------------------
-// postLikes
-// ---------------------------------------------------------------------------
-export interface PostLikeAttributes {
-  id: number;
-  postId: string;
-  userId: number;
-  createdAt: Date;
-  updatedAt: Date;
-}
-export type PostLikeCreationAttributes = Optional<PostLikeAttributes, AutoKeys>;
-
-// ---------------------------------------------------------------------------
 // postComments
 // ---------------------------------------------------------------------------
+
 export interface PostCommentAttributes {
   id: string;
   postId: string;
@@ -167,7 +171,30 @@ export interface PostCommentAttributes {
   createdAt: Date;
   updatedAt: Date;
 }
+
 export type PostCommentCreationAttributes = Optional<
   PostCommentAttributes,
   AutoKeys
 >;
+
+// ---------------------------------------------------------------------------
+// reactions
+// ---------------------------------------------------------------------------
+
+export interface ReactionAttributes {
+  id: number;
+  targetType: ReactionTargetType;
+  targetId: string;
+  userId: number;
+  type: ReactionType;
+  createdAt: Date;
+  updatedAt: Date;
+}
+
+export type ReactionCreationAttributes = Optional<ReactionAttributes, AutoKeys>;
+
+/** A reaction target plus the context needed to link/notify about it. */
+export type ReactionTarget =
+  | { targetType: "post"; targetId: string }
+  | { targetType: "comment"; targetId: string; postId: string }
+  | { targetType: "message"; targetId: string; conversationId: string };

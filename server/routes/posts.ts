@@ -6,7 +6,9 @@ import {
   intParam,
   pagination,
   queryInt,
+  queryReactionType,
   queryString,
+  reactorsQuery,
   uuidParam,
   validated,
 } from "../lib/http";
@@ -17,22 +19,29 @@ import {
   deleteComment,
   findOwnedPost,
   getVisiblePost,
-  likePost,
   listComments,
   loadPostWithAuthor,
-  unlikePost,
 } from "../services/postService";
+import {
+  clearReaction,
+  listReactors,
+  resolveCommentTarget,
+  resolvePostTarget,
+  setReaction,
+} from "../services/reactionService";
 import {
   validateComment,
   validateCreatePost,
+  validateReaction,
   validateUpdatePost,
 } from "../utils/validation";
 import type {
   CommentResponse,
   CommentsResponse,
-  PostLikeResponse,
   PostResponse,
   PostsResponse,
+  ReactionResponse,
+  ReactorsResponse,
   SuccessMessageResponse,
 } from "../types";
 
@@ -89,22 +98,50 @@ router.get(
 );
 
 // ---------------------------------------------------------------------------
-// Likes
+// Post reactions
 // ---------------------------------------------------------------------------
 
-router.post(
-  "/:postId/like",
+// PUT /posts/:postId/reactions  { type }
+router.put(
+  "/:postId/reactions",
   authed(async (req, res) => {
-    const post = await likePost(uuidParam(req, "postId"), req.userId);
-    res.json({ post } satisfies PostLikeResponse);
+    const { type } = validated(validateReaction(req.body));
+    const target = await resolvePostTarget(
+      uuidParam(req, "postId"),
+      req.userId,
+    );
+    const result = await setReaction(target, req.userId, type);
+    res.json(result satisfies ReactionResponse);
   }),
 );
 
+// DELETE /posts/:postId/reactions?type= — `type` only matters under a "multi" policy
 router.delete(
-  "/:postId/like",
+  "/:postId/reactions",
   authed(async (req, res) => {
-    const post = await unlikePost(uuidParam(req, "postId"), req.userId);
-    res.json({ post } satisfies PostLikeResponse);
+    const target = await resolvePostTarget(
+      uuidParam(req, "postId"),
+      req.userId,
+    );
+    const result = await clearReaction(
+      target,
+      req.userId,
+      queryReactionType(req),
+    );
+    res.json(result satisfies ReactionResponse);
+  }),
+);
+
+// GET /posts/:postId/reactions?type&limit&before — who reacted, newest first
+router.get(
+  "/:postId/reactions",
+  authed(async (req, res) => {
+    const target = await resolvePostTarget(
+      uuidParam(req, "postId"),
+      req.userId,
+    );
+    const result = await listReactors(target, reactorsQuery(req));
+    res.json(result satisfies ReactorsResponse);
   }),
 );
 
@@ -148,6 +185,54 @@ router.delete(
     res.json({
       message: "Comment deleted successfully",
     } satisfies SuccessMessageResponse);
+  }),
+);
+
+// ---------------------------------------------------------------------------
+// Comment reactions
+// ---------------------------------------------------------------------------
+
+router.put(
+  "/:postId/comments/:commentId/reactions",
+  authed(async (req, res) => {
+    const { type } = validated(validateReaction(req.body));
+    const target = await resolveCommentTarget(
+      uuidParam(req, "postId"),
+      uuidParam(req, "commentId"),
+      req.userId,
+    );
+    const result = await setReaction(target, req.userId, type);
+    res.json(result satisfies ReactionResponse);
+  }),
+);
+
+router.delete(
+  "/:postId/comments/:commentId/reactions",
+  authed(async (req, res) => {
+    const target = await resolveCommentTarget(
+      uuidParam(req, "postId"),
+      uuidParam(req, "commentId"),
+      req.userId,
+    );
+    const result = await clearReaction(
+      target,
+      req.userId,
+      queryReactionType(req),
+    );
+    res.json(result satisfies ReactionResponse);
+  }),
+);
+
+router.get(
+  "/:postId/comments/:commentId/reactions",
+  authed(async (req, res) => {
+    const target = await resolveCommentTarget(
+      uuidParam(req, "postId"),
+      uuidParam(req, "commentId"),
+      req.userId,
+    );
+    const result = await listReactors(target, reactorsQuery(req));
+    res.json(result satisfies ReactorsResponse);
   }),
 );
 

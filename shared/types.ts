@@ -1,4 +1,9 @@
 import type { NotificationType } from "./notificationTypes";
+import type {
+  ReactionSummary,
+  ReactionTargetType,
+  ReactionType,
+} from "./reactions";
 
 export type ISODateString = string;
 
@@ -63,9 +68,9 @@ export interface Post {
   author?: UserSummary;
   createdAt: ISODateString;
   updatedAt: ISODateString;
-  likeCount: number;
   commentCount: number;
-  likedByMe: boolean;
+  /** Viewer-specific: `mine` is the caller's own reactions. */
+  reactions: ReactionSummary;
 }
 
 export interface PostComment {
@@ -76,15 +81,15 @@ export interface PostComment {
   author?: UserSummary;
   createdAt: ISODateString;
   updatedAt: ISODateString;
+  /** Viewer-specific: `mine` is the caller's own reactions. */
+  reactions: ReactionSummary;
 }
 
-export interface PostLikeResponse {
-  post: Post;
-} // POST/DELETE /posts/:id/like
 export interface CommentsResponse {
   comments: PostComment[];
   nextCursor?: string;
 }
+
 export interface CommentResponse {
   comment: PostComment;
 }
@@ -94,6 +99,7 @@ export type RelatedEntityType =
   | "conversation"
   | "message"
   | "post"
+  | "comment"
   | "user";
 
 export interface Notification {
@@ -122,14 +128,22 @@ export interface Message {
   messageType?: MessageType;
   attachmentUrl?: string | null;
   replyToId?: string | null;
-  replyTo?: Message | null;
+  replyTo?: MessagePreview | null;
   isEdited: boolean;
   editedAt?: ISODateString | null;
   readBy?: number[] | null;
   sender?: UserSummary;
   createdAt: ISODateString;
   updatedAt: ISODateString;
+  /**
+   * Viewer-specific over REST. In socket payloads (`message:new`,
+   * `message:updated`) `mine` is always empty — clients keep their own.
+   */
+  reactions: ReactionSummary;
 }
+
+/** A message embedded in another entity (reply quote, conversation preview). */
+export type MessagePreview = Omit<Message, "replyTo" | "reactions">;
 
 export type ConversationType = "direct" | "group";
 
@@ -156,7 +170,7 @@ export interface Conversation {
   participants?: ConversationParticipant[];
   creator?: UserSummary;
   // enrichment added by GET /conversations
-  lastMessage?: Message | null;
+  lastMessage?: MessagePreview | null;
   unreadCount?: number;
   createdAt: ISODateString;
   updatedAt: ISODateString;
@@ -255,6 +269,20 @@ export interface MessagesQuery {
   beforeMessageId?: string;
 }
 
+/** PUT …/reactions */
+export interface SetReactionData {
+  type: ReactionType;
+}
+
+/** GET …/reactions */
+export interface ReactorsQuery {
+  /** Only reactors of this type. */
+  type?: ReactionType;
+  limit?: number;
+  /** Cursor: return reactions with an id lower than this. */
+  before?: number;
+}
+
 // ---------------------------------------------------------------------------
 // Response envelopes
 // ---------------------------------------------------------------------------
@@ -279,9 +307,11 @@ export interface UserResponse {
   message?: string;
   user: User;
 }
+
 export interface UsersResponse {
   users: User[];
 }
+
 export interface UsersWithConnectionStatusResponse {
   users: UserWithConnectionStatus[];
 }
@@ -290,9 +320,11 @@ export interface ConnectionResponse {
   message: string;
   connection: Connection;
 }
+
 export interface ConnectionRequestsResponse {
   requests: Connection[];
 }
+
 export interface ConnectionsListResponse {
   connections: Connection[];
 }
@@ -301,9 +333,11 @@ export interface NotificationsResponse {
   notifications: Notification[];
   count: number;
 }
+
 export interface UnreadCountResponse {
   count: number;
 }
+
 export interface NotificationResponse {
   message: string;
   notification: Notification;
@@ -313,6 +347,7 @@ export interface PostResponse {
   message?: string;
   post: Post;
 }
+
 export interface PostsResponse {
   posts: Post[];
   pagination: Pagination;
@@ -322,16 +357,42 @@ export interface PostsResponse {
 export interface ConversationsResponse {
   conversations: Conversation[];
 }
+
 export interface ConversationResponse {
   conversation: Conversation;
   /** Only on POST /conversations: whether a new conversation was created. */
   created?: boolean;
 }
+
 export interface MessagesResponse {
   messages: Message[];
   /** Cursor for the next (older) page; undefined when there are no more. */
   nextCursor?: string;
 }
+
 export interface MessageResponse {
   message: Message;
+}
+
+// Reactions
+/** PUT / DELETE …/reactions — the target's summary after the change, for the caller. */
+export interface ReactionResponse {
+  targetType: ReactionTargetType;
+  targetId: string;
+  reactions: ReactionSummary;
+}
+
+export interface Reactor {
+  /** Reaction row id — also the pagination cursor. */
+  id: number;
+  userId: number;
+  type: ReactionType;
+  user?: UserSummary;
+  createdAt: ISODateString;
+}
+
+export interface ReactorsResponse {
+  reactors: Reactor[];
+  /** Pass as `before` for the next page; undefined when there are no more. */
+  nextCursor?: number;
 }

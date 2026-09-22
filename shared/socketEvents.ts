@@ -1,6 +1,21 @@
 import type { Conversation, Message, Notification } from "./types";
+import type { ReactionSummary, ReactionType } from "./reactions";
 
 export type PresenceStatus = "online" | "offline";
+
+/**
+ * A message's reactions changed. Carries counts only — `mine` differs per
+ * viewer. Recipients adopt `actorReactions` as their own `mine` only when
+ * `actorId` is themselves (i.e. the change came from another of their tabs).
+ */
+export interface MessageReactionsEvent {
+  conversationId: string;
+  messageId: string;
+  counts: ReactionSummary["counts"];
+  total: number;
+  actorId: number;
+  actorReactions: ReactionType[];
+}
 
 /**
  * Server → client. The socket is a push channel: every mutation happens over
@@ -18,11 +33,13 @@ export interface ServerToClientEvents {
 
   // Messaging
   "message:new": (message: Message) => void;
+  /** `reactions.mine` is empty; clients should keep their cached reactions. */
   "message:updated": (message: Message) => void;
   "message:deleted": (data: {
     conversationId: string;
     messageId: string;
   }) => void;
+  "message:reactions": (data: MessageReactionsEvent) => void;
   "message:typing": (data: {
     conversationId: string;
     userId: number;

@@ -44,6 +44,7 @@ const SERVER_EVENTS: (keyof ServerToClientEvents)[] = [
   "message:new",
   "message:updated",
   "message:deleted",
+  "message:reactions",
   "conversation:created",
   "conversation:updated",
   "conversation:removed",
@@ -84,6 +85,7 @@ export function WebSocketProvider({ children }: { children: ReactNode }) {
     }
 
     const socket = connectSocket(token);
+
     const onConnect = () => setIsConnected(true);
     const onDisconnect = () => setIsConnected(false);
     socket.on("connect", onConnect);
@@ -192,19 +194,43 @@ export function WebSocketProvider({ children }: { children: ReactNode }) {
         },
       );
     });
-
+    // Payload reactions are viewer-neutral (empty `mine`) and an edit can't
+    // change reactions anyway — keep whatever we have cached.
     socket.on("message:updated", (message) =>
       patchMessages(message.conversationId, (messages) =>
-        messages.map((m) => (m.id === message.id ? message : m)),
+        messages.map((m) =>
+          m.id === message.id ? { ...message, reactions: m.reactions } : m,
+        ),
       ),
     );
-
     socket.on("message:deleted", ({ conversationId, messageId }) =>
       patchMessages(conversationId, (messages) =>
         messages.filter((m) => m.id !== messageId),
       ),
     );
-
+    // Counts are authoritative for everyone; `mine` only changes if the actor
+    // is us (i.e. we reacted from another tab/device).
+    socket.on(
+      "message:reactions",
+      ({ conversationId, messageId, counts, total, actorId, actorReactions }) =>
+        patchMessages(conversationId, (messages) =>
+          messages.map((m) =>
+            m.id === messageId
+              ? {
+                  ...m,
+                  reactions: {
+                    counts,
+                    total,
+                    mine:
+                      actorId === currentUserId
+                        ? actorReactions
+                        : m.reactions.mine,
+                  },
+                }
+              : m,
+          ),
+        ),
+    );
     socket.on("conversation:created", (conversation) =>
       upsertConversation(queryClient, conversation),
     );
@@ -223,7 +249,6 @@ export function WebSocketProvider({ children }: { children: ReactNode }) {
         else current.delete(userId);
         return { ...prev, [conversationId]: [...current] };
       });
-
       const timerKey = `${conversationId}:${userId}`;
       const pending = timers.get(timerKey);
       if (pending) clearTimeout(pending);

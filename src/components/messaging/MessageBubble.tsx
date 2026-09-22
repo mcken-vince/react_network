@@ -1,8 +1,15 @@
-import { useState } from "react";
+import { useCallback, useRef, useState } from "react";
+import { REACTION_POLICY } from "@shared/reactions";
 import { Icon } from "../atoms";
+import { cn } from "../../lib/cn";
 import { useDeleteMessage, useEditMessage } from "../../hooks/useMessaging";
+import { useToggleReaction } from "../../hooks/useReactions";
+import type { ReactionTargetRef } from "../../lib/reactions";
 import { messageDomId } from "./MessageList";
-import type { Message } from "../../types";
+import ReactionPicker from "../reactions/ReactionPicker";
+import ReactionBar from "../reactions/ReactionBar";
+import ReactorsModal from "../reactions/ReactorsModal";
+import type { Message, ReactionType } from "../../types";
 
 interface MessageBubbleProps {
   message: Message;
@@ -32,6 +39,25 @@ export function MessageBubble({
   const [isEditing, setIsEditing] = useState(false);
   const [editContent, setEditContent] = useState(message.content);
   const [menuOpen, setMenuOpen] = useState(false);
+
+  // ---- Reactions (hooks must run before the system-message early return) ----
+  const [pickerOpen, setPickerOpen] = useState(false);
+  const [showReactors, setShowReactors] = useState(false);
+  const pickerBoundaryRef = useRef<HTMLDivElement>(null);
+  const reactionTarget: ReactionTargetRef = {
+    targetType: "message",
+    conversationId: message.conversationId,
+    messageId: message.id,
+  };
+  const toggleReaction = useToggleReaction(reactionTarget);
+  const closePicker = useCallback(() => setPickerOpen(false), []);
+  const react = (type: ReactionType): void =>
+    toggleReaction.mutate({ type, current: message.reactions });
+  const pickReaction = (type: ReactionType): void => {
+    react(type);
+    // Single: picking is final. Multi: stay open to toggle several.
+    if (REACTION_POLICY.message === "single") closePicker();
+  };
 
   const time = new Date(message.createdAt).toLocaleTimeString([], {
     hour: "2-digit",
@@ -169,14 +195,51 @@ export function MessageBubble({
             )}
           </div>
         )}
+
+        <ReactionBar
+          summary={message.reactions}
+          onToggle={react}
+          onShowReactors={() => setShowReactors(true)}
+          disabled={toggleReaction.isPending}
+          size="sm"
+          className={cn("mt-1", isOwn && "justify-end")}
+        />
       </div>
 
       {!isEditing && (
         <div
-          className={`flex items-start gap-1 mx-2 opacity-0 group-hover:opacity-100 focus-within:opacity-100 ${
-            isOwn ? "order-1" : "order-2"
-          }`}
+          className={cn(
+            "flex items-start gap-1 mx-2 opacity-0 group-hover:opacity-100 focus-within:opacity-100",
+            (pickerOpen || menuOpen) && "opacity-100",
+            isOwn ? "order-1" : "order-2",
+          )}
         >
+          <div ref={pickerBoundaryRef} className="relative">
+            <button
+              type="button"
+              onClick={() => setPickerOpen((o) => !o)}
+              disabled={toggleReaction.isPending}
+              aria-label="React to this message"
+              aria-haspopup="true"
+              aria-expanded={pickerOpen}
+              title="React"
+              className="p-1 rounded text-gray-400 hover:text-gray-600 hover:bg-gray-100 disabled:opacity-50"
+            >
+              <Icon name="smilePlus" size="small" />
+            </button>
+            {pickerOpen && (
+              <ReactionPicker
+                mine={message.reactions.mine}
+                onSelect={pickReaction}
+                onClose={closePicker}
+                autoFocus
+                disabled={toggleReaction.isPending}
+                placement="top"
+                align={isOwn ? "right" : "left"}
+                boundaryRef={pickerBoundaryRef}
+              />
+            )}
+          </div>
           <button
             type="button"
             onClick={() => onReply(message)}
@@ -226,6 +289,14 @@ export function MessageBubble({
             </div>
           )}
         </div>
+      )}
+
+      {showReactors && (
+        <ReactorsModal
+          target={reactionTarget}
+          summary={message.reactions}
+          onClose={() => setShowReactors(false)}
+        />
       )}
     </div>
   );

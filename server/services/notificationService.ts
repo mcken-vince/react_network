@@ -1,11 +1,12 @@
 import { Notification } from "../models";
 import { includeUser } from "../models/includes";
+import type { ReactionTarget } from "../models/types";
 import { toWire } from "../lib/serialize";
 import { emitToUser } from "../websocket/io";
-import { NOTIFICATION_TYPES } from "../../shared/notificationTypes";
 import type {
   Notification as NotificationDto,
   NotificationFilters,
+  ReactionType,
 } from "../types";
 
 /** Reload with `relatedUser` so socket payloads match GET /notifications. */
@@ -141,7 +142,7 @@ export function notifyMessageReply(
   );
 }
 
-/** Mark this conversation's unread message notifications read and push the change. */
+/** Mark this conversation's unread message + reaction notifications read and push the change. */
 export async function markConversationNotificationsRead(
   userId: number,
   conversationId: string,
@@ -149,6 +150,7 @@ export async function markConversationNotificationsRead(
   const unread = await Notification.findUnreadForConversation(
     userId,
     conversationId,
+    { includeReactions: true },
   );
   for (const notification of unread) {
     await notification.update({ isRead: true });
@@ -163,26 +165,6 @@ export async function markConversationNotificationsRead(
 // ---------------------------------------------------------------------------
 // Triggers — posts
 // ---------------------------------------------------------------------------
-
-/** Like toggling shouldn't spam: skip if an unread like from this user on this post exists. */
-export function notifyPostLiked(
-  ownerId: number,
-  likerId: number,
-  postId: string,
-): Promise<Notification | null> {
-  return deliver(async () => {
-    const duplicate = await Notification.hasUnread({
-      userId: ownerId,
-      type: NOTIFICATION_TYPES.POST_LIKE,
-      isRead: false,
-      relatedUserId: likerId,
-      relatedEntityType: "post",
-      relatedEntityId: postId,
-    });
-    if (duplicate) return null;
-    return Notification.createPostLikeNotification(ownerId, likerId, postId);
-  });
-}
 
 export function notifyPostCommented(
   ownerId: number,
@@ -200,6 +182,79 @@ export function notifyPostCommented(
       preview,
     ),
   );
+}
+
+// ---------------------------------------------------------------------------
+// Triggers — reactions (posts, comments, messages)
+// ---------------------------------------------------------------------------
+
+interface ReactionNotificationChange {
+  ownerId: number;
+  reactorId: number;
+  target: ReactionTarget;
+  /** The reactor's reactions on the target before/after, oldest first. */
+  before: readonly ReactionType[];
+  after: readonly ReactionType[];
+  added: ReactionType | null;
+}
+
+/**
+ * Keep at most one unread reaction notification per (reactor, target):
+ *  - first reaction           → create one
+ *  - switch / add another     → update the unread one in place (no new ping)
+ *  - all reactions removed    → delete the unread one
+ * Read notifications are left alone. Never throws.
+ */
+export async function syncReactionNotification(
+  change: ReactionNotificationChange,
+): Promise<void> {
+  const { ownerId, reactorId, target, before, after, added } = change;
+  if (ownerId === reactorId) return;
+  try {
+    const existing = await Notification.findUnreadReaction(
+      ownerId,
+      reactorId,
+      target,
+    );
+
+    if (after.length === 0) {
+      if (existing) {
+        await existing.destroy();
+        emitToUser(ownerId, "notification:deleted", existing.id);
+      }
+      return;
+    }
+
+    const latest = added ?? after[after.length - 1];
+    if (!latest) return;
+
+    if (existing) {
+      const updated = await Notification.refreshReactionNotification(
+        existing,
+        target,
+        latest,
+      );
+      emitToUser(
+        ownerId,
+        "notification:updated",
+        toWire<NotificationDto>(await hydrate(updated)),
+      );
+      return;
+    }
+
+    if (before.length === 0 && added) {
+      await deliver(() =>
+        Notification.createReactionNotification(
+          ownerId,
+          reactorId,
+          target,
+          added,
+        ),
+      );
+    }
+  } catch (error) {
+    console.error("Failed to sync reaction notification:", error);
+  }
 }
 
 // ---------------------------------------------------------------------------

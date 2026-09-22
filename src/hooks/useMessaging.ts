@@ -15,6 +15,7 @@ import type {
   CreateGroupConversationData,
   Message,
   MessagesResponse,
+  ReactionSummary,
   SendMessageData,
 } from "../types";
 
@@ -158,6 +159,17 @@ const patchAllPages = (
   );
 };
 
+/** Used by useToggleReaction. */
+export const setMessageReactions = (
+  queryClient: QueryClient,
+  conversationId: string,
+  messageId: string,
+  reactions: ReactionSummary,
+): void =>
+  patchAllPages(queryClient, conversationId, (messages) =>
+    messages.map((m) => (m.id === messageId ? { ...m, reactions } : m)),
+  );
+
 const touchConversation = (
   queryClient: QueryClient,
   conversationId: string,
@@ -203,6 +215,7 @@ export const useEditMessage = () => {
       messageAPI
         .editMessage(vars.messageId, vars.content)
         .then((r) => r.message),
+    // The REST response's reactions are viewer-specific (ours), so take them as-is.
     onSuccess: (message) =>
       patchAllPages(queryClient, message.conversationId, (messages) =>
         messages.map((m) => (m.id === message.id ? message : m)),

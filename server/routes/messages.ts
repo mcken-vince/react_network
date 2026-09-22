@@ -5,7 +5,9 @@ import {
   bodyStringArray,
   pagination,
   queryInt,
+  queryReactionType,
   queryString,
+  reactorsQuery,
   uuidParam,
   validated,
   intParam,
@@ -28,11 +30,18 @@ import {
   sendMessage,
 } from "../services/messageService";
 import {
+  clearReaction,
+  listReactors,
+  resolveMessageTarget,
+  setReaction,
+} from "../services/reactionService";
+import {
   validateAddParticipants,
   validateConversationRename,
   validateDirectConversation,
   validateGroupConversation,
   validateMessage,
+  validateReaction,
 } from "../utils/validation";
 import type {
   Conversation as ConversationDto,
@@ -40,6 +49,8 @@ import type {
   ConversationsResponse,
   MessageResponse,
   MessagesResponse,
+  ReactionResponse,
+  ReactorsResponse,
   SuccessMessageResponse,
 } from "../types";
 
@@ -221,6 +232,54 @@ router.delete(
     res.json({
       message: "Message deleted successfully",
     } satisfies SuccessMessageResponse);
+  }),
+);
+
+// ---------------------------------------------------------------------------
+// Message reactions (changes are pushed to participants as `message:reactions`)
+// ---------------------------------------------------------------------------
+
+// PUT /messages/:id/reactions  { type }
+router.put(
+  "/messages/:messageId/reactions",
+  authed(async (req, res) => {
+    const { type } = validated(validateReaction(req.body));
+    const target = await resolveMessageTarget(
+      uuidParam(req, "messageId"),
+      req.userId,
+    );
+    const result = await setReaction(target, req.userId, type);
+    res.json(result satisfies ReactionResponse);
+  }),
+);
+
+// DELETE /messages/:id/reactions?type= — `type` only matters under a "multi" policy
+router.delete(
+  "/messages/:messageId/reactions",
+  authed(async (req, res) => {
+    const target = await resolveMessageTarget(
+      uuidParam(req, "messageId"),
+      req.userId,
+    );
+    const result = await clearReaction(
+      target,
+      req.userId,
+      queryReactionType(req),
+    );
+    res.json(result satisfies ReactionResponse);
+  }),
+);
+
+// GET /messages/:id/reactions?type&limit&before — who reacted, newest first
+router.get(
+  "/messages/:messageId/reactions",
+  authed(async (req, res) => {
+    const target = await resolveMessageTarget(
+      uuidParam(req, "messageId"),
+      req.userId,
+    );
+    const result = await listReactors(target, reactorsQuery(req));
+    res.json(result satisfies ReactorsResponse);
   }),
 );
 

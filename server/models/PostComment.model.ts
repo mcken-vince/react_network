@@ -1,4 +1,5 @@
 import {
+  AfterDestroy,
   AllowNull,
   BelongsTo,
   Column,
@@ -7,10 +8,11 @@ import {
   Table,
 } from "sequelize-typescript";
 import { Op, col, fn } from "sequelize";
-import type { WhereAttributeHash } from "sequelize";
+import type { InstanceDestroyOptions, WhereAttributeHash } from "sequelize";
 import { BaseUuidModel } from "./BaseUuidModel";
 import User from "./User.model";
 import Post from "./Post.model";
+import Reaction from "./Reaction.model";
 import { includeUser } from "./includes";
 import { LIMITS } from "../../shared/limits";
 import type {
@@ -59,6 +61,19 @@ export default class PostComment extends BaseUuidModel<
 
   @BelongsTo(() => User, { foreignKey: "userId", as: "author" })
   author?: User;
+
+  /** Reactions have no FK to their target. (Post deletion handles its comments' reactions itself.) */
+  @AfterDestroy
+  static async removeReactions(
+    comment: PostComment,
+    options: InstanceDestroyOptions,
+  ): Promise<void> {
+    await Reaction.deleteForTargets(
+      "comment",
+      [comment.id],
+      options.transaction,
+    );
+  }
 
   /** Newest-first page; pass `beforeCommentId` to page into older comments. */
   static async getPostComments(

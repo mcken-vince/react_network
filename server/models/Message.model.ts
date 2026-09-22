@@ -1,5 +1,6 @@
 import {
   AfterCreate,
+  AfterDestroy,
   AllowNull,
   BelongsTo,
   Column,
@@ -13,12 +14,14 @@ import { Op, col, fn, literal } from "sequelize";
 import type {
   CreateOptions,
   IncludeOptions,
+  InstanceDestroyOptions,
   Transaction,
   WhereAttributeHash,
 } from "sequelize";
 import { BaseUuidModel } from "./BaseUuidModel";
 import User from "./User.model";
 import Conversation from "./Conversation.model";
+import Reaction from "./Reaction.model";
 import { includeUser } from "./includes";
 import { ForbiddenError, NotFoundError } from "../lib/errors";
 import { LIMITS } from "../../shared/limits";
@@ -157,6 +160,22 @@ export default class Message extends BaseUuidModel<
     );
   }
 
+  /**
+   * Fires on soft delete too (paranoid). A deleted message is gone from every
+   * view and there is no restore, so its reactions go with it.
+   */
+  @AfterDestroy
+  static async removeReactions(
+    message: Message,
+    options: InstanceDestroyOptions,
+  ): Promise<void> {
+    await Reaction.deleteForTargets(
+      "message",
+      [message.id],
+      options.transaction,
+    );
+  }
+
   // --------------------------------------------------------------------------
   // Instance helpers
   // --------------------------------------------------------------------------
@@ -186,7 +205,6 @@ export default class Message extends BaseUuidModel<
       offset = 0,
       beforeMessageId = null,
     } = options;
-
     const where: WhereAttributeHash<MessageAttributes> = { conversationId };
     if (beforeMessageId) {
       const cursor = await this.findByPk(beforeMessageId, {
@@ -194,7 +212,6 @@ export default class Message extends BaseUuidModel<
       });
       if (cursor) where.createdAt = { [Op.lt]: cursor.createdAt };
     }
-
     return this.findAll({
       where,
       include: [includeUser("sender"), includeReplyTo()],

@@ -13,6 +13,7 @@ import type {
   Post,
   PostComment,
   PostsResponse,
+  ReactionSummary,
   UpdatePostData,
 } from "../types";
 
@@ -87,6 +88,13 @@ const patchPost = (
   );
 };
 
+/** Used by useToggleReaction. */
+export const setPostReactions = (
+  queryClient: QueryClient,
+  postId: string,
+  reactions: ReactionSummary,
+): void => patchPost(queryClient, postId, (p) => ({ ...p, reactions }));
+
 // ---------------------------------------------------------------------------
 // Post mutations
 // ---------------------------------------------------------------------------
@@ -115,34 +123,6 @@ export const useDeletePost = () => {
   return useMutation({
     mutationFn: (postId: string) => postAPI.deletePost(postId),
     onSuccess: () => queryClient.invalidateQueries({ queryKey: postKeys.all }),
-  });
-};
-
-/** Optimistic like/unlike based on the post's current `likedByMe`. */
-export const useToggleLike = () => {
-  const queryClient = useQueryClient();
-  return useMutation({
-    mutationFn: (post: Post) =>
-      (post.likedByMe
-        ? postAPI.unlikePost(post.id)
-        : postAPI.likePost(post.id)
-      ).then((r) => r.post),
-    onMutate: (post) => {
-      const delta = post.likedByMe ? -1 : 1;
-      patchPost(queryClient, post.id, (p) => ({
-        ...p,
-        likedByMe: !post.likedByMe,
-        likeCount: Math.max(0, p.likeCount + delta),
-      }));
-    },
-    onSuccess: (updated) =>
-      patchPost(queryClient, updated.id, (p) => ({ ...p, ...updated })),
-    onError: (_error, post) => {
-      void queryClient.invalidateQueries({ queryKey: postKeys.lists() });
-      void queryClient.invalidateQueries({
-        queryKey: postKeys.detail(post.id),
-      });
-    },
   });
 };
 
@@ -193,6 +173,17 @@ const patchComments = (
     },
   );
 };
+
+/** Used by useToggleReaction. */
+export const setCommentReactions = (
+  queryClient: QueryClient,
+  postId: string,
+  commentId: string,
+  reactions: ReactionSummary,
+): void =>
+  patchComments(queryClient, postId, (comments) =>
+    comments.map((c) => (c.id === commentId ? { ...c, reactions } : c)),
+  );
 
 export const useAddComment = (postId: string) => {
   const queryClient = useQueryClient();

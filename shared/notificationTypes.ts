@@ -6,9 +6,13 @@ export const NOTIFICATION_TYPES = {
   // Messaging
   NEW_MESSAGE: "new_message",
   MESSAGE_REPLY: "message_reply",
+  MESSAGE_REACTION: "message_reaction",
   // Posts
+  /** Legacy: no longer created (replaced by POST_REACTION); kept so old rows render. */
   POST_LIKE: "post_like",
+  POST_REACTION: "post_reaction",
   POST_COMMENT: "post_comment",
+  COMMENT_REACTION: "comment_reaction",
   POST_SHARE: "post_share",
   // Users
   USER_MENTION: "user_mention",
@@ -73,15 +77,33 @@ export const NOTIFICATION_CONFIG: Record<
     actionable: true,
     category: "messaging",
   },
+  message_reaction: {
+    icon: "😊",
+    color: "orange",
+    actionable: false,
+    category: "messaging",
+  },
   post_like: {
     icon: "❤️",
     color: "red",
     actionable: false,
     category: "engagement",
   },
+  post_reaction: {
+    icon: "😊",
+    color: "orange",
+    actionable: false,
+    category: "engagement",
+  },
   post_comment: {
     icon: "💬",
     color: "green",
+    actionable: false,
+    category: "engagement",
+  },
+  comment_reaction: {
+    icon: "😊",
+    color: "orange",
     actionable: false,
     category: "engagement",
   },

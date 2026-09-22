@@ -5,11 +5,14 @@ import type { FieldErrors } from "./errors";
 import { sendError, sendSequelizeValidationError } from "../utils/responses";
 import type { ValidationResult } from "../utils/validation";
 import { LIMITS } from "../../shared/limits";
+import { REACTION_TYPES, isReactionType } from "../../shared/reactions";
+import type { ReactionType } from "../../shared/reactions";
 import type {
   ApiRequest,
   AuthRequest,
   AuthenticatedRequest,
   PaginationParams,
+  ReactorsQuery,
 } from "../types";
 import { isUuid } from "../utils/validation";
 
@@ -121,6 +124,30 @@ export function queryInt(req: ApiRequest, name: string): number | undefined {
 
 export function queryBool(req: ApiRequest, name: string): boolean {
   return queryString(req, name) === "true";
+}
+
+/** Optional reaction-type filter (`?type=love`). Absent or empty → undefined. */
+export function queryReactionType(
+  req: ApiRequest,
+  name = "type",
+): ReactionType | undefined {
+  const raw = queryString(req, name);
+  if (!raw) return undefined;
+  if (!isReactionType(raw)) {
+    throw new BadRequestError(
+      `${name} must be one of: ${REACTION_TYPES.join(", ")}`,
+    );
+  }
+  return raw;
+}
+
+/** `?type&limit&before` for "who reacted" lists. */
+export function reactorsQuery(req: ApiRequest): ReactorsQuery {
+  return {
+    type: queryReactionType(req),
+    limit: queryInt(req, "limit"),
+    before: queryInt(req, "before"),
+  };
 }
 
 /** `limit` (clamped to the max) and `offset` from the query string. */

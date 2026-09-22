@@ -1,5 +1,6 @@
 import {
   AllowNull,
+  BeforeDestroy,
   BelongsTo,
   Column,
   DataType,
@@ -9,17 +10,23 @@ import {
   HasMany,
 } from "sequelize-typescript";
 import { Op } from "sequelize";
-import type { FindOptions, Order, Transaction, WhereOptions } from "sequelize";
+import type {
+  FindOptions,
+  InstanceDestroyOptions,
+  Order,
+  Transaction,
+  WhereOptions,
+} from "sequelize";
 import { BaseUuidModel } from "./BaseUuidModel";
 import User from "./User.model";
 import Connection from "./Connection.model";
+import PostComment from "./PostComment.model";
+import Reaction from "./Reaction.model";
 import { includeUser } from "./includes";
 import { NotFoundError } from "../lib/errors";
 import { LIMITS } from "../../shared/limits";
 import type { PostVisibility } from "../../shared/types";
 import type { PostAttributes, PostCreationAttributes } from "./types";
-import PostLike from "./PostLike.model";
-import PostComment from "./PostComment.model";
 
 const ALL_VISIBILITIES: readonly PostVisibility[] = [
   "public",
@@ -97,11 +104,35 @@ export default class Post extends BaseUuidModel<
   @BelongsTo(() => User, { foreignKey: "userId", as: "author" })
   author?: User;
 
-  @HasMany(() => PostLike, { foreignKey: "postId", as: "likes" })
-  likes?: PostLike[];
-
   @HasMany(() => PostComment, { foreignKey: "postId", as: "comments" })
   comments?: PostComment[];
+
+  // --------------------------------------------------------------------------
+  // Hooks
+  // --------------------------------------------------------------------------
+
+  /**
+   * Reactions have no FK to their target, so clean them up here. Comments are
+   * removed by the DB's ON DELETE CASCADE, which never fires PostComment hooks
+   * — collect their ids now (before they're gone) and clean theirs up too.
+   */
+  @BeforeDestroy
+  static async removeReactions(
+    post: Post,
+    options: InstanceDestroyOptions,
+  ): Promise<void> {
+    const comments = await PostComment.findAll({
+      where: { postId: post.id },
+      attributes: ["id"],
+      transaction: options.transaction,
+    });
+    await Reaction.deleteForTargets("post", [post.id], options.transaction);
+    await Reaction.deleteForTargets(
+      "comment",
+      comments.map((c) => c.id),
+      options.transaction,
+    );
+  }
 
   // --------------------------------------------------------------------------
   // Visibility policy — the single source of truth for who can see what
@@ -163,15 +194,25 @@ export default class Post extends BaseUuidModel<
     return post.update(data, { transaction });
   }
 
-  /** @throws NotFoundError */
+  /**
+   * Runs in a transaction (the caller's, or a new one) so the reaction
+   * cleanup hook and the delete commit or roll back together.
+   * @throws NotFoundError
+   */
   static async deletePost(
     postId: string,
     transaction?: Transaction,
   ): Promise<Post> {
-    const post = await this.findByPk(postId);
-    if (!post) throw new NotFoundError("Post not found");
-    await post.destroy({ transaction });
-    return post;
+    const destroyIn = async (t: Transaction): Promise<Post> => {
+      const post = await this.findByPk(postId, { transaction: t });
+      if (!post) throw new NotFoundError("Post not found");
+      await post.destroy({ transaction: t });
+      return post;
+    };
+    if (transaction) return destroyIn(transaction);
+    const { sequelize } = this;
+    if (!sequelize) throw new Error("Post model is not initialised");
+    return sequelize.transaction(destroyIn);
   }
 
   // --------------------------------------------------------------------------
@@ -193,11 +234,9 @@ export default class Post extends BaseUuidModel<
       includeAuthor = false,
       visibility,
     } = options;
-
     const where: WhereOptions<PostAttributes> = visibility
       ? { userId, visibility: { [Op.in]: [...visibility] } }
       : { userId };
-
     return this.findAll({
       where,
       limit,
@@ -222,7 +261,6 @@ export default class Post extends BaseUuidModel<
       order = DEFAULT_ORDER,
       includeAuthor = true,
     } = options;
-
     const where: WhereOptions<PostAttributes> =
       connectedUserIds.length > 0
         ? {
@@ -235,7 +273,6 @@ export default class Post extends BaseUuidModel<
             ],
           }
         : { userId: viewerId };
-
     return this.findAll({
       where,
       limit,

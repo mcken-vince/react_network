@@ -1,4 +1,4 @@
-import { NOTIFICATION_TYPES } from "../types";
+import { NOTIFICATION_TYPES, REACTIONS, isReactionType } from "../types";
 import type { Notification, NotificationType, UserSummary } from "../types";
 import type { IconName } from "../components/atoms/Icon";
 
@@ -32,8 +32,11 @@ const ICONS: Record<NotificationType, IconName> = {
   connection_rejected: "userX",
   new_message: "messages",
   message_reply: "reply",
+  message_reaction: "smile",
   post_like: "heart",
+  post_reaction: "smile",
   post_comment: "comment",
+  comment_reaction: "smile",
   post_share: "share",
   user_mention: "atSign",
   user_follow: "user",
@@ -60,14 +63,23 @@ const metaString = (
   return typeof value === "string" && value ? value : undefined;
 };
 
+/** The emoji recorded on a reaction notification (falls back to 👍 for unknown types). */
+const reactionEmoji = (notification: Notification): string => {
+  const type = notification.metadata?.reactionType;
+  return isReactionType(type) ? REACTIONS[type].emoji : REACTIONS.like.emoji;
+};
+
 const FALLBACK_TITLE: Partial<Record<NotificationType, string>> = {
   [NOTIFICATION_TYPES.CONNECTION_REQUEST]: "New connection request",
   [NOTIFICATION_TYPES.CONNECTION_ACCEPTED]: "Connection accepted",
   [NOTIFICATION_TYPES.CONNECTION_REJECTED]: "Connection declined",
   [NOTIFICATION_TYPES.NEW_MESSAGE]: "New message",
   [NOTIFICATION_TYPES.MESSAGE_REPLY]: "New reply to your message",
+  [NOTIFICATION_TYPES.MESSAGE_REACTION]: "New reaction to your message",
   [NOTIFICATION_TYPES.POST_LIKE]: "New like on your post",
+  [NOTIFICATION_TYPES.POST_REACTION]: "New reaction to your post",
   [NOTIFICATION_TYPES.POST_COMMENT]: "New comment on your post",
+  [NOTIFICATION_TYPES.COMMENT_REACTION]: "New reaction to your comment",
   [NOTIFICATION_TYPES.POST_SHARE]: "Your post was shared",
   [NOTIFICATION_TYPES.USER_MENTION]: "You were mentioned",
   [NOTIFICATION_TYPES.USER_FOLLOW]: "New follower",
@@ -81,10 +93,13 @@ const GENERIC_BODY = new Set<NotificationType>([
   NOTIFICATION_TYPES.CONNECTION_ACCEPTED,
   NOTIFICATION_TYPES.CONNECTION_REJECTED,
   NOTIFICATION_TYPES.POST_LIKE,
+  NOTIFICATION_TYPES.POST_REACTION,
+  NOTIFICATION_TYPES.COMMENT_REACTION,
+  NOTIFICATION_TYPES.MESSAGE_REACTION,
 ]);
 
-function actorTitle(type: NotificationType, actor: string): string | null {
-  switch (type) {
+function actorTitle(notification: Notification, actor: string): string | null {
+  switch (notification.type) {
     case NOTIFICATION_TYPES.CONNECTION_REQUEST:
       return `${actor} sent you a connection request`;
     case NOTIFICATION_TYPES.CONNECTION_ACCEPTED:
@@ -95,10 +110,16 @@ function actorTitle(type: NotificationType, actor: string): string | null {
       return `New message from ${actor}`;
     case NOTIFICATION_TYPES.MESSAGE_REPLY:
       return `${actor} replied to your message`;
+    case NOTIFICATION_TYPES.MESSAGE_REACTION:
+      return `${actor} reacted ${reactionEmoji(notification)} to your message`;
     case NOTIFICATION_TYPES.POST_LIKE:
       return `${actor} liked your post`;
+    case NOTIFICATION_TYPES.POST_REACTION:
+      return `${actor} reacted ${reactionEmoji(notification)} to your post`;
     case NOTIFICATION_TYPES.POST_COMMENT:
       return `${actor} commented on your post`;
+    case NOTIFICATION_TYPES.COMMENT_REACTION:
+      return `${actor} reacted ${reactionEmoji(notification)} to your comment`;
     case NOTIFICATION_TYPES.POST_SHARE:
       return `${actor} shared your post`;
     case NOTIFICATION_TYPES.USER_MENTION:
@@ -150,7 +171,8 @@ function linkFor(notification: Notification): NotificationLink | null {
       return toProfile ?? { to: "/connections", search: { tab: "sent" } };
     // Open the conversation, scrolled to the message in question.
     case NOTIFICATION_TYPES.NEW_MESSAGE:
-    case NOTIFICATION_TYPES.MESSAGE_REPLY: {
+    case NOTIFICATION_TYPES.MESSAGE_REPLY:
+    case NOTIFICATION_TYPES.MESSAGE_REACTION: {
       const messageId =
         notification.relatedEntityType === "message"
           ? (notification.relatedEntityId ?? undefined)
@@ -166,9 +188,17 @@ function linkFor(notification: Notification): NotificationLink | null {
       };
     }
     case NOTIFICATION_TYPES.POST_LIKE:
+    case NOTIFICATION_TYPES.POST_REACTION:
     case NOTIFICATION_TYPES.POST_COMMENT:
     case NOTIFICATION_TYPES.POST_SHARE:
       return toPost ?? toProfile ?? { to: "/feed" };
+    // Comment reactions point at the comment; the post id rides in metadata.
+    case NOTIFICATION_TYPES.COMMENT_REACTION: {
+      const postId = metaString(notification, "postId");
+      return postId
+        ? { to: "/posts/$postId", params: { postId } }
+        : (toProfile ?? { to: "/feed" });
+    }
     case NOTIFICATION_TYPES.USER_MENTION:
     case NOTIFICATION_TYPES.USER_FOLLOW:
       return toProfile;
@@ -181,7 +211,7 @@ export function describeNotification(
   notification: Notification,
 ): NotificationPresentation {
   const actorName = fullName(notification.relatedUser);
-  const composed = actorName ? actorTitle(notification.type, actorName) : null;
+  const composed = actorName ? actorTitle(notification, actorName) : null;
   const serverTitle = notification.title?.trim();
   const title =
     composed ??
@@ -192,6 +222,7 @@ export function describeNotification(
     composed && GENERIC_BODY.has(notification.type)
       ? ""
       : (notification.message ?? "");
+
   return {
     icon: ICONS[notification.type] ?? "bell",
     title,

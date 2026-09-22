@@ -8,7 +8,7 @@ import {
   Table,
 } from "sequelize-typescript";
 import { Op, literal, where as sqlWhere } from "sequelize";
-import type { Transaction, WhereOptions } from "sequelize";
+import type { Transaction } from "sequelize";
 import { BaseModel } from "./BaseModel";
 import User from "./User.model";
 import { includeUser } from "./includes";
@@ -19,11 +19,62 @@ import {
   NOTIFICATION_TYPE_VALUES,
 } from "../../shared/notificationTypes";
 import type { NotificationType } from "../../shared/notificationTypes";
+import { REACTIONS } from "../../shared/reactions";
+import type { ReactionTargetType, ReactionType } from "../../shared/reactions";
 import type { RelatedEntityType } from "../../shared/types";
 import type {
   NotificationAttributes,
   NotificationCreationAttributes,
+  ReactionTarget,
 } from "./types";
+
+/** Notifications that mean "there's something unread in this chat". */
+const MESSAGE_ACTIVITY_TYPES: readonly NotificationType[] = [
+  NOTIFICATION_TYPES.NEW_MESSAGE,
+  NOTIFICATION_TYPES.MESSAGE_REPLY,
+];
+
+const REACTION_NOTIFICATIONS: Record<
+  ReactionTargetType,
+  { type: NotificationType; entityType: RelatedEntityType; noun: string }
+> = {
+  post: {
+    type: NOTIFICATION_TYPES.POST_REACTION,
+    entityType: "post",
+    noun: "post",
+  },
+  comment: {
+    type: NOTIFICATION_TYPES.COMMENT_REACTION,
+    entityType: "comment",
+    noun: "comment",
+  },
+  message: {
+    type: NOTIFICATION_TYPES.MESSAGE_REACTION,
+    entityType: "message",
+    noun: "message",
+  },
+};
+
+/** Everything the client needs to render and link the notification. */
+function reactionMetadata(
+  target: ReactionTarget,
+  reactionType: ReactionType,
+): Record<string, unknown> {
+  switch (target.targetType) {
+    case "post":
+      return { reactionType };
+    case "comment":
+      return { reactionType, postId: target.postId };
+    case "message":
+      return { reactionType, conversationId: target.conversationId };
+  }
+}
+
+const reactionMessage = (
+  target: ReactionTarget,
+  reactionType: ReactionType,
+): string =>
+  `Reacted ${REACTIONS[reactionType].emoji} to your ${REACTION_NOTIFICATIONS[target.targetType].noun}`;
 
 @Table({
   tableName: "notifications",
@@ -176,30 +227,46 @@ export default class Notification extends BaseModel<
     return notification;
   }
 
-  static async hasUnread(
-    where: WhereOptions<NotificationAttributes>,
-  ): Promise<boolean> {
-    return (await this.count({ where })) > 0;
-  }
-
-  /** Unread message/reply notifications for one conversation; cleared when it's read. */
+  /**
+   * Unread notifications tied to one conversation. By default only message
+   * activity (used to dedupe "new message"); pass `includeReactions` to also
+   * match reaction notifications (used when the chat is opened and read).
+   */
   static findUnreadForConversation(
     userId: number,
     conversationId: string,
+    options: { includeReactions?: boolean } = {},
   ): Promise<Notification[]> {
+    const types = options.includeReactions
+      ? [...MESSAGE_ACTIVITY_TYPES, NOTIFICATION_TYPES.MESSAGE_REACTION]
+      : [...MESSAGE_ACTIVITY_TYPES];
     return this.findAll({
       where: {
         userId,
-        type: {
-          [Op.in]: [
-            NOTIFICATION_TYPES.NEW_MESSAGE,
-            NOTIFICATION_TYPES.MESSAGE_REPLY,
-          ],
-        },
+        type: { [Op.in]: types },
         isRead: false,
         [Op.and]: [
           sqlWhere(literal(`"metadata"->>'conversationId'`), conversationId),
         ],
+      },
+    });
+  }
+
+  /** The unread notification for `fromUserId` reacting to `target`, if any. */
+  static findUnreadReaction(
+    userId: number,
+    fromUserId: number,
+    target: ReactionTarget,
+  ): Promise<Notification | null> {
+    const config = REACTION_NOTIFICATIONS[target.targetType];
+    return this.findOne({
+      where: {
+        userId,
+        relatedUserId: fromUserId,
+        type: config.type,
+        isRead: false,
+        relatedEntityType: config.entityType,
+        relatedEntityId: target.targetId,
       },
     });
   }
@@ -329,21 +396,40 @@ export default class Notification extends BaseModel<
     );
   }
 
-  static createPostLikeNotification(
+  static createReactionNotification(
     userId: number,
     fromUserId: number,
-    postId: string,
+    target: ReactionTarget,
+    reactionType: ReactionType,
     transaction?: Transaction,
   ): Promise<Notification> {
+    const config = REACTION_NOTIFICATIONS[target.targetType];
     return this.create(
       {
         userId,
-        type: NOTIFICATION_TYPES.POST_LIKE,
-        title: "New Like",
-        message: "Someone liked your post",
+        type: config.type,
+        title: "New Reaction",
+        message: reactionMessage(target, reactionType),
         relatedUserId: fromUserId,
-        relatedEntityType: "post",
-        relatedEntityId: postId,
+        relatedEntityType: config.entityType,
+        relatedEntityId: target.targetId,
+        metadata: reactionMetadata(target, reactionType),
+      },
+      { transaction },
+    );
+  }
+
+  /** Point an unread reaction notification at the reactor's latest reaction. */
+  static refreshReactionNotification(
+    notification: Notification,
+    target: ReactionTarget,
+    reactionType: ReactionType,
+    transaction?: Transaction,
+  ): Promise<Notification> {
+    return notification.update(
+      {
+        message: reactionMessage(target, reactionType),
+        metadata: reactionMetadata(target, reactionType),
       },
       { transaction },
     );

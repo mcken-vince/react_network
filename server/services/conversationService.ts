@@ -5,7 +5,7 @@ import { toWire } from "../lib/serialize";
 import { emitToUser, emitToUsers } from "../websocket/io";
 import type {
   Conversation as ConversationDto,
-  Message as MessageDto,
+  MessagePreview,
   PaginationParams,
 } from "../types";
 
@@ -58,7 +58,7 @@ export async function listConversations(
       ]);
       return {
         ...toWire<ConversationDto>(conversation),
-        lastMessage: lastMessage ? toWire<MessageDto>(lastMessage) : null,
+        lastMessage: lastMessage ? toWire<MessagePreview>(lastMessage) : null,
         unreadCount,
       };
     }),

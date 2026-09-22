@@ -13,4 +13,5 @@ export const LIMITS = {
   URL_MAX: 500,
   PAGE_LIMIT_DEFAULT: 50,
   PAGE_LIMIT_MAX: 100,
+  REACTORS_PAGE_DEFAULT: 20,
 } as const;

@@ -1,9 +1,10 @@
 import type { Request } from "express";
 
-// Wire-format entities, request/response shapes, and socket event maps are
-// shared with the client so the two sides cannot drift.
+// Wire-format entities, request/response shapes, socket event maps, and the
+// reaction catalogue are shared with the client so the two sides cannot drift.
 export * from "../../shared/types";
 export * from "../../shared/socketEvents";
+export * from "../../shared/reactions";
 
 /**
  * Request with body (and response body) typed as `unknown`: the only way to

@@ -7,13 +7,118 @@ import {
   useComments,
   useDeleteComment,
 } from "../../hooks/usePosts";
+import { useToggleReaction } from "../../hooks/useReactions";
+import type { ReactionTargetRef } from "../../lib/reactions";
 import { formatPostDate } from "../../utils/dateUtils";
 import { ApiError } from "../../lib/api";
+import ReactButton from "../reactions/ReactButton";
+import ReactionBar from "../reactions/ReactionBar";
+import ReactorsModal from "../reactions/ReactorsModal";
+import type { PostComment, ReactionType } from "../../types";
 
 interface PostCommentsProps {
   postId: string;
   postOwnerId: number;
   currentUserId?: number;
+}
+
+interface CommentItemProps {
+  comment: PostComment;
+  postId: string;
+  canDelete: boolean;
+  isDeleting: boolean;
+  onDelete: () => void;
+}
+
+function CommentItem({
+  comment,
+  postId,
+  canDelete,
+  isDeleting,
+  onDelete,
+}: CommentItemProps) {
+  const [showReactors, setShowReactors] = useState(false);
+  const reactionTarget: ReactionTargetRef = {
+    targetType: "comment",
+    postId,
+    commentId: comment.id,
+  };
+  const toggleReaction = useToggleReaction(reactionTarget);
+  const react = (type: ReactionType): void =>
+    toggleReaction.mutate({ type, current: comment.reactions });
+
+  return (
+    <li className="flex gap-2 group">
+      <div className="w-8 h-8 flex-shrink-0 bg-gradient-to-br from-blue-500 to-purple-600 rounded-full flex items-center justify-center text-white text-xs font-semibold">
+        {comment.author?.firstName[0] ?? "?"}
+        {comment.author?.lastName[0] ?? ""}
+      </div>
+      <div className="flex-1 min-w-0">
+        <div className="bg-gray-50 rounded-lg px-3 py-2">
+          <div className="flex items-baseline justify-between gap-2">
+            {comment.author ? (
+              <Link
+                to="/profile/$userId"
+                params={{ userId: String(comment.author.id) }}
+                className="text-sm font-semibold text-gray-900 hover:text-blue-600"
+              >
+                {comment.author.firstName} {comment.author.lastName}
+              </Link>
+            ) : (
+              <span className="text-sm font-semibold text-gray-900">
+                Unknown user
+              </span>
+            )}
+            <span className="text-xs text-gray-500 whitespace-nowrap">
+              {formatPostDate(comment.createdAt)}
+            </span>
+          </div>
+          <p className="text-sm text-gray-800 whitespace-pre-wrap break-words">
+            {comment.content}
+          </p>
+        </div>
+
+        <div className="mt-1 flex flex-wrap items-center gap-2">
+          <ReactButton
+            summary={comment.reactions}
+            targetType="comment"
+            onToggle={react}
+            disabled={toggleReaction.isPending}
+            size="sm"
+            placement="top"
+            align="left"
+          />
+          <ReactionBar
+            summary={comment.reactions}
+            onToggle={react}
+            onShowReactors={() => setShowReactors(true)}
+            disabled={toggleReaction.isPending}
+            size="sm"
+          />
+          {canDelete && (
+            <button
+              type="button"
+              onClick={() => {
+                if (window.confirm("Delete this comment?")) onDelete();
+              }}
+              disabled={isDeleting}
+              className="text-xs text-gray-400 hover:text-red-600 opacity-0 group-hover:opacity-100 focus:opacity-100 transition-opacity"
+            >
+              Delete
+            </button>
+          )}
+        </div>
+      </div>
+
+      {showReactors && (
+        <ReactorsModal
+          target={reactionTarget}
+          summary={comment.reactions}
+          onClose={() => setShowReactors(false)}
+        />
+      )}
+    </li>
+  );
 }
 
 export default function PostComments({
@@ -66,59 +171,20 @@ export default function PostComments({
         <p className="text-sm text-gray-500">No comments yet. Be the first!</p>
       ) : (
         <ul className="space-y-3">
-          {comments.map((comment) => {
-            const canDelete =
-              currentUserId !== undefined &&
-              (comment.userId === currentUserId ||
-                postOwnerId === currentUserId);
-            return (
-              <li key={comment.id} className="flex gap-2 group">
-                <div className="w-8 h-8 flex-shrink-0 bg-gradient-to-br from-blue-500 to-purple-600 rounded-full flex items-center justify-center text-white text-xs font-semibold">
-                  {comment.author?.firstName[0] ?? "?"}
-                  {comment.author?.lastName[0] ?? ""}
-                </div>
-                <div className="flex-1 min-w-0">
-                  <div className="bg-gray-50 rounded-lg px-3 py-2">
-                    <div className="flex items-baseline justify-between gap-2">
-                      {comment.author ? (
-                        <Link
-                          to="/profile/$userId"
-                          params={{ userId: String(comment.author.id) }}
-                          className="text-sm font-semibold text-gray-900 hover:text-blue-600"
-                        >
-                          {comment.author.firstName} {comment.author.lastName}
-                        </Link>
-                      ) : (
-                        <span className="text-sm font-semibold text-gray-900">
-                          Unknown user
-                        </span>
-                      )}
-                      <span className="text-xs text-gray-500 whitespace-nowrap">
-                        {formatPostDate(comment.createdAt)}
-                      </span>
-                    </div>
-                    <p className="text-sm text-gray-800 whitespace-pre-wrap break-words">
-                      {comment.content}
-                    </p>
-                  </div>
-                  {canDelete && (
-                    <button
-                      type="button"
-                      onClick={() => {
-                        if (window.confirm("Delete this comment?")) {
-                          deleteComment.mutate(comment.id);
-                        }
-                      }}
-                      disabled={deleteComment.isPending}
-                      className="text-xs text-gray-400 hover:text-red-600 mt-1 opacity-0 group-hover:opacity-100 transition-opacity"
-                    >
-                      Delete
-                    </button>
-                  )}
-                </div>
-              </li>
-            );
-          })}
+          {comments.map((comment) => (
+            <CommentItem
+              key={comment.id}
+              comment={comment}
+              postId={postId}
+              canDelete={
+                currentUserId !== undefined &&
+                (comment.userId === currentUserId ||
+                  postOwnerId === currentUserId)
+              }
+              isDeleting={deleteComment.isPending}
+              onDelete={() => deleteComment.mutate(comment.id)}
+            />
+          ))}
         </ul>
       )}
 

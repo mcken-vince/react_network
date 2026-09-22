@@ -1,10 +1,14 @@
 import { useState } from "react";
 import { Link } from "@tanstack/react-router";
 import { formatPostDate } from "../../utils/dateUtils";
-import { useToggleLike } from "../../hooks/usePosts";
+import { useToggleReaction } from "../../hooks/useReactions";
+import type { ReactionTargetRef } from "../../lib/reactions";
 import PostVisibilityBadge from "./PostVisibilityBadge";
 import PostComments from "./PostComments";
-import type { Post } from "../../types";
+import ReactButton from "../reactions/ReactButton";
+import ReactionBar from "../reactions/ReactionBar";
+import ReactorsModal from "../reactions/ReactorsModal";
+import type { Post, ReactionType } from "../../types";
 import { Icon } from "../atoms";
 
 interface PostCardProps {
@@ -26,7 +30,15 @@ export default function PostCard({
   const [showMenu, setShowMenu] = useState(false);
   const [isDeleting, setIsDeleting] = useState(false);
   const [showComments, setShowComments] = useState(defaultShowComments);
-  const toggleLike = useToggleLike();
+  const [showReactors, setShowReactors] = useState(false);
+
+  const reactionTarget: ReactionTargetRef = {
+    targetType: "post",
+    postId: post.id,
+  };
+  const toggleReaction = useToggleReaction(reactionTarget);
+  const react = (type: ReactionType): void =>
+    toggleReaction.mutate({ type, current: post.reactions });
 
   const isOwnPost = post.userId === currentUserId;
   const author = post.author;
@@ -150,6 +162,15 @@ export default function PostCard({
         </div>
       )}
 
+      {/* Reaction counts */}
+      <ReactionBar
+        summary={post.reactions}
+        onToggle={react}
+        onShowReactors={() => setShowReactors(true)}
+        disabled={toggleReaction.isPending}
+        className="mb-2"
+      />
+
       {/* Footer */}
       <div className="flex items-center justify-between pt-3 border-t border-gray-100">
         <Link
@@ -161,27 +182,14 @@ export default function PostCard({
         </Link>
 
         <div className="flex items-center space-x-4">
-          <button
-            type="button"
-            onClick={() => toggleLike.mutate(post)}
-            disabled={toggleLike.isPending}
-            aria-pressed={post.likedByMe}
-            className={`flex items-center gap-1 transition-colors ${
-              post.likedByMe
-                ? "text-red-600"
-                : "text-gray-400 hover:text-red-600"
-            }`}
-          >
-            <Icon
-              name="heart"
-              size="medium"
-              fill={post.likedByMe ? "currentColor" : "none"}
-            />
-            <span className="text-sm">
-              {post.likeCount > 0 ? post.likeCount : "Like"}
-            </span>
-          </button>
-
+          <ReactButton
+            summary={post.reactions}
+            targetType="post"
+            onToggle={react}
+            disabled={toggleReaction.isPending}
+            placement="top"
+            align="right"
+          />
           <button
             type="button"
             onClick={() => setShowComments((open) => !open)}
@@ -205,6 +213,14 @@ export default function PostCard({
           postId={post.id}
           postOwnerId={post.userId}
           currentUserId={currentUserId}
+        />
+      )}
+
+      {showReactors && (
+        <ReactorsModal
+          target={reactionTarget}
+          summary={post.reactions}
+          onClose={() => setShowReactors(false)}
         />
       )}
 
